@@ -9,6 +9,8 @@ export interface SearchOption {
   label: string;
   /** Secondary text under the label, e.g. brand and model number. */
   detail?: string;
+  /** Related record carried with the option, e.g. a product's brand. */
+  meta?: { id: string; label: string };
 }
 
 /**

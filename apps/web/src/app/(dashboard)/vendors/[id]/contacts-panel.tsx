@@ -12,7 +12,7 @@ import {
   SelectField,
   TextField,
 } from '@/components/client-ui';
-import { EmptyStateClient } from './panel-shared';
+import { EmptyStateClient } from '@/components/panel-shared';
 import { IconMail, IconPencil, IconPhone, IconPlus, IconTrash } from '@/components/icons';
 import { emptyContact } from '@/components/vendor-form';
 import {

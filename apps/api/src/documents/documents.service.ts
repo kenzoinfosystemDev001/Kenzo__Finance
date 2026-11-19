@@ -109,7 +109,11 @@ export class DocumentsService {
     }
 
     const stored = await this.storageService.save(input.buffer, {
-      folder: input.productId ? 'products' : 'vendors',
+      folder: input.productId
+        ? 'products'
+        : input.kind === DocumentKind.BRANDING_IMAGE
+          ? 'branding'
+          : 'vendors',
       originalFilename: `file.${detected.extension}`,
       mimeType: detected.mimeType,
     });

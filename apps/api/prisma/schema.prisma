@@ -53,6 +53,9 @@ model User {
   uploadedDocs    Document[]      @relation("DocumentUploadedBy")
   requestedOcr    OcrJob[]        @relation("OcrRequestedBy")
   stockMovements  StockMovement[] @relation("StockMovementCreatedBy")
+  createdProducts Product[]       @relation("ProductCreatedBy")
+  updatedProducts Product[]       @relation("ProductUpdatedBy")
+  createdModels   ProductModel[]  @relation("ProductModelCreatedBy")
   updatedSettings Setting[]       @relation("SettingUpdatedBy")
 
   createdAt  DateTime  @default(now())
@@ -339,15 +342,22 @@ model ProductCategory {
   @@map("product_categories")
 }
 
+// A catalogue product (e.g. "Dell Latitude Laptop") under one shared brand.
+// Its concrete models live in ProductModel. Unique per brand by normalised name.
 model Product {
   id             String  @id @default(uuid()) @db.Uuid
+  // System-generated, human-facing id (KI/PRD/00001). Never reused.
   productCode    String  @unique
+  // Optional business SKU entered by the user; unique when present.
+  sku            String? @unique
   name           String
   normalizedName String
   companyId      String  @db.Uuid
   categoryId     String? @db.Uuid
 
-  modelNumber    String
+  // LEGACY (pre-ProductModel, when one product row was one model). Kept so
+  // existing rows stay readable; new products leave it null and use models.
+  modelNumber    String?
   designNumber   String?
   description    String?
   // Free-form key/value technical specifications, e.g.
@@ -368,17 +378,27 @@ model Product {
 
   company   Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
   category  ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  models    ProductModel[]
   vendors   VendorProduct[]
   documents Document[]       @relation("ProductDocuments")
   movements StockMovement[]
+
+  createdById String? @db.Uuid
+  updatedById String? @db.Uuid
+  createdBy   User?   @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?   @relation("ProductUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   archivedAt DateTime?
 
-  // One brand cannot have two products with the same model number.
+  // Legacy uniqueness of the old one-row-per-model design (NULLs never collide).
   @@unique([companyId, modelNumber])
+  // One brand cannot list the same product twice.
+  @@unique([companyId, normalizedName])
   @@index([normalizedName])
+  @@index([isActive])
+  @@index([createdAt])
   @@index([modelNumber])
   @@index([designNumber])
   @@index([categoryId])
@@ -422,9 +442,79 @@ model VendorProduct {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Whether this supply relationship is currently in use. Inactive mappings
+  // stay for history but are not offered for new business.
+  status VendorMappingStatus @default(ACTIVE)
+
+  // Optional: the specific models this vendor supplies. None means the
+  // mapping applies to the product as a whole.
+  models VendorProductModel[]
+
   @@unique([vendorId, productId])
   @@index([productId])
   @@map("vendor_products")
+}
+
+enum VendorMappingStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// A concrete model of a product, e.g. Latitude 5450 of "Dell Latitude Laptop".
+// Specifications are free-form key/value pairs because each category needs a
+// different attribute set (laptop: processor/RAM; switch: ports/PoE).
+model ProductModel {
+  id                    String  @id @default(uuid()) @db.Uuid
+  productId             String  @db.Uuid
+  // System-generated, human-facing id (KI/MDL/00001).
+  modelCode             String  @unique
+  modelName             String
+  modelNumber           String
+  // Uppercased, whitespace-stripped modelNumber for duplicate checks.
+  normalizedModelNumber String
+  description           String?
+  specifications        Json?
+  isActive              Boolean @default(true)
+
+  imageDocumentId String?   @unique @db.Uuid
+  imageDocument   Document? @relation("ProductModelImage", fields: [imageDocumentId], references: [id], onDelete: SetNull)
+
+  product Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vendors VendorProductModel[]
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("ProductModelCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // A model number appears once per product (brand-wide uniqueness is
+  // checked by the service, since the brand lives on the parent product).
+  @@unique([productId, normalizedModelNumber])
+  @@index([modelNumber])
+  @@index([modelName])
+  @@map("product_models")
+}
+
+// Vendor <-> specific model, always under an existing vendor<->product row,
+// so a model mapping can never exist without its product mapping.
+model VendorProductModel {
+  id              String              @id @default(uuid()) @db.Uuid
+  vendorProductId String              @db.Uuid
+  productModelId  String              @db.Uuid
+  vendorSku       String?
+  isPreferred     Boolean             @default(false)
+  status          VendorMappingStatus @default(ACTIVE)
+
+  vendorProduct VendorProduct @relation(fields: [vendorProductId], references: [id], onDelete: Cascade)
+  productModel  ProductModel  @relation(fields: [productModelId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([vendorProductId, productModelId])
+  @@index([productModelId])
+  @@map("vendor_product_models")
 }
 
 // ===========================================================================
@@ -442,7 +532,14 @@ enum DocumentKind {
   VENDOR_OTHER
   PRODUCT_IMAGE
   PRODUCT_DATASHEET
+  PRODUCT_BROCHURE
+  PRODUCT_TECH_SPEC
+  PRODUCT_MANUAL
+  PRODUCT_WARRANTY
   PRODUCT_OTHER
+  // Application branding (login page background). Not owned by a record;
+  // referenced from the "branding.loginBackgroundDocumentId" setting.
+  BRANDING_IMAGE
 }
 
 model Document {
@@ -463,8 +560,9 @@ model Document {
   productId String?  @db.Uuid
   product   Product? @relation("ProductDocuments", fields: [productId], references: [id], onDelete: Cascade)
 
-  // Back-reference for the product that uses this file as its primary image.
-  primaryImageOf Product? @relation("ProductPrimaryImage")
+  // Back-references for the product / model using this file as its image.
+  primaryImageOf Product?      @relation("ProductPrimaryImage")
+  modelImageOf   ProductModel? @relation("ProductModelImage")
 
   uploadedById String? @db.Uuid
   uploadedBy   User?   @relation("DocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)

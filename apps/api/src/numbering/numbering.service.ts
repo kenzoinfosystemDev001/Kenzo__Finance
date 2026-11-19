@@ -5,6 +5,7 @@ import { PrismaService } from '../database/prisma.service';
 export const SEQUENCE_KEYS = {
   VENDOR: 'VENDOR',
   PRODUCT: 'PRODUCT',
+  PRODUCT_MODEL: 'PRODUCT_MODEL',
 } as const;
 
 export type SequenceKey = (typeof SEQUENCE_KEYS)[keyof typeof SEQUENCE_KEYS];

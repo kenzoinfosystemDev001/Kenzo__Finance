@@ -39,7 +39,7 @@ import { ContactsPanel } from './contacts-panel';
 import { AddressesPanel } from './addresses-panel';
 import { BrandsPanel, ProductsPanel } from './mappings-panel';
 import { DocumentsPanel } from './documents-panel';
-import { EmptyStateClient } from './panel-shared';
+import { EmptyStateClient } from '@/components/panel-shared';
 
 const TAB_KEYS = ['overview', 'contacts', 'addresses', 'brands', 'products', 'documents', 'activity'] as const;
 type TabKey = (typeof TAB_KEYS)[number];
@@ -280,7 +280,9 @@ export default async function VendorProfilePage({
         <ProductsPanel
           vendorId={vendor.id}
           mappings={vendor.products}
+          brandIds={vendor.companies.map((c) => c.companyId)}
           canManage={can('vendor.manage_products') && !archived}
+          canManageBrands={can('vendor.manage_brands')}
           canCreateProduct={can('product.create')}
           productCategories={
             can('product.create') && !archived

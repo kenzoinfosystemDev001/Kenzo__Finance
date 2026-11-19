@@ -53,7 +53,7 @@ export function VendorToolbar({
       (await searchProductsAction(term)).map((product) => ({
         id: product.id,
         label: product.name,
-        detail: `${product.company.name} · ${product.modelNumber}`,
+        detail: `${product.company.name} · ${product._count.models} model(s)`,
       })),
     [],
   );

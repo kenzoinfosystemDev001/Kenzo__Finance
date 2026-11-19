@@ -144,18 +144,24 @@ export interface VendorProductMapping {
   leadTimeDays: number | null;
   isPreferred: boolean;
   remarks: string | null;
+  status: 'ACTIVE' | 'INACTIVE';
   createdAt: string;
   product: {
     id: string;
     productCode: string;
     name: string;
-    modelNumber: string;
-    designNumber: string | null;
     isActive: boolean;
     archivedAt: string | null;
     company: { id: string; name: string };
     category: { id: string; name: string } | null;
+    _count: { models: number };
   };
+  /** Specific models supplied; empty = the product as a whole. */
+  models: Array<{
+    id: string;
+    productModelId: string;
+    productModel: { id: string; modelCode: string; modelName: string; modelNumber: string; isActive: boolean };
+  }>;
 }
 
 export interface VendorDocument {
@@ -198,41 +204,86 @@ export interface Company {
   _count?: { products: number; vendors: number };
 }
 
+export interface Specification {
+  name: string;
+  value: string;
+}
+
+/** Product list row. Stock fields exist only when stock tracking is on. */
 export interface Product {
   id: string;
   productCode: string;
+  sku: string | null;
   name: string;
-  modelNumber: string;
-  designNumber: string | null;
   description: string | null;
-  specifications: Record<string, string> | null;
   reorderLevel: number | null;
   isActive: boolean;
   archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
   imageDocumentId: string | null;
   company: { id: string; name: string; code: string | null };
   category: { id: string; name: string } | null;
-  _count?: { vendors: number };
-  // Present only when stock tracking is enabled.
+  _count: { vendors: number; models: number };
+  /** Legacy single-model field; null for products created with models. */
+  modelNumber?: string | null;
   onHand?: number;
   isLowStock?: boolean;
   isOutOfStock?: boolean;
 }
 
-export interface ProductDetail extends Product {
+export interface ProductModel {
+  id: string;
+  modelCode: string;
+  modelName: string;
+  modelNumber: string;
+  description: string | null;
+  /** Array of {name,value}; legacy rows may hold a {key: value} object. */
+  specifications: Specification[] | Record<string, string> | null;
+  isActive: boolean;
+  imageDocumentId: string | null;
   createdAt: string;
   updatedAt: string;
+  _count: { vendors: number };
+}
+
+export interface ProductVendorMapping {
+  id: string;
+  vendorId: string;
+  vendorSku: string | null;
+  leadTimeDays: number | null;
+  isPreferred: boolean;
+  remarks: string | null;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdAt: string;
+  /** Whether the vendor is mapped to this product's brand. */
+  brandMapped: boolean;
+  vendor: {
+    id: string;
+    vendorCode: string;
+    businessName: string;
+    contactPerson: string | null;
+    phone: string | null;
+    email: string | null;
+    city: string | null;
+    status: string;
+    archivedAt: string | null;
+    _count: { products: number };
+    contacts: Array<{ name: string; phone: string | null; email: string | null }>;
+  };
+  models: Array<{ productModelId: string; productModel: { id: string; modelName: string; modelNumber: string } }>;
+}
+
+export interface ProductDetail extends Omit<Product, '_count'> {
   stockTrackingEnabled: boolean;
   stockByLocation?: Array<{
     location: { id: string; name: string; code: string } | null;
     onHand: number;
   }>;
-  imageDocument: {
-    id: string;
-    originalFilename: string;
-    mimeType: string;
-    sizeBytes: number;
-  } | null;
+  imageDocument: { id: string; originalFilename: string; mimeType: string; sizeBytes: number } | null;
+  createdBy: { id: string; fullName: string } | null;
+  updatedBy: { id: string; fullName: string } | null;
+  models: ProductModel[];
   documents: Array<{
     id: string;
     kind: string;
@@ -240,24 +291,18 @@ export interface ProductDetail extends Product {
     mimeType: string;
     sizeBytes: number;
     createdAt: string;
+    replacesDocumentId: string | null;
+    uploadedBy: { id: string; fullName: string } | null;
   }>;
-  vendors: Array<{
-    id: string;
-    vendorId: string;
-    vendorSku: string | null;
-    leadTimeDays: number | null;
-    isPreferred: boolean;
-    vendor: {
-      id: string;
-      vendorCode: string;
-      businessName: string;
-      phone: string | null;
-      email: string | null;
-      city: string | null;
-      status: string;
-      archivedAt: string | null;
-    };
-  }>;
+  vendors: ProductVendorMapping[];
+}
+
+export interface ProductSummary {
+  products: { total: number; active: number; inactive: number; archived: number; addedLast30Days: number };
+  brands: number;
+  models: { total: number; active: number };
+  vendorMappings: { products: number; models: number };
+  generatedAt: string;
 }
 
 export interface ProductCategory {
@@ -285,7 +330,7 @@ export interface StockMovement {
   reason: string | null;
   occurredAt: string;
   createdAt: string;
-  product: { id: string; productCode: string; name: string; modelNumber: string };
+  product: { id: string; productCode: string; name: string; modelNumber: string | null };
   location: { id: string; name: string; code: string };
   createdBy: { id: string; fullName: string } | null;
 }
@@ -294,7 +339,7 @@ export interface StockBalanceRow {
   id: string;
   productCode: string;
   name: string;
-  modelNumber: string;
+  modelNumber: string | null;
   reorderLevel: number | null;
   onHand: number;
   isLowStock: boolean;

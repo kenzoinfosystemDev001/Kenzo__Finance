@@ -24,11 +24,12 @@ import {
   updateBrandMappingAction,
   updateProductMappingAction,
   type ActionResult,
+  type MapProductsResult,
   type ProductMappingInput,
 } from '@/lib/vendor-actions';
 import { formatDate } from '@/lib/vendor-labels';
 import type { ProductCategory, VendorCompanyMapping, VendorProductMapping } from '@/lib/types';
-import { EmptyStateClient, PanelHeader } from './panel-shared';
+import { EmptyStateClient, PanelHeader } from '@/components/panel-shared';
 
 const useBrandSearch = () =>
   useCallback(async (term: string) => (await searchBrandsAction(term)).map((b) => ({ id: b.id, label: b.name })), []);
@@ -310,13 +311,18 @@ function MappingFields({
 export function ProductsPanel({
   vendorId,
   mappings,
+  brandIds,
   canManage,
+  canManageBrands,
   canCreateProduct,
   productCategories,
 }: {
   vendorId: string;
   mappings: VendorProductMapping[];
+  /** Brands already mapped to this vendor. */
+  brandIds: string[];
   canManage: boolean;
+  canManageBrands: boolean;
   canCreateProduct: boolean;
   productCategories: ProductCategory[];
 }) {
@@ -328,18 +334,24 @@ export function ProductsPanel({
   const [registering, setRegistering] = useState(false);
   const [editing, setEditing] = useState<VendorProductMapping | null>(null);
   const [removing, setRemoving] = useState<VendorProductMapping | null>(null);
-  const [result, setResult] = useState<ActionResult>({});
+  const [result, setResult] = useState<MapProductsResult>({});
+  const [mapBrand, setMapBrand] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const productSearch = useCallback(
     async (term: string) =>
       (await searchProductsAction(term)).map((p) => ({
         id: p.id,
-        label: `${p.name} — ${p.modelNumber}`,
-        detail: `${p.company.name}${p.category ? ` · ${p.category.name}` : ''} · ${p.productCode}`,
+        label: p.name,
+        detail: `${p.company.name}${p.category ? ` · ${p.category.name}` : ''} · ${p._count.models} model(s) · ${p.productCode}`,
+        meta: { id: p.company.id, label: p.company.name },
       })),
     [],
   );
+  // Brands the current selection would need but the vendor does not have yet.
+  const missingBrands = [
+    ...new Set(selected.filter((s) => s.meta && !brandIds.includes(s.meta.id)).map((s) => s.meta!.label)),
+  ];
 
   const save = () =>
     startTransition(async () => {
@@ -356,14 +368,19 @@ export function ProductsPanel({
         vendorId,
         selected.map((s) => s.id),
         selected.length === 1 ? details : { ...details, vendorSku: '' },
+        mapBrand,
       );
       router.refresh();
       if (outcome.ok) {
         setAdding(false);
         setSelected([]);
         setDetails(emptyMapping);
+        setMapBrand(false);
         setResult({});
       } else {
+        // Keep only the products that still need a decision selected.
+        const retry = new Set(outcome.brandMissing?.map((p) => p.productId) ?? []);
+        if (retry.size) setSelected((current) => current.filter((s) => retry.has(s.id)));
         setResult(outcome);
       }
     });
@@ -391,7 +408,7 @@ export function ProductsPanel({
               <tr>
                 <th scope="col">Brand</th>
                 <th scope="col">Product</th>
-                <th scope="col">Model</th>
+                <th scope="col">Models</th>
                 <th scope="col">Vendor SKU</th>
                 <th scope="col" className="text-right">Lead time</th>
                 <th scope="col">Preferred</th>
@@ -412,7 +429,15 @@ export function ProductsPanel({
                       {mapping.product.archivedAt && ' · archived'}
                     </p>
                   </td>
-                  <td className="whitespace-nowrap font-mono text-sm">{mapping.product.modelNumber}</td>
+                  <td className="min-w-[150px]">
+                    {mapping.models.length === 0 ? (
+                      <span className="text-sm text-ink-muted">Whole product ({mapping.product._count.models} model{mapping.product._count.models === 1 ? '' : 's'})</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {mapping.models.map((m) => <span key={m.id} className="chip">{m.productModel.modelName}</span>)}
+                      </div>
+                    )}
+                  </td>
                   <td className="font-mono text-sm">{mapping.vendorSku ?? '—'}</td>
                   <td className="text-right tabular-nums">{mapping.leadTimeDays !== null ? `${mapping.leadTimeDays} d` : '—'}</td>
                   <td>
@@ -480,7 +505,22 @@ export function ProductsPanel({
                 <p className="mb-3 text-sm font-semibold text-ink">Supply details {selected.length > 1 && <span className="font-normal text-ink-muted">(applied to every selected product)</span>}</p>
                 <MappingFields value={details} onChange={setDetails} showSku={selected.length <= 1} />
               </div>
-              <ResultAlert result={result} />
+              {missingBrands.length > 0 && (
+                <div className="rounded-lg border border-warning/30 bg-warning-subtle px-4 py-3 text-sm text-warning">
+                  <p>
+                    This vendor is not mapped to {missingBrands.join(', ')}. A vendor can only supply products of
+                    brands it is mapped to.
+                  </p>
+                  {canManageBrands ? (
+                    <div className="mt-2">
+                      <CheckboxField label={`Also map ${missingBrands.join(', ')} to this vendor`} checked={mapBrand} onChange={setMapBrand} />
+                    </div>
+                  ) : (
+                    <p className="mt-1">Ask a user who can manage vendor brands to map the brand first.</p>
+                  )}
+                </div>
+              )}
+              <ResultAlert result={result.brandMissing && !result.errors ? {} : result} />
             </div>
           </Modal>
 
@@ -511,7 +551,7 @@ export function ProductsPanel({
             title="Remove product mapping?"
             message={
               <>
-                <strong className="text-ink">{removing?.product.name} ({removing?.product.modelNumber})</strong> will no
+                <strong className="text-ink">{removing?.product.name}</strong> will no
                 longer be listed for this vendor. The catalogue product itself is not changed.
               </>
             }
@@ -553,7 +593,7 @@ function ProductEditModal({
       open={mapping !== null}
       onClose={onClose}
       title={`Edit ${mapping?.product.name ?? ''}`}
-      description={mapping ? `${mapping.product.company.name} · ${mapping.product.modelNumber}` : undefined}
+      description={mapping ? `${mapping.product.company.name} · ${mapping.product.productCode}` : undefined}
       footer={
         <>
           <button type="button" className="btn-secondary" onClick={onClose} disabled={pending}>Cancel</button>

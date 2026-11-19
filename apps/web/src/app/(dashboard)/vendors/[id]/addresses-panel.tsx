@@ -21,7 +21,7 @@ import {
 } from '@/lib/vendor-actions';
 import { ADDRESS_TYPE_LABELS, formatAddress } from '@/lib/vendor-labels';
 import type { VendorAddress, VendorAddressType } from '@/lib/types';
-import { EmptyStateClient, PanelHeader } from './panel-shared';
+import { EmptyStateClient, PanelHeader } from '@/components/panel-shared';
 
 const ADDRESS_TYPES = Object.entries(ADDRESS_TYPE_LABELS).map(([value, label]) => ({ value, label }));
 

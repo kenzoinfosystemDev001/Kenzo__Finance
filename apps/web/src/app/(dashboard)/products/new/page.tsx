@@ -1,51 +1,24 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
-import type { Company, PaginatedResponse, ProductCategory } from '@/lib/types';
-import { EmptyState, PageHeader } from '@/components/ui';
+import { getCurrentUser } from '@/lib/auth-actions';
+import type { ProductCategory } from '@/lib/types';
+import { PageHeader } from '@/components/ui';
 import { ProductForm } from '@/components/product-form';
 
-export const metadata: Metadata = { title: 'Add product' };
+export const metadata: Metadata = { title: 'Add Product' };
 
 export default async function NewProductPage() {
-  const [companies, categories, stockStatus] = await Promise.all([
-    apiFetch<PaginatedResponse<Company>>('/companies?pageSize=100&sortBy=name')
-      .then((r) => r.items)
-      .catch(() => []),
-    apiFetch<ProductCategory[]>('/products/categories').catch(() => []),
-    apiFetch<{ stockTrackingEnabled: boolean }>('/stock/status').catch(() => ({
-      stockTrackingEnabled: false,
-    })),
-  ]);
+  const user = await getCurrentUser();
+  const permissions = user?.permissions ?? [];
+  if (!permissions.includes('product.create')) redirect('/products');
+
+  const categories: ProductCategory[] = await apiFetch<ProductCategory[]>('/products/categories').catch(() => []);
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <PageHeader
-        title="Add product"
-        description="Every product belongs to one brand and one model number."
-      />
-
-      <div className="card">
-        {companies.length === 0 ? (
-          <EmptyState
-            title="Add a brand first"
-            description="A product must belong to a brand, and none exist yet."
-            action={
-              <Link href="/companies" className="btn-primary">
-                Go to brands
-              </Link>
-            }
-          />
-        ) : (
-          <div className="p-5">
-            <ProductForm
-              companies={companies}
-              categories={categories}
-              stockTrackingEnabled={stockStatus.stockTrackingEnabled}
-            />
-          </div>
-        )}
-      </div>
+    <div className="mx-auto max-w-5xl">
+      <PageHeader title="Add Product" description="Create a catalogue product under a shared brand, then add its models." />
+      <ProductForm mode="create" categories={categories} permissions={permissions} />
     </div>
   );
 }

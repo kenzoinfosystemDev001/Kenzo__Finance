@@ -91,7 +91,7 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
           <div className="min-w-0">
             <p className="truncate text-lg font-bold leading-tight tracking-wide text-white">KENZO</p>
             <p className="truncate text-[0.65rem] font-medium uppercase leading-tight tracking-[0.2em] text-sidebar-muted">
-              Technologies
+              Infosystems
             </p>
           </div>
         </div>

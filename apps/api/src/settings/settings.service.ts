@@ -30,9 +30,23 @@ export const SETTING_KEYS = {
   ALLOW_NEGATIVE_STOCK: 'inventory.allowNegativeStock',
 } as const;
 
+/**
+ * Branding settings. Changed only through the dedicated /branding endpoints,
+ * which validate the value (an uploaded image, an email address) - never
+ * through the generic boolean PATCH /settings.
+ */
+export const BRANDING_SETTING_KEYS = {
+  /** Document id of the login-page background image, or null for none. */
+  LOGIN_BACKGROUND_DOCUMENT_ID: 'branding.loginBackgroundDocumentId',
+  /** Address behind the login page's "Contact Administrator", or null. */
+  SUPPORT_EMAIL: 'branding.supportEmail',
+} as const;
+
 export const SETTING_DEFAULTS: Record<string, unknown> = {
   [SETTING_KEYS.STOCK_TRACKING_ENABLED]: false,
   [SETTING_KEYS.ALLOW_NEGATIVE_STOCK]: false,
+  [BRANDING_SETTING_KEYS.LOGIN_BACKGROUND_DOCUMENT_ID]: null,
+  [BRANDING_SETTING_KEYS.SUPPORT_EMAIL]: null,
 };
 
 export const SETTING_DESCRIPTIONS: Record<string, string> = {
@@ -40,6 +54,10 @@ export const SETTING_DESCRIPTIONS: Record<string, string> = {
     'Track physical stock quantities. When off, products are a catalogue only.',
   [SETTING_KEYS.ALLOW_NEGATIVE_STOCK]:
     'Allow stock movements that take on-hand quantity below zero.',
+  [BRANDING_SETTING_KEYS.LOGIN_BACKGROUND_DOCUMENT_ID]:
+    'Image shown behind the sign-in page. Empty uses the plain navy background.',
+  [BRANDING_SETTING_KEYS.SUPPORT_EMAIL]:
+    'Email address users are directed to from the sign-in page for access or password help.',
 };
 
 @Injectable()
@@ -79,16 +97,20 @@ export class SettingsService {
     actor: AuthenticatedUser,
   ): Promise<{ key: string; value: unknown }> {
     const previous = await this.get<unknown>(key);
+    // A JSON column cannot take a bare null; JsonNull stores JSON null, which
+    // reads back as null.
+    const stored =
+      value === null || value === undefined ? Prisma.JsonNull : (value as Prisma.InputJsonValue);
 
     const row = await this.prisma.setting.upsert({
       where: { key },
       create: {
         key,
-        value: value as Prisma.InputJsonValue,
+        value: stored,
         description: SETTING_DESCRIPTIONS[key] ?? null,
         updatedById: actor.id,
       },
-      update: { value: value as Prisma.InputJsonValue, updatedById: actor.id },
+      update: { value: stored, updatedById: actor.id },
     });
 
     await this.auditService.record({
