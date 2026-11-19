@@ -8,7 +8,7 @@ import { LoginForm } from './login-form';
 
 export const metadata: Metadata = { title: 'Sign in' };
 
-function AxiomMark({ className }: { className?: string }) {
+function BrandMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 40 32" className={className} aria-hidden>
       <path d="M20 2 36 30h-8L20 15 12 30H4Z" fill="rgb(var(--accent))" />
@@ -40,7 +40,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       {/* Brand panel: configurable photo (Settings -> Sign-in page) under a navy overlay. */}
       <section
         className="relative hidden w-[58%] flex-col justify-between overflow-hidden bg-[#0b1a3d] px-12 py-12 text-white lg:flex xl:px-16"
-        aria-label="Axiom Technologies"
+        aria-label="Kenzo Infosystems"
       >
         {background && (
           // eslint-disable-next-line @next/next/no-img-element -- streamed from the API, not a static asset
@@ -60,31 +60,15 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         />
 
         <div className="relative flex items-center gap-5">
-          <AxiomMark className="h-14 w-[4.5rem]" />
+          <BrandMark className="h-14 w-[4.5rem]" />
           <div>
-            <p className="text-4xl font-bold leading-none tracking-[0.12em]">AXIOM</p>
-            <p className="mt-1 text-xs font-medium uppercase tracking-[0.42em] text-blue-100/80">Technologies</p>
+            <p className="text-4xl font-bold leading-none tracking-[0.12em]">KENZO</p>
+            <p className="mt-1 text-xs font-medium uppercase tracking-[0.42em] text-blue-100/80">Infosystems</p>
           </div>
           <div className="ml-4 hidden border-l border-white/30 pl-5 text-lg leading-snug text-blue-50/90 xl:block">
             Smart Business.
             <br />
             Greater Growth.
-    <main className="flex min-h-screen items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm">
-        <div className="mb-8">
-          <div className="mb-6 flex items-center gap-2.5">
-            <svg viewBox="0 0 40 32" className="h-9 w-11" aria-hidden>
-              <path d="M20 2 36 30h-8L20 15 12 30H4Z" fill="rgb(var(--accent))" />
-              <path d="M20 15 28 30h-7.5L17 23.5Z" fill="#60a5fa" />
-            </svg>
-            <div>
-              <p className="text-base font-bold leading-tight tracking-wide text-ink">
-                KENZO INFOSYSTEMS
-              </p>
-              <p className="text-xs leading-tight text-ink-subtle">
-                Business Management
-              </p>
-            </div>
           </div>
         </div>
 
@@ -108,7 +92,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </div>
 
         <p className="relative text-sm text-blue-100/60">
-          &copy; {new Date().getFullYear()} Axiom Technologies. All rights reserved.
+          &copy; {new Date().getFullYear()} Kenzo Infosystems. All rights reserved.
         </p>
       </section>
 
@@ -120,9 +104,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <div className="relative w-full max-w-md rounded-3xl border border-white bg-white/95 px-7 py-9 shadow-[0_24px_60px_-20px_rgba(15,40,100,0.25)] sm:px-10">
           <div className="text-center">
             <span className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#e8f0ff]">
-              <AxiomMark className="h-12 w-16" />
+              <BrandMark className="h-12 w-16" />
             </span>
-            <h2 className="mt-5 text-3xl font-bold text-[#0d162d]">Axiom Technologies</h2>
+            <h2 className="mt-5 text-3xl font-bold text-[#0d162d]">Kenzo Infosystems</h2>
             <div className="mt-2 flex items-center justify-center gap-3 text-[#43516b]">
               <span aria-hidden className="h-px w-10 bg-[#c7d2e4]" />
               <span>Business Management Software</span>

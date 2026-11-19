@@ -59,7 +59,8 @@ export class BrandingService {
     }
 
     return {
-      stream: this.storageService.createReadStream(document.storageKey),
+      // Async since the storage driver may be remote (Cloudinary).
+      stream: await this.storageService.createReadStream(document.storageKey),
       mimeType: document.mimeType,
       sizeBytes: document.sizeBytes,
     };
