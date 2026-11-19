@@ -45,9 +45,10 @@ async function bootstrap(): Promise<void> {
   // production, where it would leak the full API surface to anonymous callers.
   if (!isProduction) {
     const config = new DocumentBuilder()
-      .setTitle('Kenzo Infosystems ERP API')
+      .setTitle('Kenzo Infosystems Business Management API')
       .setDescription(
-        'ERP and Business Management System. Module 1: Vendor Management.',
+        'Shared API for all modules. Module 1: Vendor Management; ' +
+          'Module 2 catalogue and inventory.',
       )
       .setVersion('1.0')
       .addBearerAuth()

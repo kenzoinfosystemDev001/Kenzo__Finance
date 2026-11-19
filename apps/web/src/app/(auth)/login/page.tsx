@@ -29,18 +29,16 @@ export default async function LoginPage({
       <div className="w-full max-w-sm">
         <div className="mb-8">
           <div className="mb-6 flex items-center gap-2.5">
-            <div
-              aria-hidden
-              className="flex h-9 w-9 items-center justify-center rounded-md bg-accent text-sm font-semibold text-white"
-            >
-              KI
-            </div>
+            <svg viewBox="0 0 40 32" className="h-9 w-11" aria-hidden>
+              <path d="M20 2 36 30h-8L20 15 12 30H4Z" fill="rgb(var(--accent))" />
+              <path d="M20 15 28 30h-7.5L17 23.5Z" fill="#60a5fa" />
+            </svg>
             <div>
-              <p className="text-base font-semibold leading-tight text-ink">
-                Kenzo Infosystems
+              <p className="text-base font-bold leading-tight tracking-wide text-ink">
+                KENZO INFOSYSTEMS
               </p>
               <p className="text-xs leading-tight text-ink-subtle">
-                ERP &amp; Business Management
+                Business Management
               </p>
             </div>
           </div>

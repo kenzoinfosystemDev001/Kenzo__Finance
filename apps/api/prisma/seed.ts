@@ -66,6 +66,20 @@ async function seedPermissions(): Promise<void> {
   console.log(`  permissions: ${PERMISSION_DEFINITIONS.length}`);
 }
 
+/**
+ * Permission codes replaced by finer-grained ones. Removing the row also
+ * removes its role grants (cascade), so no role keeps a dead code.
+ *   vendor.map_products -> vendor.manage_brands + vendor.manage_products
+ */
+const RETIRED_PERMISSIONS = ['vendor.map_products'];
+
+async function retirePermissions(): Promise<void> {
+  const { count } = await prisma.permission.deleteMany({
+    where: { code: { in: RETIRED_PERMISSIONS } },
+  });
+  if (count > 0) console.log(`  retired permissions: ${count}`);
+}
+
 async function seedRoles(): Promise<void> {
   for (const role of ROLE_DEFINITIONS) {
     await prisma.role.upsert({
@@ -265,6 +279,7 @@ async function main(): Promise<void> {
   console.log('Seeding Kenzo Infosystems ERP reference data...');
 
   await seedPermissions();
+  await retirePermissions();
   await seedRoles();
   await seedSequences();
   await seedVendorCategories();

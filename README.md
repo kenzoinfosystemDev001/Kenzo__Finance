@@ -180,5 +180,16 @@ additive migration; guessing them now would force a destructive one.
 - Purchase orders, goods receipt and vendor bills
 - Branch / multi-company columns
 - Vendor supply prices on vendor-product mappings
-- A real OCR provider (the built-in one reads text files and stores the
-  original; it never invents values for scanned documents)
+
+## OCR
+
+`OCR_PROVIDER=stub` (default) reads text files and stores scanned files without
+inventing values; the review screen says so. `OCR_PROVIDER=google-vision` with
+`OCR_API_KEY` reads images and the first 5 pages of PDF/TIFF through Google
+Cloud Vision. Either way extraction only fills a draft: a vendor is created
+only when a user reviews and confirms it, and the source file is attached.
+
+## Integrating later modules
+
+See [`docs/06_VENDOR_MODULE_INTEGRATION.md`](./docs/06_VENDOR_MODULE_INTEGRATION.md)
+for how other modules reference vendors, brands and products without copying them.

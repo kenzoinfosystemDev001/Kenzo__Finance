@@ -48,7 +48,9 @@ export const envSchema = z.object({
   CLOUDINARY_API_SECRET: z.string().optional(),
   CLOUDINARY_FOLDER: z.string().default('kenzo-erp'),
 
-  OCR_PROVIDER: z.enum(['stub']).default('stub'),
+  // stub: reads text files only and never guesses at scanned documents.
+  // google-vision: Google Cloud Vision REST API, requires OCR_API_KEY.
+  OCR_PROVIDER: z.enum(['stub', 'google-vision']).default('stub'),
   OCR_API_KEY: z.string().optional(),
 });
 
@@ -76,8 +78,8 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     );
   }
 
-  // Fail at startup rather than on the first upload, when a user has already
-  // picked a file and would get an opaque 500.
+  // Both checks fail at startup rather than on the user's first upload, when
+  // they would surface as an opaque 500 after a file had been chosen.
   if (parsed.data.STORAGE_DRIVER === 'cloudinary') {
     const hasUrl = Boolean(parsed.data.CLOUDINARY_URL);
     const hasTriple =
@@ -91,6 +93,13 @@ export function validateEnv(raw: Record<string, unknown>): Env {
           'CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET.',
       );
     }
+  }
+
+  if (parsed.data.OCR_PROVIDER !== 'stub' && !parsed.data.OCR_API_KEY?.trim()) {
+    throw new Error(
+      `OCR_PROVIDER=${parsed.data.OCR_PROVIDER} requires OCR_API_KEY. ` +
+        'Set the key, or use OCR_PROVIDER=stub.',
+    );
   }
 
   return parsed.data;

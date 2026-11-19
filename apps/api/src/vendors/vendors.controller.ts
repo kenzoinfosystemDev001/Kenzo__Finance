@@ -22,17 +22,27 @@ import {
 import type { Request, Response } from 'express';
 import { VendorsService } from './vendors.service';
 import { CreateVendorDto } from './dto/create-vendor.dto';
-import { UpdateVendorDto } from './dto/update-vendor.dto';
+import {
+  ArchiveVendorDto,
+  UpdateVendorDto,
+  UpdateVendorStatusDto,
+} from './dto/update-vendor.dto';
 import { QueryVendorsDto } from './dto/query-vendors.dto';
 import {
   MapVendorCompanyDto,
   MapVendorProductDto,
+  UpdateVendorCompanyDto,
   UpdateVendorProductDto,
 } from './dto/mapping.dto';
+import { VendorLookupQueryDto } from './dto/vendor-children.dto';
+import { PaginationQueryDto } from '../common/dto/pagination.dto';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
 import { PERMISSIONS } from '../common/authz/permissions';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
 import { toCsv } from '../common/utils/csv';
+import { contextOf } from './vendor-shared';
+
+const uuid = () => new ParseUUIDPipe({ version: '4' });
 
 @ApiTags('Vendors')
 @ApiBearerAuth()
@@ -40,17 +50,37 @@ import { toCsv } from '../common/utils/csv';
 export class VendorsController {
   constructor(private readonly vendorsService: VendorsService) {}
 
+  // --- Collection-level routes (declared before :id) ------------------------
+
   @Get()
   @RequirePermissions(PERMISSIONS.VENDOR_READ)
   @ApiOperation({
-    summary: 'Search vendors by name, brand, product or model',
+    summary: 'Search, filter, sort and paginate vendors',
     description:
-      'Server-side search, filtering, sorting and pagination. Brand and ' +
-      'product filters match both direct brand mappings and brands reached ' +
-      'through the vendor’s mapped products.',
+      'All filtering runs in PostgreSQL. `search` also matches contact ' +
+      'persons, mapped brand names and mapped product names / model numbers.',
   })
   async findAll(@Query() query: QueryVendorsDto) {
     return this.vendorsService.findAll(query);
+  }
+
+  @Get('summary')
+  @RequirePermissions(PERMISSIONS.VENDOR_READ)
+  @ApiOperation({ summary: 'Dashboard figures counted from live records' })
+  async summary() {
+    return this.vendorsService.summary();
+  }
+
+  @Get('lookup')
+  @RequirePermissions(PERMISSIONS.VENDOR_READ)
+  @ApiOperation({
+    summary: 'Active-vendor selector for other modules',
+    description:
+      'Returns only active, non-archived vendors - the ones selectable for a ' +
+      'new business document. Filter by productId to get its suppliers.',
+  })
+  async lookup(@Query() query: VendorLookupQueryDto) {
+    return this.vendorsService.lookup(query);
   }
 
   @Get('export')
@@ -63,27 +93,33 @@ export class VendorsController {
     const rows = await this.vendorsService.findAllForExport(query);
 
     const csv = toCsv(
-      rows.map((row) => ({
-        'Vendor Code': row.vendorCode,
-        'Business Name': row.businessName,
-        'Legal Name': row.legalName ?? '',
-        Category: row.category?.name ?? '',
-        'Contact Person': row.contactPerson ?? '',
-        Email: row.email ?? '',
-        Phone: row.phone ?? '',
-        'Alternate Phone': row.alternatePhone ?? '',
-        Address: [row.addressLine1, row.addressLine2].filter(Boolean).join(', '),
-        City: row.city ?? '',
-        State: row.state ?? '',
-        'Postal Code': row.postalCode ?? '',
-        Country: row.country,
-        GSTIN: row.gstin ?? '',
-        PAN: row.pan ?? '',
-        Brands: row.companies.map((c) => c.company.name).join('; '),
-        'Mapped Products': row._count.products,
-        Status: row.status,
-        'Created At': row.createdAt.toISOString(),
-      })),
+      rows.map((row) => {
+        const primary = row.contacts[0];
+        return {
+          'Vendor Code': row.vendorCode,
+          'Vendor Name': row.businessName,
+          'Legal Name': row.legalName ?? '',
+          'Vendor Type': row.category?.name ?? '',
+          'Registration No.': row.registrationNumber ?? '',
+          'Primary Contact': primary?.name ?? row.contactPerson ?? '',
+          'Contact Phone': primary?.phone ?? '',
+          'Contact Email': primary?.email ?? '',
+          'Company Phone': row.phone ?? '',
+          'Company Email': row.email ?? '',
+          Website: row.website ?? '',
+          Address: [row.addressLine1, row.addressLine2].filter(Boolean).join(', '),
+          City: row.city ?? '',
+          State: row.state ?? '',
+          'PIN Code': row.postalCode ?? '',
+          Country: row.country,
+          GSTIN: row.gstin ?? '',
+          PAN: row.pan ?? '',
+          Brands: row.companies.map((c) => c.company.name).join('; '),
+          'Mapped Products': row._count.products,
+          Status: row.archivedAt ? 'ARCHIVED' : row.status,
+          'Created At': row.createdAt.toISOString(),
+        };
+      }),
     );
 
     const filename = `vendors-${new Date().toISOString().slice(0, 10)}.csv`;
@@ -98,14 +134,14 @@ export class VendorsController {
   @ApiOperation({
     summary: 'Check for possible duplicate vendors before saving',
     description:
-      'Used by the create form to warn the user early. The same check runs ' +
-      'again server-side on create - this endpoint is a convenience, not the ' +
-      'enforcement point.',
+      'Used by the create and OCR review forms to warn early. The same check ' +
+      'runs again server-side on create - this endpoint is a convenience, ' +
+      'not the enforcement point.',
   })
   @ApiQuery({ name: 'businessName', required: false })
   @ApiQuery({ name: 'gstin', required: false })
-  @ApiQuery({ name: 'email', required: false })
-  @ApiQuery({ name: 'phone', required: false })
+  @ApiQuery({ name: 'email', required: false, description: 'Comma-separated list allowed' })
+  @ApiQuery({ name: 'phone', required: false, description: 'Comma-separated list allowed' })
   @ApiQuery({ name: 'excludeVendorId', required: false })
   async checkDuplicates(
     @Query('businessName') businessName?: string,
@@ -114,16 +150,30 @@ export class VendorsController {
     @Query('phone') phone?: string,
     @Query('excludeVendorId') excludeVendorId?: string,
   ) {
+    const split = (value?: string) =>
+      (value ?? '').split(',').map((part) => part.trim()).filter(Boolean).slice(0, 20);
+
     const matches = await this.vendorsService.findDuplicates(
-      { businessName, gstin, email, phone },
-      excludeVendorId,
+      {
+        businessName: businessName?.slice(0, 200),
+        gstin: gstin?.slice(0, 20),
+        emails: split(email),
+        phones: split(phone),
+      },
+      excludeVendorId && /^[0-9a-f-]{36}$/i.test(excludeVendorId) ? excludeVendorId : undefined,
     );
     return { matches, hasBlocking: matches.some((m) => m.severity === 'blocking') };
   }
 
   @Post()
   @RequirePermissions(PERMISSIONS.VENDOR_CREATE)
-  @ApiOperation({ summary: 'Create a vendor (manual entry or confirmed OCR draft)' })
+  @ApiOperation({
+    summary: 'Create a vendor (manual entry or confirmed OCR draft)',
+    description:
+      'Contacts, addresses, brand ids and product ids are created in the same ' +
+      'transaction. Pass ocrJobId to confirm a reviewed OCR draft: its source ' +
+      'document is attached to the new vendor and the draft is consumed.',
+  })
   async create(
     @Body() dto: CreateVendorDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -132,18 +182,33 @@ export class VendorsController {
     return this.vendorsService.create(dto, user, contextOf(request));
   }
 
+  // --- Single vendor ---------------------------------------------------------
+
   @Get(':id')
   @RequirePermissions(PERMISSIONS.VENDOR_READ)
-  @ApiOperation({ summary: 'Vendor detail with contacts, brands, products and documents' })
-  async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {
+  @ApiOperation({ summary: 'Vendor profile with contacts, addresses, brands, products and documents' })
+  async findOne(@Param('id', uuid()) id: string) {
     return this.vendorsService.findOne(id);
+  }
+
+  @Get(':id/activity')
+  @RequirePermissions(PERMISSIONS.VENDOR_READ)
+  @ApiOperation({
+    summary: 'Activity history',
+    description: 'Audit events for the vendor and all of its contacts, addresses, mappings and documents.',
+  })
+  async activity(
+    @Param('id', uuid()) id: string,
+    @Query() pagination: PaginationQueryDto,
+  ) {
+    return this.vendorsService.activity(id, pagination);
   }
 
   @Patch(':id')
   @RequirePermissions(PERMISSIONS.VENDOR_UPDATE)
-  @ApiOperation({ summary: 'Update vendor details' })
+  @ApiOperation({ summary: 'Update vendor details (send null to clear a field)' })
   async update(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Param('id', uuid()) id: string,
     @Body() dto: UpdateVendorDto,
     @CurrentUser() user: AuthenticatedUser,
     @Req() request: Request,
@@ -151,39 +216,79 @@ export class VendorsController {
     return this.vendorsService.update(id, dto, user, contextOf(request));
   }
 
+  @Patch(':id/status')
+  @RequirePermissions(PERMISSIONS.VENDOR_DEACTIVATE)
+  @ApiOperation({
+    summary: 'Activate or deactivate a vendor',
+    description: 'Inactive vendors keep all history and relationships but are not offered for new business.',
+  })
+  async updateStatus(
+    @Param('id', uuid()) id: string,
+    @Body() dto: UpdateVendorStatusDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() request: Request,
+  ) {
+    return this.vendorsService.updateStatus(id, dto, user, contextOf(request));
+  }
+
   @Post(':id/archive')
   @RequirePermissions(PERMISSIONS.VENDOR_ARCHIVE)
   @ApiOperation({
     summary: 'Archive a vendor (soft delete)',
-    description: 'Vendors are never hard-deleted; history must be preserved.',
+    description: 'Hides the vendor from lists; history and relationships are preserved.',
   })
   async archive(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Body() body: { reason?: string },
+    @Param('id', uuid()) id: string,
+    @Body() dto: ArchiveVendorDto,
     @CurrentUser() user: AuthenticatedUser,
     @Req() request: Request,
   ) {
-    return this.vendorsService.archive(id, user, contextOf(request), body?.reason);
+    return this.vendorsService.archive(id, user, contextOf(request), dto.reason);
   }
 
   @Post(':id/restore')
   @RequirePermissions(PERMISSIONS.VENDOR_ARCHIVE)
   @ApiOperation({ summary: 'Restore an archived vendor' })
   async restore(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Param('id', uuid()) id: string,
     @CurrentUser() user: AuthenticatedUser,
     @Req() request: Request,
   ) {
     return this.vendorsService.restore(id, user, contextOf(request));
   }
 
-  // --- Brand mappings -------------------------------------------------------
+  @Delete(':id')
+  @RequirePermissions(PERMISSIONS.VENDOR_DELETE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Permanently delete an unreferenced vendor',
+    description:
+      'Refused with 409 when the vendor has product mappings, documents, an ' +
+      'OCR source or (in later modules) business transactions. Use status ' +
+      'or archive for anything with history.',
+  })
+  async remove(
+    @Param('id', uuid()) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() request: Request,
+  ): Promise<void> {
+    await this.vendorsService.remove(id, user, contextOf(request));
+  }
+
+  // --- Brand mappings ---------------------------------------------------------
+
+  @Get(':id/companies')
+  @RequirePermissions(PERMISSIONS.VENDOR_READ)
+  @ApiOperation({ summary: 'Brands supplied by the vendor' })
+  async listCompanies(@Param('id', uuid()) id: string) {
+    return this.vendorsService.listCompanies(id);
+  }
 
   @Post(':id/companies')
-  @RequirePermissions(PERMISSIONS.VENDOR_MAP_PRODUCTS)
-  @ApiOperation({ summary: 'Map a brand/company to the vendor' })
+  @RequirePermissions(PERMISSIONS.VENDOR_MANAGE_BRANDS)
+  @ApiOperation({ summary: 'Map a shared brand to the vendor' })
   async mapCompany(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Param('id', uuid()) id: string,
     @Body() dto: MapVendorCompanyDto,
     @CurrentUser() user: AuthenticatedUser,
     @Req() request: Request,
@@ -191,29 +296,52 @@ export class VendorsController {
     return this.vendorsService.mapCompany(id, dto, user, contextOf(request));
   }
 
+  @Patch(':id/companies/:companyId')
+  @RequirePermissions(PERMISSIONS.VENDOR_MANAGE_BRANDS)
+  @ApiOperation({ summary: 'Update the authorised-partner flag or remarks of a brand mapping' })
+  async updateCompanyMapping(
+    @Param('id', uuid()) id: string,
+    @Param('companyId', uuid()) companyId: string,
+    @Body() dto: UpdateVendorCompanyDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() request: Request,
+  ) {
+    return this.vendorsService.updateCompanyMapping(id, companyId, dto, user, contextOf(request));
+  }
+
   @Delete(':id/companies/:companyId')
-  @RequirePermissions(PERMISSIONS.VENDOR_MAP_PRODUCTS)
+  @RequirePermissions(PERMISSIONS.VENDOR_MANAGE_BRANDS)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Remove a brand mapping' })
+  @ApiOperation({
+    summary: 'Remove a brand mapping',
+    description: 'Refused with 409 while products of that brand are still mapped to the vendor.',
+  })
   async unmapCompany(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Param('companyId', new ParseUUIDPipe({ version: '4' })) companyId: string,
+    @Param('id', uuid()) id: string,
+    @Param('companyId', uuid()) companyId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Req() request: Request,
   ): Promise<void> {
     await this.vendorsService.unmapCompany(id, companyId, user, contextOf(request));
   }
 
-  // --- Product mappings -----------------------------------------------------
+  // --- Product mappings ------------------------------------------------------
+
+  @Get(':id/products')
+  @RequirePermissions(PERMISSIONS.VENDOR_READ)
+  @ApiOperation({ summary: 'Products and models supplied by the vendor' })
+  async listProducts(@Param('id', uuid()) id: string) {
+    return this.vendorsService.listProducts(id);
+  }
 
   @Post(':id/products')
-  @RequirePermissions(PERMISSIONS.VENDOR_MAP_PRODUCTS)
+  @RequirePermissions(PERMISSIONS.VENDOR_MANAGE_PRODUCTS)
   @ApiOperation({
-    summary: 'Map a product to the vendor',
+    summary: 'Map a shared catalogue product to the vendor',
     description: "The product's brand is mapped to the vendor automatically.",
   })
   async mapProduct(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Param('id', uuid()) id: string,
     @Body() dto: MapVendorProductDto,
     @CurrentUser() user: AuthenticatedUser,
     @Req() request: Request,
@@ -222,41 +350,28 @@ export class VendorsController {
   }
 
   @Patch(':id/products/:productId')
-  @RequirePermissions(PERMISSIONS.VENDOR_MAP_PRODUCTS)
-  @ApiOperation({ summary: 'Update vendor SKU, lead time or preferred flag' })
+  @RequirePermissions(PERMISSIONS.VENDOR_MANAGE_PRODUCTS)
+  @ApiOperation({ summary: 'Update vendor SKU, lead time, preferred flag or remarks' })
   async updateProductMapping(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Param('productId', new ParseUUIDPipe({ version: '4' })) productId: string,
+    @Param('id', uuid()) id: string,
+    @Param('productId', uuid()) productId: string,
     @Body() dto: UpdateVendorProductDto,
     @CurrentUser() user: AuthenticatedUser,
     @Req() request: Request,
   ) {
-    return this.vendorsService.updateProductMapping(
-      id,
-      productId,
-      dto,
-      user,
-      contextOf(request),
-    );
+    return this.vendorsService.updateProductMapping(id, productId, dto, user, contextOf(request));
   }
 
   @Delete(':id/products/:productId')
-  @RequirePermissions(PERMISSIONS.VENDOR_MAP_PRODUCTS)
+  @RequirePermissions(PERMISSIONS.VENDOR_MANAGE_PRODUCTS)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove a product mapping' })
   async unmapProduct(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Param('productId', new ParseUUIDPipe({ version: '4' })) productId: string,
+    @Param('id', uuid()) id: string,
+    @Param('productId', uuid()) productId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Req() request: Request,
   ): Promise<void> {
     await this.vendorsService.unmapProduct(id, productId, user, contextOf(request));
   }
-}
-
-function contextOf(request: Request) {
-  return {
-    ipAddress: request.ip ?? null,
-    userAgent: request.headers['user-agent'] ?? null,
-  };
 }

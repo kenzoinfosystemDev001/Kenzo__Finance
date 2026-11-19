@@ -1,33 +1,44 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
-import type { Company, PaginatedResponse, VendorCategory } from '@/lib/types';
+import { getCurrentUser } from '@/lib/auth-actions';
+import type { OcrEngineStatus, ProductCategory, VendorCategory } from '@/lib/types';
 import { PageHeader } from '@/components/ui';
 import { OcrVendorWizard } from './ocr-wizard';
 
-export const metadata: Metadata = { title: 'Vendor document upload' };
+export const metadata: Metadata = { title: 'Import Vendor Using OCR' };
 
 export default async function VendorOcrPage() {
-  const [categories, companies] = await Promise.all([
+  const user = await getCurrentUser();
+  const permissions = user?.permissions ?? [];
+  if (!permissions.includes('vendor.create') || !permissions.includes('ocr.submit')) redirect('/vendors');
+
+  const [categories, productCategories, engine] = await Promise.all([
     apiFetch<VendorCategory[]>('/vendor-categories').catch(() => []),
-    apiFetch<PaginatedResponse<Company>>('/companies?pageSize=100&sortBy=name')
-      .then((response) => response.items)
-      .catch(() => []),
+    permissions.includes('product.create')
+      ? apiFetch<ProductCategory[]>('/products/categories').catch(() => [])
+      : Promise.resolve([] as ProductCategory[]),
+    apiFetch<OcrEngineStatus>('/ocr/status').catch(() => null),
   ]);
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-6xl">
       <PageHeader
-        title="Add vendor from a document"
-        description="Upload a vendor document, review what was extracted, correct anything wrong, then save."
+        title="Import Vendor Using OCR"
+        description="Upload a visiting card or document, review the extracted details, correct anything wrong, then confirm."
         actions={
           <Link href="/vendors/new" className="btn-secondary">
             Enter manually instead
           </Link>
         }
       />
-
-      <OcrVendorWizard categories={categories} companies={companies} />
+      <OcrVendorWizard
+        categories={categories}
+        productCategories={productCategories}
+        permissions={permissions}
+        engine={engine}
+      />
     </div>
   );
 }

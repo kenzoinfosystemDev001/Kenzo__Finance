@@ -21,6 +21,10 @@ import {
 } from '@nestjs/swagger';
 import { DocumentKind, OcrStatus } from '@prisma/client';
 import { OcrService } from './ocr.service';
+import {
+  UploadVendorDocumentDto,
+  VENDOR_DOCUMENT_KINDS,
+} from '../vendors/dto/vendor-children.dto';
 import { DocumentsService } from '../documents/documents.service';
 import { PaginationQueryDto } from '../common/dto/pagination.dto';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
@@ -51,11 +55,15 @@ export class OcrController {
     schema: {
       type: 'object',
       required: ['file'],
-      properties: { file: { type: 'string', format: 'binary' } },
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        kind: { type: 'string', enum: [...VENDOR_DOCUMENT_KINDS] },
+      },
     },
   })
   async uploadAndExtract(
     @UploadedFile() file: Express.Multer.File | undefined,
+    @Body() dto: UploadVendorDocumentDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     if (!file) throw new BadRequestException('No file was uploaded.');
@@ -64,7 +72,9 @@ export class OcrController {
       {
         buffer: file.buffer,
         originalFilename: file.originalname,
-        kind: DocumentKind.VENDOR_ONBOARDING,
+        // What the source is (visiting card, GST certificate...) is kept so
+        // it lands in the right place on the vendor's document list.
+        kind: dto.kind ?? DocumentKind.VENDOR_ONBOARDING,
       },
       user,
     );
@@ -90,6 +100,13 @@ export class OcrController {
       ...job,
       prefill: this.ocrService.extractPrefillValues(job.normalizedResult),
     };
+  }
+
+  @Get('status')
+  @RequirePermissions(PERMISSIONS.OCR_READ)
+  @ApiOperation({ summary: 'Which OCR engine is active and whether it reads scanned files' })
+  status() {
+    return this.ocrService.status();
   }
 
   @Get('jobs')

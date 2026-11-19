@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSession, logoutAction } from '@/lib/auth-actions';
 import { ApiUnavailable } from '@/components/api-unavailable';
 import { Sidebar } from '@/components/sidebar';
+import { AppHeader } from '@/components/app-header';
 
 export default async function DashboardLayout({
   children,
@@ -27,23 +28,13 @@ export default async function DashboardLayout({
       <Sidebar permissions={user.permissions} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-end gap-4 border-b border-border bg-surface px-4 lg:px-6">
-          <div className="text-right">
-            <p className="text-sm font-medium leading-tight text-ink">
-              {user.fullName}
-            </p>
-            <p className="text-xs leading-tight text-ink-subtle">
-              {user.roles.join(', ').replace(/_/g, ' ').toLowerCase() || 'No role'}
-            </p>
-          </div>
-          <form action={logoutAction}>
-            <button type="submit" className="btn-secondary">
-              Sign out
-            </button>
-          </form>
-        </header>
+        <AppHeader
+          user={{ fullName: user.fullName, email: user.email, roles: user.roles }}
+          canSearchVendors={user.permissions.includes('vendor.read')}
+          logoutAction={logoutAction}
+        />
 
-        <main className="flex-1 px-4 py-6 lg:px-6">{children}</main>
+        <main className="flex-1 px-4 py-6 lg:px-8">{children}</main>
       </div>
     </div>
   );

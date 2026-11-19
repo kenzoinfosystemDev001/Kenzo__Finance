@@ -25,6 +25,8 @@ import { StorageModule } from '../storage/storage.module';
   ],
   controllers: [DocumentsController],
   providers: [DocumentsService],
-  exports: [DocumentsService],
+  // MulterModule is re-exported so every module that accepts uploads (vendors,
+  // OCR, products) gets the same in-memory storage and size cap.
+  exports: [DocumentsService, MulterModule],
 })
 export class DocumentsModule {}

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth-actions';
-import type { Company, PaginatedResponse, Product, VendorListItem } from '@/lib/types';
+import type { Company, PaginatedResponse, Product, VendorListItem, VendorSummary } from '@/lib/types';
 import { PageHeader, SectionCard } from '@/components/ui';
 
 export const metadata: Metadata = { title: 'Dashboard' };
@@ -18,11 +18,10 @@ export default async function DashboardPage() {
   const user = await getCurrentUser();
   const permissions = user?.permissions ?? [];
 
-  const [vendors, archivedVendors, companies, products] = await Promise.all([
-    apiFetch<PaginatedResponse<VendorListItem>>('/vendors?pageSize=1').catch(() => null),
-    apiFetch<PaginatedResponse<VendorListItem>>(
-      '/vendors?pageSize=1&includeArchived=true',
-    ).catch(() => null),
+  const [summary, companies, products] = await Promise.all([
+    permissions.includes('vendor.read')
+      ? apiFetch<VendorSummary>('/vendors/summary').catch(() => null)
+      : Promise.resolve(null),
     apiFetch<PaginatedResponse<Company>>('/companies?pageSize=1').catch(() => null),
     apiFetch<PaginatedResponse<Product>>('/products?pageSize=1').catch(() => null),
   ]);
@@ -31,18 +30,14 @@ export default async function DashboardPage() {
     '/vendors?pageSize=5&sortBy=createdAt&sortDir=desc',
   ).catch(() => null);
 
-  const activeVendors = vendors?.meta.totalItems ?? 0;
-  const totalVendors = archivedVendors?.meta.totalItems ?? 0;
-
   const stats = [
     {
       label: 'Active vendors',
-      value: activeVendors,
-      href: '/vendors',
-      note:
-        totalVendors > activeVendors
-          ? `${totalVendors - activeVendors} archived`
-          : undefined,
+      value: summary?.vendors.active ?? 0,
+      href: '/vendors?status=ACTIVE',
+      note: summary
+        ? `${summary.vendors.inactive} inactive${summary.vendors.archived ? `, ${summary.vendors.archived} archived` : ''}`
+        : undefined,
     },
     { label: 'Brands', value: companies?.meta.totalItems ?? 0, href: '/companies' },
     { label: 'Products', value: products?.meta.totalItems ?? 0, href: '/products' },

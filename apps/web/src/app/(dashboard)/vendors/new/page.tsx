@@ -1,35 +1,47 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
-import type { Company, PaginatedResponse, VendorCategory } from '@/lib/types';
+import { getCurrentUser } from '@/lib/auth-actions';
+import type { ProductCategory, VendorCategory } from '@/lib/types';
 import { PageHeader } from '@/components/ui';
 import { VendorForm } from '@/components/vendor-form';
+import { IconScan } from '@/components/icons';
 
-export const metadata: Metadata = { title: 'Add vendor' };
+export const metadata: Metadata = { title: 'Add Vendor' };
 
 export default async function NewVendorPage() {
-  const [categories, companies] = await Promise.all([
+  const user = await getCurrentUser();
+  const permissions = user?.permissions ?? [];
+  if (!permissions.includes('vendor.create')) redirect('/vendors');
+
+  const [categories, productCategories] = await Promise.all([
     apiFetch<VendorCategory[]>('/vendor-categories').catch(() => []),
-    apiFetch<PaginatedResponse<Company>>('/companies?pageSize=100&sortBy=name')
-      .then((response) => response.items)
-      .catch(() => []),
+    permissions.includes('product.create')
+      ? apiFetch<ProductCategory[]>('/products/categories').catch(() => [])
+      : Promise.resolve([] as ProductCategory[]),
   ]);
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-6xl">
       <PageHeader
-        title="Add vendor"
+        title="Add Vendor"
         description="Enter the vendor's details. Only the vendor name is mandatory."
         actions={
-          <Link href="/vendors/ocr" className="btn-secondary">
-            Upload a document instead
-          </Link>
+          permissions.includes('ocr.submit') && (
+            <Link href="/vendors/ocr" className="btn-secondary">
+              <IconScan size={16} />
+              Import from a document instead
+            </Link>
+          )
         }
       />
-
-      <div className="card p-5">
-        <VendorForm categories={categories} companies={companies} />
-      </div>
+      <VendorForm
+        mode="create"
+        categories={categories}
+        productCategories={productCategories}
+        permissions={permissions}
+      />
     </div>
   );
 }

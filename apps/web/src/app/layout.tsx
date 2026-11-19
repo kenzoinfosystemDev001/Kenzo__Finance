@@ -3,10 +3,10 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Kenzo Infosystems ERP',
-    template: '%s | Kenzo Infosystems ERP',
+    default: 'Kenzo Infosystems',
+    template: '%s | Kenzo Infosystems',
   },
-  description: 'Enterprise resource planning and business management system.',
+  description: 'Kenzo Infosystems Business Management Software.',
 };
 
 export const viewport: Viewport = {

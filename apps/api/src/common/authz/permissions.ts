@@ -6,13 +6,22 @@
  * becomes a TypeScript error rather than a silently unguarded endpoint.
  */
 export const PERMISSIONS = {
-  // Vendor management
+  // Vendor management. `vendor.read` is the "view" permission; it predates
+  // the granular codes below and is kept so existing grants stay valid.
   VENDOR_READ: 'vendor.read',
   VENDOR_CREATE: 'vendor.create',
   VENDOR_UPDATE: 'vendor.update',
+  VENDOR_DEACTIVATE: 'vendor.deactivate',
   VENDOR_ARCHIVE: 'vendor.archive',
+  VENDOR_DELETE: 'vendor.delete',
   VENDOR_EXPORT: 'vendor.export',
-  VENDOR_MAP_PRODUCTS: 'vendor.map_products',
+  VENDOR_MANAGE_CONTACTS: 'vendor.manage_contacts',
+  VENDOR_MANAGE_ADDRESSES: 'vendor.manage_addresses',
+  VENDOR_MANAGE_BRANDS: 'vendor.manage_brands',
+  VENDOR_MANAGE_PRODUCTS: 'vendor.manage_products',
+  VENDOR_MANAGE_DOCUMENTS: 'vendor.manage_documents',
+  /** Select an inactive vendor in a new business document (later modules). */
+  VENDOR_USE_INACTIVE: 'vendor.use_inactive',
 
   // Brand / company catalogue
   COMPANY_READ: 'company.read',
@@ -66,12 +75,19 @@ export interface PermissionDefinition {
 
 /** Expanded definitions used by the seed script. */
 export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
-  { code: PERMISSIONS.VENDOR_READ, module: 'vendor', action: 'read', description: 'View vendors and vendor details' },
-  { code: PERMISSIONS.VENDOR_CREATE, module: 'vendor', action: 'create', description: 'Create vendors' },
+  { code: PERMISSIONS.VENDOR_READ, module: 'vendor', action: 'read', description: 'View vendors, vendor details and activity history' },
+  { code: PERMISSIONS.VENDOR_CREATE, module: 'vendor', action: 'create', description: 'Create vendors (manually or from a reviewed OCR draft)' },
   { code: PERMISSIONS.VENDOR_UPDATE, module: 'vendor', action: 'update', description: 'Edit vendor details' },
+  { code: PERMISSIONS.VENDOR_DEACTIVATE, module: 'vendor', action: 'deactivate', description: 'Activate or deactivate vendors' },
   { code: PERMISSIONS.VENDOR_ARCHIVE, module: 'vendor', action: 'archive', description: 'Archive or restore vendors' },
+  { code: PERMISSIONS.VENDOR_DELETE, module: 'vendor', action: 'delete', description: 'Permanently delete an unreferenced vendor' },
   { code: PERMISSIONS.VENDOR_EXPORT, module: 'vendor', action: 'export', description: 'Export vendor data' },
-  { code: PERMISSIONS.VENDOR_MAP_PRODUCTS, module: 'vendor', action: 'map_products', description: 'Manage vendor brand and product mappings' },
+  { code: PERMISSIONS.VENDOR_MANAGE_CONTACTS, module: 'vendor', action: 'manage_contacts', description: 'Add, edit and remove vendor contact persons' },
+  { code: PERMISSIONS.VENDOR_MANAGE_ADDRESSES, module: 'vendor', action: 'manage_addresses', description: 'Add, edit and remove vendor addresses' },
+  { code: PERMISSIONS.VENDOR_MANAGE_BRANDS, module: 'vendor', action: 'manage_brands', description: 'Map and unmap brands supplied by a vendor' },
+  { code: PERMISSIONS.VENDOR_MANAGE_PRODUCTS, module: 'vendor', action: 'manage_products', description: 'Map and unmap products/models supplied by a vendor' },
+  { code: PERMISSIONS.VENDOR_MANAGE_DOCUMENTS, module: 'vendor', action: 'manage_documents', description: 'Upload, replace and remove vendor documents' },
+  { code: PERMISSIONS.VENDOR_USE_INACTIVE, module: 'vendor', action: 'use_inactive', description: 'Select inactive vendors in new business documents' },
 
   { code: PERMISSIONS.COMPANY_READ, module: 'company', action: 'read', description: 'View brands/companies' },
   { code: PERMISSIONS.COMPANY_CREATE, module: 'company', action: 'create', description: 'Create brands/companies' },
@@ -132,7 +148,11 @@ export type RoleCode = (typeof ROLE_CODES)[keyof typeof ROLE_CODES];
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
   [ROLE_CODES.ADMIN]: [
     PERMISSIONS.VENDOR_READ, PERMISSIONS.VENDOR_CREATE, PERMISSIONS.VENDOR_UPDATE,
-    PERMISSIONS.VENDOR_ARCHIVE, PERMISSIONS.VENDOR_EXPORT, PERMISSIONS.VENDOR_MAP_PRODUCTS,
+    PERMISSIONS.VENDOR_DEACTIVATE, PERMISSIONS.VENDOR_ARCHIVE, PERMISSIONS.VENDOR_EXPORT,
+    PERMISSIONS.VENDOR_MANAGE_CONTACTS, PERMISSIONS.VENDOR_MANAGE_ADDRESSES,
+    PERMISSIONS.VENDOR_MANAGE_BRANDS, PERMISSIONS.VENDOR_MANAGE_PRODUCTS,
+    PERMISSIONS.VENDOR_MANAGE_DOCUMENTS,
+    PERMISSIONS.VENDOR_DELETE, PERMISSIONS.VENDOR_USE_INACTIVE,
     PERMISSIONS.COMPANY_READ, PERMISSIONS.COMPANY_CREATE, PERMISSIONS.COMPANY_UPDATE, PERMISSIONS.COMPANY_ARCHIVE,
     PERMISSIONS.PRODUCT_READ, PERMISSIONS.PRODUCT_CREATE, PERMISSIONS.PRODUCT_UPDATE, PERMISSIONS.PRODUCT_ARCHIVE, PERMISSIONS.PRODUCT_EXPORT,
     PERMISSIONS.STOCK_READ, PERMISSIONS.STOCK_POST, PERMISSIONS.STOCK_MANAGE_LOCATIONS,
@@ -144,7 +164,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
 
   [ROLE_CODES.VENDOR_MANAGER]: [
     PERMISSIONS.VENDOR_READ, PERMISSIONS.VENDOR_CREATE, PERMISSIONS.VENDOR_UPDATE,
-    PERMISSIONS.VENDOR_ARCHIVE, PERMISSIONS.VENDOR_EXPORT, PERMISSIONS.VENDOR_MAP_PRODUCTS,
+    PERMISSIONS.VENDOR_DEACTIVATE, PERMISSIONS.VENDOR_ARCHIVE, PERMISSIONS.VENDOR_EXPORT,
+    PERMISSIONS.VENDOR_MANAGE_CONTACTS, PERMISSIONS.VENDOR_MANAGE_ADDRESSES,
+    PERMISSIONS.VENDOR_MANAGE_BRANDS, PERMISSIONS.VENDOR_MANAGE_PRODUCTS,
+    PERMISSIONS.VENDOR_MANAGE_DOCUMENTS,
     PERMISSIONS.COMPANY_READ, PERMISSIONS.COMPANY_CREATE, PERMISSIONS.COMPANY_UPDATE,
     PERMISSIONS.PRODUCT_READ, PERMISSIONS.PRODUCT_CREATE,
     PERMISSIONS.DOCUMENT_READ, PERMISSIONS.DOCUMENT_UPLOAD, PERMISSIONS.DOCUMENT_DOWNLOAD,

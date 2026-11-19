@@ -6,7 +6,9 @@ import {
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DocumentKind } from '@prisma/client';
+import { DocumentKind, Prisma } from '@prisma/client';
+// Readable, not fs.ReadStream: a remote storage driver (Cloudinary, S3)
+// streams over the network and never opens a file descriptor.
 import type { Readable } from 'node:stream';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -24,6 +26,40 @@ export interface UploadInput {
   /** At most one owner is set; the column keeps referential integrity. */
   vendorId?: string;
   productId?: string;
+  /** The current document this upload supersedes (replacement flow). */
+  replacesDocumentId?: string;
+}
+
+/** Types a browser can render safely inline. Everything else downloads. */
+const INLINE_PREVIEW_TYPES = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+]);
+
+export function canPreviewInline(mimeType: string): boolean {
+  return INLINE_PREVIEW_TYPES.has(mimeType);
+}
+
+const documentSummarySelect = {
+  id: true,
+  kind: true,
+  originalFilename: true,
+  mimeType: true,
+  sizeBytes: true,
+  vendorId: true,
+  productId: true,
+  replacesDocumentId: true,
+  createdAt: true,
+  uploadedBy: { select: { id: true, fullName: true } },
+} satisfies Prisma.DocumentSelect;
+
+/** Audit parent for a document: the record it is attached to, if any. */
+function parentOf(document: { vendorId: string | null; productId: string | null }) {
+  if (document.vendorId) return { parentEntityType: 'Vendor', parentEntityId: document.vendorId };
+  if (document.productId) return { parentEntityType: 'Product', parentEntityId: document.productId };
+  return {};
 }
 
 @Injectable()
@@ -78,45 +114,59 @@ export class DocumentsService {
       mimeType: detected.mimeType,
     });
 
-    const document = await this.prisma.document.create({
-      data: {
-        kind: input.kind ?? DocumentKind.VENDOR_OTHER,
-        originalFilename: this.sanitizeFilename(input.originalFilename),
-        storageKey: stored.storageKey,
-        mimeType: detected.mimeType,
-        sizeBytes: stored.sizeBytes,
-        checksumSha256: stored.checksumSha256,
-        vendorId: input.vendorId ?? null,
-        productId: input.productId ?? null,
-        uploadedById: actor.id,
-      },
-      select: {
-        id: true,
-        kind: true,
-        originalFilename: true,
-        mimeType: true,
-        sizeBytes: true,
-        vendorId: true,
-        productId: true,
-        createdAt: true,
-      },
-    });
+    // The new row, the archiving of a replaced file and the audit entry
+    // commit together, so a replacement can never leave two current files.
+    return this.prisma.$transaction(async (tx) => {
+      const document = await tx.document.create({
+        data: {
+          kind: input.kind ?? DocumentKind.VENDOR_OTHER,
+          originalFilename: this.sanitizeFilename(input.originalFilename),
+          storageKey: stored.storageKey,
+          mimeType: detected.mimeType,
+          sizeBytes: stored.sizeBytes,
+          checksumSha256: stored.checksumSha256,
+          vendorId: input.vendorId ?? null,
+          productId: input.productId ?? null,
+          replacesDocumentId: input.replacesDocumentId ?? null,
+          uploadedById: actor.id,
+        },
+        select: documentSummarySelect,
+      });
 
-    await this.auditService.record({
-      actorUserId: actor.id,
-      action: 'document.upload',
-      entityType: 'Document',
-      entityId: document.id,
-      summary: `Uploaded ${document.originalFilename} (${document.mimeType})`,
-      after: {
-        kind: document.kind,
-        sizeBytes: document.sizeBytes,
-        vendorId: document.vendorId,
-        productId: document.productId,
-      },
-    });
+      let replacedName: string | null = null;
+      if (input.replacesDocumentId) {
+        const replaced = await tx.document.update({
+          where: { id: input.replacesDocumentId },
+          data: { archivedAt: new Date() },
+          select: { originalFilename: true },
+        });
+        replacedName = replaced.originalFilename;
+      }
 
-    return document;
+      await this.auditService.record(
+        {
+          actorUserId: actor.id,
+          action: input.replacesDocumentId ? 'document.replace' : 'document.upload',
+          entityType: 'Document',
+          entityId: document.id,
+          ...parentOf(document),
+          summary: replacedName
+            ? `Replaced ${replacedName} with ${document.originalFilename}`
+            : `Uploaded ${document.originalFilename} (${document.kind.replace(/_/g, ' ').toLowerCase()})`,
+          after: {
+            kind: document.kind,
+            mimeType: document.mimeType,
+            sizeBytes: document.sizeBytes,
+            vendorId: document.vendorId,
+            productId: document.productId,
+            replacesDocumentId: document.replacesDocumentId,
+          },
+        },
+        tx,
+      );
+
+      return document;
+    });
   }
 
   async findOne(id: string) {
@@ -143,17 +193,21 @@ export class DocumentsService {
   async listForVendor(vendorId: string) {
     return this.prisma.document.findMany({
       where: { vendorId, archivedAt: null },
-      select: {
-        id: true,
-        kind: true,
-        originalFilename: true,
-        mimeType: true,
-        sizeBytes: true,
-        createdAt: true,
-        uploadedBy: { select: { id: true, fullName: true } },
-      },
+      select: documentSummarySelect,
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /** Current (non-archived) document metadata, used for ownership checks. */
+  async findActive(id: string) {
+    const document = await this.prisma.document.findUnique({
+      where: { id },
+      select: { ...documentSummarySelect, archivedAt: true },
+    });
+    if (!document || document.archivedAt) {
+      throw new NotFoundException(`Document ${id} was not found`);
+    }
+    return document;
   }
 
   /**
@@ -163,23 +217,29 @@ export class DocumentsService {
   async openForDownload(
     id: string,
     actor: AuthenticatedUser,
+    options: { preview?: boolean } = {},
   ): Promise<{
     stream: Readable;
     filename: string;
     mimeType: string;
     sizeBytes: number;
+    /** True only when a preview was asked for and the type is safe inline. */
+    inline: boolean;
   }> {
     const document = await this.prisma.document.findUnique({ where: { id } });
     if (!document || document.archivedAt) {
       throw new NotFoundException(`Document ${id} was not found`);
     }
 
+    const inline = Boolean(options.preview) && canPreviewInline(document.mimeType);
+
     await this.auditService.record({
       actorUserId: actor.id,
-      action: 'document.download',
+      action: inline ? 'document.preview' : 'document.download',
       entityType: 'Document',
       entityId: id,
-      summary: `Downloaded ${document.originalFilename}`,
+      ...parentOf(document),
+      summary: `${inline ? 'Previewed' : 'Downloaded'} ${document.originalFilename}`,
     });
 
     return {
@@ -187,6 +247,7 @@ export class DocumentsService {
       filename: document.originalFilename,
       mimeType: document.mimeType,
       sizeBytes: document.sizeBytes,
+      inline,
     };
   }
 
@@ -210,7 +271,8 @@ export class DocumentsService {
       action: 'document.archive',
       entityType: 'Document',
       entityId: id,
-      summary: `Archived ${archived.originalFilename}`,
+      ...parentOf(document),
+      summary: `Removed ${archived.originalFilename}`,
     });
 
     return archived;
