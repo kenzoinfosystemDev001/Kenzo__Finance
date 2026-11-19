@@ -34,7 +34,7 @@ for production so test data can never reach real records.
 | Branch | `main` |
 | Root Directory | *(leave blank — this is a monorepo, build from the root)* |
 | Runtime | Node |
-| Build Command | `npm run render:build` |
+| Build Command | `npm install && npm run render:build` |
 | Start Command | `npm run render:start` |
 | Health Check Path | `/api/v1/health/ready` |
 
@@ -59,8 +59,13 @@ Set these in **Render → your service → Environment**.
 | `AUTH_REFRESH_SECRET` | Yes | 96-char hex | Min 32 chars, **must differ** from the access secret |
 | `AUTH_ACCESS_TTL` | No | `15m` | Default `15m` |
 | `AUTH_REFRESH_TTL` | No | `7d` | Default `7d` |
-| `STORAGE_DRIVER` | No | `local` | Only `local` is implemented |
-| `STORAGE_LOCAL_ROOT` | Yes* | `/var/data/storage` | *See the storage warning below |
+| `STORAGE_DRIVER` | Yes | `cloudinary` | `local` needs a persistent disk; `cloudinary` does not |
+| `CLOUDINARY_CLOUD_NAME` | If cloudinary | `your-cloud-name` | Or supply `CLOUDINARY_URL` instead |
+| `CLOUDINARY_API_KEY` | If cloudinary | `1234...` | |
+| `CLOUDINARY_API_SECRET` | If cloudinary | secret | **Never** expose to the frontend |
+| `CLOUDINARY_URL` | Alternative | `cloudinary://key:secret@cloud` | Replaces the three values above |
+| `CLOUDINARY_FOLDER` | No | `kenzo-erp` | Folder prefix inside Cloudinary |
+| `STORAGE_LOCAL_ROOT` | If local | `/var/data/storage` | Only when `STORAGE_DRIVER=local` |
 | `UPLOAD_MAX_BYTES` | No | `10485760` | 10 MB default |
 | `OCR_PROVIDER` | No | `stub` | Only `stub` is implemented |
 | `OCR_API_KEY` | No | *(blank)* | For a future real provider |
@@ -70,28 +75,46 @@ Set these in **Render → your service → Environment**.
 
 Do **not** set `PORT` — Render provides it. Do **not** set `API_PORT`.
 
-### ⚠ Uploaded files need a persistent disk
+### Uploaded files: use Cloudinary on Render
 
-Render's filesystem is **ephemeral**: everything written is destroyed on each
-deploy and restart. With the local storage driver that silently deletes every
+Render's filesystem is **ephemeral** — everything written is destroyed on each
+deploy and restart. With `STORAGE_DRIVER=local` that silently deletes every
 uploaded vendor document, OCR source file and product image, while the
 database keeps rows pointing at files that no longer exist. The API logs a
 warning at startup when it detects this.
 
-**Fix:** Render → your service → **Disks** → *Add Disk*
+**Recommended: Cloudinary.** Set these on Render:
 
-| Field | Value |
-| --- | --- |
-| Name | `kenzo-storage` |
-| Mount Path | `/var/data` |
-| Size | 1 GB is plenty to start |
+```
+STORAGE_DRIVER=cloudinary
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-key
+CLOUDINARY_API_SECRET=your-secret
+```
 
-Then set `STORAGE_LOCAL_ROOT=/var/data/storage`.
+or the single-variable form:
 
-Persistent disks are not available on Render's free tier. On free, uploads
-work until the next restart and then disappear — acceptable for a demo, not
-for real vendor documents. The alternative is implementing an S3 driver behind
-the existing `StorageService` interface, which needs no changes anywhere else.
+```
+STORAGE_DRIVER=cloudinary
+CLOUDINARY_URL=cloudinary://key:secret@cloud-name
+```
+
+Two things worth knowing about how this is wired:
+
+- Assets upload as **`type: authenticated`**, not public. A default Cloudinary
+  upload is readable by anyone holding the URL, which is wrong for vendor GST
+  certificates and PAN documents.
+- Downloads still stream through the permission-checked API endpoint rather
+  than handing the browser a signed URL. That keeps one enforcement point,
+  preserves the download audit entry, and means a URL cannot leak and outlive
+  the user's access.
+
+Startup fails fast with a clear message when `STORAGE_DRIVER=cloudinary` but
+the credentials are missing, rather than failing on the first upload.
+
+**Alternative: a Render persistent disk** (paid plans only). Render → your
+service → **Disks** → *Add Disk*, mount path `/var/data`, then set
+`STORAGE_DRIVER=local` and `STORAGE_LOCAL_ROOT=/var/data/storage`.
 
 ### Seed the production database — once
 
@@ -157,7 +180,7 @@ deployments to work.
 | `AUTH_ACCESS_SECRET` | ✅ | ❌ never |
 | `AUTH_REFRESH_SECRET` | ✅ | ❌ never |
 | `SEED_SUPERADMIN_*` | ✅ (first deploy) | ❌ never |
-| `STORAGE_*`, `UPLOAD_MAX_BYTES`, `OCR_*` | ✅ | ❌ |
+| `STORAGE_*`, `CLOUDINARY_*`, `UPLOAD_MAX_BYTES`, `OCR_*` | ✅ | ❌ never |
 | `WEB_URL` | ✅ (the Vercel URL) | ❌ |
 | `NEXT_PUBLIC_API_URL` | ❌ | ✅ (the Render URL) |
 | `NODE_ENV=production` | ✅ | set by Vercel |
@@ -213,7 +236,7 @@ Then open the Vercel URL and sign in. If the frontend shows
 
 These are honest gaps, not bugs:
 
-- **Ephemeral storage** unless a persistent disk is mounted (section 2).
+- **Ephemeral storage** unless `STORAGE_DRIVER=cloudinary` or a persistent disk is mounted (section 2).
 - **Render free tier spins down** after inactivity; the first request can take
   ~30–60s. Neon also auto-suspends; the API retries with backoff rather than
   crashing, but the first call is slow.

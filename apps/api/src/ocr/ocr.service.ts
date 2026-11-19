@@ -211,10 +211,10 @@ export class OcrService {
 
   private async readDocument(storageKey: string): Promise<Buffer> {
     const chunks: Buffer[] = [];
-    const stream = this.storageService.createReadStream(storageKey);
+    const stream = await this.storageService.createReadStream(storageKey);
 
     return new Promise<Buffer>((resolve, reject) => {
-      stream.on('data', (chunk) =>
+      stream.on('data', (chunk: Buffer | string) =>
         chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)),
       );
       stream.on('end', () => resolve(Buffer.concat(chunks)));

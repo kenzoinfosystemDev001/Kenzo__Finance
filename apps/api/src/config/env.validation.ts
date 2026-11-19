@@ -34,9 +34,19 @@ export const envSchema = z.object({
   AUTH_ACCESS_TTL: z.string().default('15m'),
   AUTH_REFRESH_TTL: z.string().default('7d'),
 
-  STORAGE_DRIVER: z.enum(['local']).default('local'),
+  // 'local' needs a persistent disk in production; 'cloudinary' survives an
+  // ephemeral container such as Render.
+  STORAGE_DRIVER: z.enum(['local', 'cloudinary']).default('local'),
   STORAGE_LOCAL_ROOT: z.string().default('./storage'),
   UPLOAD_MAX_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
+
+  // Required only when STORAGE_DRIVER=cloudinary. Either CLOUDINARY_URL, or
+  // the three separate values; the cross-field check below enforces that.
+  CLOUDINARY_URL: z.string().optional(),
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+  CLOUDINARY_FOLDER: z.string().default('kenzo-erp'),
 
   OCR_PROVIDER: z.enum(['stub']).default('stub'),
   OCR_API_KEY: z.string().optional(),
@@ -64,6 +74,23 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     throw new Error(
       'AUTH_ACCESS_SECRET and AUTH_REFRESH_SECRET must be different values.',
     );
+  }
+
+  // Fail at startup rather than on the first upload, when a user has already
+  // picked a file and would get an opaque 500.
+  if (parsed.data.STORAGE_DRIVER === 'cloudinary') {
+    const hasUrl = Boolean(parsed.data.CLOUDINARY_URL);
+    const hasTriple =
+      Boolean(parsed.data.CLOUDINARY_CLOUD_NAME) &&
+      Boolean(parsed.data.CLOUDINARY_API_KEY) &&
+      Boolean(parsed.data.CLOUDINARY_API_SECRET);
+
+    if (!hasUrl && !hasTriple) {
+      throw new Error(
+        'STORAGE_DRIVER=cloudinary requires either CLOUDINARY_URL, or all of ' +
+          'CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET.',
+      );
+    }
   }
 
   return parsed.data;

@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentKind } from '@prisma/client';
-import type { ReadStream } from 'node:fs';
+import type { Readable } from 'node:stream';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { StorageService } from '../storage/storage.service';
@@ -75,6 +75,7 @@ export class DocumentsService {
     const stored = await this.storageService.save(input.buffer, {
       folder: input.productId ? 'products' : 'vendors',
       originalFilename: `file.${detected.extension}`,
+      mimeType: detected.mimeType,
     });
 
     const document = await this.prisma.document.create({
@@ -163,7 +164,7 @@ export class DocumentsService {
     id: string,
     actor: AuthenticatedUser,
   ): Promise<{
-    stream: ReadStream;
+    stream: Readable;
     filename: string;
     mimeType: string;
     sizeBytes: number;
@@ -182,7 +183,7 @@ export class DocumentsService {
     });
 
     return {
-      stream: this.storageService.createReadStream(document.storageKey),
+      stream: await this.storageService.createReadStream(document.storageKey),
       filename: document.originalFilename,
       mimeType: document.mimeType,
       sizeBytes: document.sizeBytes,
