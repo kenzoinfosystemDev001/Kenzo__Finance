@@ -20,7 +20,11 @@ services:
     # Root of the repository, not apps/api: render:build also generates the
     # Prisma client and applies pending migrations.
     rootDir: .
-    buildCommand: npm run render:build
+    # The same two commands work with rootDir set to apps/api: both package
+    # files define render:build and render:start, because Render resolves the
+    # script relative to the Root Directory and a root-only script is simply
+    # "Missing script" from inside the workspace.
+    buildCommand: npm install && npm run render:build
     startCommand: npm run render:start
     healthCheckPath: /api/v1/health/ready
     envVars:

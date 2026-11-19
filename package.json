@@ -23,7 +23,7 @@
     "db:deploy": "prisma migrate deploy --schema apps/api/prisma/schema.prisma",
     "build": "npm run api:build",
     "start": "node apps/api/dist/main.js",
-    "render:build": "npm install && npm run db:deploy && npm run api:build",
+    "render:build": "npm run db:deploy && npm run api:build",
     "render:start": "node apps/api/dist/main.js"
   },
   "devDependencies": {

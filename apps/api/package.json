@@ -15,7 +15,9 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "ts-node --transpile-only prisma/seed.ts",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "render:build": "npm run prisma:deploy && npm run build",
+    "render:start": "node dist/main.js"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"

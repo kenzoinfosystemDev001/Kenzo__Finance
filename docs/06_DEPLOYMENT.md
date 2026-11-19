@@ -32,14 +32,33 @@ for production so test data can never reach real records.
 | Type | Web Service |
 | Repository | `kenzoinfosystemDev001/Kenzo__Finance` |
 | Branch | `main` |
-| Root Directory | *(leave blank — this is a monorepo, build from the root)* |
+| Root Directory | *(blank, or `apps/api` — both work)* |
 | Runtime | Node |
 | Build Command | `npm install && npm run render:build` |
 | Start Command | `npm run render:start` |
 | Health Check Path | `/api/v1/health/ready` |
 
-`render:build` installs dependencies, generates the Prisma client, **applies
-migrations**, then compiles. `render:start` runs the compiled server.
+The Build Command installs; `render:build` then applies migrations,
+generates the Prisma client and compiles. `render:start` runs the compiled
+server.
+
+**The same two commands work from either Root Directory**, because both
+`package.json` and `apps/api/package.json` define `render:build` and
+`render:start`. Render resolves a script relative to the Root Directory, so
+a root-only script reports `Missing script: "render:build"` when the Root
+Directory is `apps/api` — the duplication exists to make that impossible.
+
+Verified from both directories:
+
+```
+Root Directory = (blank)      npm install && npm run render:build   -> exit 0
+Root Directory = apps/api     npm install && npm run render:build   -> exit 0
+```
+
+> Do not put `npm install` *inside* `render:build`. Run from within a
+> workspace package, npm 10 fails with
+> `Cannot read properties of null (reading 'location')`. Installing belongs
+> in the Build Command, where Render puts it by default.
 
 > Render injects `PORT` and requires the process to bind to it on `0.0.0.0`.
 > The app reads `PORT` first and falls back to `API_PORT` locally, so you do
@@ -305,9 +324,22 @@ is no longer reachable by accident.
 > **Migrations are the one thing a bare `npm run build` still misses.** The
 > build generates the Prisma client and compiles, but deliberately does not
 > touch the database — a build should not mutate a live schema, and it would
-> fail whenever Neon happened to be asleep. Either use
-> `npm install && npm run render:build` (which runs `migrate deploy` first),
-> or set Render's **Pre-Deploy Command** to `npm run prisma:deploy`.
+> fail whenever Neon happened to be asleep. Use
+> `npm install && npm run render:build`, which runs `migrate deploy` first.
+
+### Build fails: `Missing script: "render:build"`
+
+```
+npm error workspace @kenzo-erp/api@0.1.0
+npm error location /opt/render/project/src/apps/api
+npm error Missing script: "render:build"
+```
+
+The `location` line tells you the Root Directory Render is using. The script
+exists in the root `package.json`, but npm only sees the one belonging to the
+directory it is run from. Both files now define it, so this is fixed — but
+the same log line is how you confirm the Root Directory whenever a command
+behaves unexpectedly.
 
 ### The site loads but sign-in shows "temporarily unavailable"
 
