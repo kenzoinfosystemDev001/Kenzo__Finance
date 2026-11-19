@@ -7,6 +7,20 @@ const API_URL =
 /** Synthetic status used when the API cannot be reached at all. */
 export const API_UNAVAILABLE_STATUS = 503;
 
+/**
+ * How long to wait for the API before calling it unreachable.
+ *
+ * Deliberately shorter than a serverless host's own request limit. Without a
+ * timeout, a sleeping backend (a free Render instance can take ~50s to wake)
+ * holds the render open until the platform kills the function, and the visitor
+ * gets the host's raw 504 instead of our own page. Failing first lets us say
+ * what is happening and offer a retry.
+ */
+const REQUEST_TIMEOUT_MS = Number(process.env.API_TIMEOUT_MS ?? 8000);
+
+/** Uploads legitimately take longer than a page render, so they get their own. */
+const UPLOAD_TIMEOUT_MS = Number(process.env.API_UPLOAD_TIMEOUT_MS ?? 60000);
+
 /** True when the API server is down/unreachable, rather than returning an error. */
 export function isApiUnavailable(error: unknown): boolean {
   return (
@@ -105,6 +119,9 @@ async function rawFetch(path: string, options: RequestOptions): Promise<Response
       method: options.method ?? 'GET',
       headers,
       body,
+      signal: AbortSignal.timeout(
+        options.formData ? UPLOAD_TIMEOUT_MS : REQUEST_TIMEOUT_MS,
+      ),
       // ERP data is transactional: never serve a cached list after a write.
       cache: 'no-store',
       next: options.tags ? { tags: options.tags } : undefined,
@@ -112,13 +129,17 @@ async function rawFetch(path: string, options: RequestOptions): Promise<Response
   } catch (cause) {
     // A connection failure is not a bug in the page. Turn Node's bare
     // "fetch failed" into something that names the actual problem, so the UI
-    // can tell the user the API is not running instead of showing a stack.
+    // can tell the user the API is unreachable instead of showing a stack.
+    const timedOut =
+      cause instanceof Error &&
+      (cause.name === 'TimeoutError' || cause.name === 'AbortError');
+
     throw new ApiError(API_UNAVAILABLE_STATUS, {
       statusCode: API_UNAVAILABLE_STATUS,
       error: 'API_UNAVAILABLE',
-      message:
-        `Could not reach the API at ${API_URL}. ` +
-        'Start it with "npm run api:dev" (or "npm run dev" for both apps).',
+      message: timedOut
+        ? `The API at ${API_URL} did not respond in time.`
+        : `Could not reach the API at ${API_URL}.`,
       details: cause instanceof Error ? cause.message : String(cause),
     });
   }
@@ -156,6 +177,7 @@ async function tryRefresh(): Promise<boolean> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       cache: 'no-store',
     });
 

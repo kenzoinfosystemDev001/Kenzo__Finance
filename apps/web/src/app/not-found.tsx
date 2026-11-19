@@ -9,8 +9,8 @@ export default function NotFound() {
         The page or record you are looking for does not exist, or it may have been
         archived.
       </p>
-      <Link href="/dashboard" className="btn-primary mt-6">
-        Go to dashboard
+      <Link href="/" className="btn-primary mt-6">
+        Back to home
       </Link>
     </main>
   );

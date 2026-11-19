@@ -12,6 +12,13 @@ import type { CurrentUser } from './types';
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
 
+/**
+ * A sign-in is a deliberate action the user is waiting on, so it tolerates a
+ * backend waking from idle. Page renders use the much shorter timeout in
+ * api.ts, because a visitor should not stare at a blank page for a minute.
+ */
+const LOGIN_TIMEOUT_MS = Number(process.env.API_LOGIN_TIMEOUT_MS ?? 20000);
+
 export interface LoginState {
   error?: string;
 }
@@ -34,6 +41,9 @@ export async function loginAction(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
+      // Longer than a page render: a backend waking from idle should still be
+      // able to complete a deliberate sign-in rather than fail instantly.
+      signal: AbortSignal.timeout(LOGIN_TIMEOUT_MS),
       cache: 'no-store',
     });
 
@@ -48,10 +58,15 @@ export async function loginAction(
     }
 
     tokens = await response.json();
-  } catch {
+  } catch (cause) {
+    const timedOut =
+      cause instanceof Error &&
+      (cause.name === 'TimeoutError' || cause.name === 'AbortError');
+
     return {
-      error:
-        'Could not reach the server. Confirm the API is running and try again.',
+      error: timedOut
+        ? 'The server took too long to respond. It may be waking from idle - please try again.'
+        : 'Could not reach the server. Please try again in a moment.',
     };
   }
 
@@ -71,6 +86,9 @@ export async function logoutAction(): Promise<void> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
+      // Signing out must never hang on an unreachable API; the cookies are
+      // cleared locally either way.
+      signal: AbortSignal.timeout(5000),
       cache: 'no-store',
     }).catch(() => undefined);
   }

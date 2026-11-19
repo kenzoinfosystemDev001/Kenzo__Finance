@@ -1,0 +1,49 @@
+# Render blueprint for the Kenzo Infosystems ERP API.
+#
+# Render only reads this when the service is created from a Blueprint. An
+# existing service keeps the commands typed into its dashboard, so if you
+# created the service by hand, mirror the two commands below into
+# Settings -> Build & Deploy.
+#
+# The start command is the important one. `nest start` is the DEVELOPMENT
+# command: it compiles the whole TypeScript project in-process on every boot,
+# which exhausts the 512 MB heap on a free instance and aborts with
+# "JavaScript heap out of memory" (exit 134) before the server ever binds a
+# port - which is why Render then reports "No open ports detected".
+services:
+  - type: web
+    name: kenzo-erp-api
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    # Root of the repository, not apps/api: render:build also generates the
+    # Prisma client and applies pending migrations.
+    rootDir: .
+    buildCommand: npm run render:build
+    startCommand: npm run render:start
+    healthCheckPath: /api/v1/health/ready
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render injects PORT itself; never set it manually.
+      - key: WEB_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: AUTH_ACCESS_SECRET
+        generateValue: true
+      - key: AUTH_REFRESH_SECRET
+        generateValue: true
+      # Render's filesystem is ephemeral: a local upload folder is wiped on
+      # every deploy, so document storage must be remote.
+      - key: STORAGE_DRIVER
+        value: cloudinary
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: CLOUDINARY_FOLDER
+        value: kenzo-erp
+      - key: OCR_PROVIDER
+        value: stub

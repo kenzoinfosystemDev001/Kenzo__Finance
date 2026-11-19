@@ -230,6 +230,64 @@ Then open the Vercel URL and sign in. If the frontend shows
 | First request after idle fails | Render free tier cold start; the API retries the database automatically |
 | Works then logs out | `AUTH_*` secrets changed between deploys, invalidating issued tokens |
 
+
+### Deploy fails with "No open ports detected" / exit 134
+
+The full symptom in the Render log is:
+
+```
+==> Running 'npm start'
+> nest start
+FATAL ERROR: Ineffective mark-compacts near heap limit
+Allocation failed - JavaScript heap out of memory
+==> No open ports detected, continuing to scan...
+==> Exited with status 134
+```
+
+**Cause: the service is starting with `nest start`, which is the development
+command.** It compiles the whole TypeScript project in-process on every boot.
+That needs far more memory than a 512 MB free instance has, so Node aborts
+(exit 134 = SIGABRT) before `app.listen()` ever runs — which is why Render
+then reports that no port was opened. The port binding was never the problem.
+
+**Fix:** the start command must run the already-compiled output. Set the
+service to the values in *Service settings* above (`npm run render:start`).
+`apps/api`'s own `start` script is also `node dist/main.js` now, so a plain
+`npm start` is correct whichever directory Render runs it from — `nest start`
+is no longer reachable by accident.
+
+| Command | What it does | Use for |
+| --- | --- | --- |
+| `nest start` | Compiles, then runs. High memory | Nothing — use `start:dev` locally |
+| `nest start --watch` | Compiles and recompiles on change | Local development |
+| `node dist/main.js` | Runs the compiled server. Low memory | **Production** |
+
+> **Also check the Root Directory.** With Root Directory = `apps/api`, a build
+> command of `npm run build` runs `nest build` alone: it neither generates the
+> Prisma client nor applies migrations, so the service can compile and then
+> fail at runtime or run against an out-of-date schema. Clear the Root
+> Directory and use `npm install && npm run render:build`, which does all
+> three. If you would rather keep `apps/api` as the root, the equivalent is
+> `npm install && npm run prisma:generate && npm run prisma:deploy && npm run build`.
+
+### The site loads but sign-in shows "temporarily unavailable"
+
+The landing page at `/` is fully static and never calls the API, so if the
+home page renders and `/login` does not, the backend is the problem, not the
+frontend deploy.
+
+Check in this order:
+
+1. `curl https://your-api.onrender.com/api/v1/health/ready` — if this fails,
+   fix the API first.
+2. If the error page says *"This deployment has no backend address
+   configured"*, `NEXT_PUBLIC_API_URL` is missing on Vercel. It is read at
+   **build** time, so setting it is not enough — **redeploy** afterwards.
+3. Otherwise it is a cold start. The web app waits 8s for a page render and
+   20s for a sign-in before giving up, deliberately less than the hosting
+   platform's own request limit so you get our retry page rather than a raw
+   504 from Vercel.
+
 ---
 
 ## 7. Known production limitations
