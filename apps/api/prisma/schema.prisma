@@ -174,18 +174,31 @@ model Vendor {
   // detection and case-insensitive search without a trigram index.
   normalizedName String
 
-  contactPerson  String?
+  // Company-level communication channels (switchboard / general inbox).
+  // People are modelled in VendorContact.
   email          String?
+  alternateEmail String?
   phone          String?
   alternatePhone String?
   website        String?
 
+  // Mirror of the primary VendorContact's name. Maintained by the service on
+  // every contact write so list queries and exports need no join. The
+  // authoritative data is vendor_contacts.
+  contactPerson String?
+
+  // Mirror of the primary VendorAddress. Maintained by the service on every
+  // address write; vendor_addresses is authoritative. Kept (not dropped) so
+  // existing readers such as product detail and CSV export keep working.
   addressLine1 String?
   addressLine2 String?
   city         String?
   state        String?
   postalCode   String?
   country      String  @default("India")
+
+  // Company / LLP / registration number (CIN, Udyam, shop licence...).
+  registrationNumber String?
 
   // Stored uppercase+trimmed. Unique when present; NULLs do not collide in
   // PostgreSQL, so vendors without a GSTIN are still allowed.
@@ -198,6 +211,7 @@ model Vendor {
 
   category  VendorCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   contacts  VendorContact[]
+  addresses VendorAddress[]
   companies VendorCompany[]
   products  VendorProduct[]
   documents Document[]
@@ -220,15 +234,30 @@ model Vendor {
   @@map("vendors")
 }
 
+// Which part of the vendor's business a contact person represents. At most
+// one primary contact exists per (vendor, contactType); the service enforces
+// it inside a transaction that locks the vendor row.
+enum VendorContactType {
+  GENERAL
+  SALES
+  ACCOUNTS
+  SUPPORT
+  MANAGEMENT
+  LOGISTICS
+}
+
 model VendorContact {
-  id          String  @id @default(uuid()) @db.Uuid
-  vendorId    String  @db.Uuid
-  name        String
-  designation String?
-  email       String?
-  phone       String?
-  isPrimary   Boolean @default(false)
-  notes       String?
+  id             String            @id @default(uuid()) @db.Uuid
+  vendorId       String            @db.Uuid
+  contactType    VendorContactType @default(GENERAL)
+  name           String
+  designation    String?
+  email          String?
+  alternateEmail String?
+  phone          String?
+  alternatePhone String?
+  isPrimary      Boolean           @default(false)
+  notes          String?
 
   vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
@@ -236,7 +265,42 @@ model VendorContact {
   updatedAt DateTime @updatedAt
 
   @@index([vendorId])
+  @@index([vendorId, contactType])
+  @@index([phone])
+  @@index([email])
   @@map("vendor_contacts")
+}
+
+enum VendorAddressType {
+  REGISTERED_OFFICE
+  OFFICE
+  WAREHOUSE
+  OTHER
+}
+
+// A vendor may have a registered office, branch offices and warehouses.
+// Exactly one address per vendor is primary; it is mirrored onto vendors.*.
+model VendorAddress {
+  id           String            @id @default(uuid()) @db.Uuid
+  vendorId     String            @db.Uuid
+  addressType  VendorAddressType @default(OFFICE)
+  label        String?
+  addressLine1 String
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String            @default("India")
+  isPrimary    Boolean           @default(false)
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendorId])
+  @@index([city])
+  @@map("vendor_addresses")
 }
 
 // Company == brand (Dell, HP, Lenovo). Normalized so brand names are not
@@ -369,9 +433,12 @@ model VendorProduct {
 
 enum DocumentKind {
   VENDOR_ONBOARDING
+  VENDOR_VISITING_CARD
   VENDOR_GST_CERTIFICATE
   VENDOR_PAN
+  VENDOR_REGISTRATION_CERTIFICATE
   VENDOR_AGREEMENT
+  VENDOR_PRODUCT_CATALOGUE
   VENDOR_OTHER
   PRODUCT_IMAGE
   PRODUCT_DATASHEET
@@ -403,6 +470,12 @@ model Document {
   uploadedBy   User?   @relation("DocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
 
   ocrJobs OcrJob[]
+
+  // Set on a new upload that replaces an older file. The older document is
+  // archived, not deleted, so the replacement chain stays auditable.
+  replacesDocumentId String?   @unique @db.Uuid
+  replaces           Document? @relation("DocumentReplacement", fields: [replacesDocumentId], references: [id], onDelete: SetNull)
+  replacedBy         Document? @relation("DocumentReplacement")
 
   createdAt  DateTime  @default(now())
   archivedAt DateTime?
@@ -460,21 +533,27 @@ model OcrJob {
 }
 
 model AuditLog {
-  id          String   @id @default(uuid()) @db.Uuid
-  actorUserId String?  @db.Uuid
-  action      String // "vendor.create", "vendor.archive", "auth.login.failed"
-  entityType  String // "Vendor", "VendorProduct", "User"
-  entityId    String?
-  summary     String?
-  before      Json?
-  after       Json?
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime @default(now())
+  id               String   @id @default(uuid()) @db.Uuid
+  actorUserId      String?  @db.Uuid
+  action           String // "vendor.create", "vendor.archive", "auth.login.failed"
+  entityType       String // "Vendor", "VendorProduct", "User"
+  entityId         String?
+  // The aggregate the entity belongs to, e.g. a VendorContact's Vendor. Lets
+  // a record's activity history include changes to its child rows. Later
+  // modules use the same pair (QuotationLine -> Quotation).
+  parentEntityType String?
+  parentEntityId   String?
+  summary          String?
+  before           Json?
+  after            Json?
+  ipAddress        String?
+  userAgent        String?
+  createdAt        DateTime @default(now())
 
   actor User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([entityType, entityId])
+  @@index([parentEntityType, parentEntityId])
   @@index([actorUserId])
   @@index([createdAt])
   @@map("audit_logs")

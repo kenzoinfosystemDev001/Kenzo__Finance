@@ -10,6 +10,7 @@ import { AuditService } from '../audit/audit.service';
 import { NumberingService, SEQUENCE_KEYS } from '../numbering/numbering.service';
 import {
   buildPaginatedResult,
+  PaginationQueryDto,
   type PaginatedResult,
 } from '../common/dto/pagination.dto';
 import {
@@ -20,24 +21,61 @@ import {
   normalizeTaxId,
 } from '../common/utils/normalize';
 import { panFromGstin } from '../common/utils/tax-id';
+import { PERMISSIONS } from '../common/authz/permissions';
 import type { CreateVendorDto } from './dto/create-vendor.dto';
-import type { UpdateVendorDto } from './dto/update-vendor.dto';
+import type { UpdateVendorDto, UpdateVendorStatusDto } from './dto/update-vendor.dto';
 import type { QueryVendorsDto } from './dto/query-vendors.dto';
 import type {
   MapVendorCompanyDto,
   MapVendorProductDto,
+  UpdateVendorCompanyDto,
   UpdateVendorProductDto,
 } from './dto/mapping.dto';
+import type { VendorLookupQueryDto } from './dto/vendor-children.dto';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
+import {
+  addressData,
+  contactData,
+  resolveAddressPrimaries,
+  resolveContactPrimaries,
+  VENDOR_ENTITY,
+} from './vendor-shared';
 
 export interface DuplicateMatch {
   vendorId: string;
   vendorCode: string;
   businessName: string;
+  status?: VendorStatus;
+  archived?: boolean;
   matchedOn: 'gstin' | 'name' | 'email' | 'phone';
   severity: 'blocking' | 'warning';
 }
+
+export interface DuplicateCheckInput {
+  businessName?: string;
+  gstin?: string;
+  /** Company and contact emails / phones are all compared. */
+  emails?: Array<string | undefined | null>;
+  phones?: Array<string | undefined | null>;
+  /** Legacy single-value inputs, still accepted. */
+  email?: string;
+  phone?: string;
+}
+
+const brandSelect = { id: true, name: true, code: true } as const;
+
+const productSummarySelect = {
+  id: true,
+  productCode: true,
+  name: true,
+  modelNumber: true,
+  designNumber: true,
+  isActive: true,
+  archivedAt: true,
+  company: { select: { id: true, name: true } },
+  category: { select: { id: true, name: true } },
+} satisfies Prisma.ProductSelect;
 
 /** Vendor fields returned on list rows. Keeps payloads small and predictable. */
 const vendorListSelect = {
@@ -56,30 +94,32 @@ const vendorListSelect = {
   createdAt: true,
   updatedAt: true,
   category: { select: { id: true, name: true } },
+  // Primary contact for the "Primary Contact" column (GENERAL sorts first).
+  contacts: {
+    where: { isPrimary: true },
+    orderBy: { contactType: 'asc' },
+    take: 1,
+    select: { id: true, name: true, designation: true, phone: true, email: true },
+  },
+  // First few brands for the badge column; the full count is in _count.
+  companies: {
+    orderBy: { createdAt: 'asc' },
+    take: 3,
+    select: { company: { select: { id: true, name: true } } },
+  },
   _count: { select: { products: true, companies: true } },
 } satisfies Prisma.VendorSelect;
 
 const vendorDetailInclude = {
   category: true,
-  contacts: { orderBy: [{ isPrimary: 'desc' }, { name: 'asc' }] },
+  contacts: { orderBy: [{ contactType: 'asc' }, { isPrimary: 'desc' }, { name: 'asc' }] },
+  addresses: { orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }] },
   companies: {
-    include: { company: { select: { id: true, name: true, code: true } } },
+    include: { company: { select: brandSelect } },
     orderBy: { createdAt: 'asc' },
   },
   products: {
-    include: {
-      product: {
-        select: {
-          id: true,
-          productCode: true,
-          name: true,
-          modelNumber: true,
-          designNumber: true,
-          company: { select: { id: true, name: true } },
-          category: { select: { id: true, name: true } },
-        },
-      },
-    },
+    include: { product: { select: productSummarySelect } },
     orderBy: { createdAt: 'asc' },
   },
   documents: {
@@ -91,12 +131,16 @@ const vendorDetailInclude = {
       mimeType: true,
       sizeBytes: true,
       createdAt: true,
+      replacesDocumentId: true,
+      uploadedBy: { select: { id: true, fullName: true } },
     },
     orderBy: { createdAt: 'desc' },
   },
   createdBy: { select: { id: true, fullName: true } },
   updatedBy: { select: { id: true, fullName: true } },
 } satisfies Prisma.VendorInclude;
+
+const NULLABLE_SORT_FIELDS = new Set(['contactPerson', 'phone', 'email', 'city']);
 
 @Injectable()
 export class VendorsService {
@@ -116,24 +160,32 @@ export class VendorsService {
    * GSTIN is a hard identifier: a match is 'blocking'. Name, email and phone
    * matches are 'warning' - the user is shown the existing record and may
    * proceed deliberately, because two genuinely different firms can share a
-   * trading name or a reception phone number.
+   * trading name or a reception phone number. Emails and phones are compared
+   * against both the company channels and every contact person.
    */
   async findDuplicates(
-    input: { businessName?: string; gstin?: string; email?: string; phone?: string },
+    input: DuplicateCheckInput,
     excludeVendorId?: string,
   ): Promise<DuplicateMatch[]> {
     const gstin = normalizeTaxId(input.gstin);
     const normalizedName = input.businessName
       ? normalizeName(input.businessName)
       : undefined;
-    const email = normalizeEmail(input.email);
-    const phone = normalizePhone(input.phone);
+
+    const emails = uniqueDefined([input.email, ...(input.emails ?? [])].map((v) => normalizeEmail(v)));
+    const phones = uniqueDefined([input.phone, ...(input.phones ?? [])].map((v) => normalizePhone(v)));
 
     const conditions: Prisma.VendorWhereInput[] = [];
     if (gstin) conditions.push({ gstin });
     if (normalizedName) conditions.push({ normalizedName });
-    if (email) conditions.push({ email });
-    if (phone) conditions.push({ phone });
+    if (emails.length) {
+      conditions.push({ email: { in: emails } });
+      conditions.push({ contacts: { some: { email: { in: emails } } } });
+    }
+    if (phones.length) {
+      conditions.push({ phone: { in: phones } });
+      conditions.push({ contacts: { some: { phone: { in: phones } } } });
+    }
 
     if (conditions.length === 0) return [];
 
@@ -150,6 +202,9 @@ export class VendorsService {
         gstin: true,
         email: true,
         phone: true,
+        status: true,
+        archivedAt: true,
+        contacts: { select: { email: true, phone: true } },
       },
       take: 10,
     });
@@ -161,7 +216,10 @@ export class VendorsService {
         vendorId: candidate.id,
         vendorCode: candidate.vendorCode,
         businessName: candidate.businessName,
+        status: candidate.status,
+        archived: Boolean(candidate.archivedAt),
       };
+      const contacts = candidate.contacts ?? [];
 
       if (gstin && candidate.gstin === gstin) {
         matches.push({ ...base, matchedOn: 'gstin', severity: 'blocking' });
@@ -171,11 +229,13 @@ export class VendorsService {
         matches.push({ ...base, matchedOn: 'name', severity: 'warning' });
         continue;
       }
-      if (email && candidate.email === email) {
+      const candidateEmails = [candidate.email, ...contacts.map((c) => c.email)];
+      if (emails.some((email) => candidateEmails.includes(email))) {
         matches.push({ ...base, matchedOn: 'email', severity: 'warning' });
         continue;
       }
-      if (phone && candidate.phone === phone) {
+      const candidatePhones = [candidate.phone, ...contacts.map((c) => c.phone)];
+      if (phones.some((phone) => candidatePhones.includes(phone))) {
         matches.push({ ...base, matchedOn: 'phone', severity: 'warning' });
       }
     }
@@ -194,11 +254,15 @@ export class VendorsService {
   ) {
     this.assertGstinMatchesPan(dto.gstin, dto.pan);
 
+    // Validate nested primaries before any database round trip.
+    const contacts = resolveContactPrimaries((dto.contacts ?? []).map(contactData));
+    const addresses = resolveAddressPrimaries((dto.addresses ?? []).map(addressData));
+
     const duplicates = await this.findDuplicates({
       businessName: dto.businessName,
       gstin: dto.gstin,
-      email: dto.email,
-      phone: dto.phone,
+      emails: [dto.email, ...contacts.map((c) => c.email)],
+      phones: [dto.phone, ...contacts.map((c) => c.phone)],
     });
 
     const blocking = duplicates.filter((d) => d.severity === 'blocking');
@@ -225,12 +289,25 @@ export class VendorsService {
       await this.assertCompaniesExist(dto.companyIds);
     }
 
+    // Product mappings bring their brand with them, exactly as mapProduct does.
+    const products = dto.productIds?.length
+      ? await this.loadMappableProducts(dto.productIds)
+      : [];
+    const companyIds = [
+      ...new Set([...(dto.companyIds ?? []), ...products.map((p) => p.companyId)]),
+    ];
+
     const ocrJob = dto.ocrJobId
       ? await this.loadUnconsumedOcrJob(dto.ocrJobId)
       : null;
 
-    // One transaction: number allocation, vendor, contacts, brand mappings,
-    // OCR linkage and the audit row either all land or none do.
+    const primaryContact =
+      contacts.find((c) => c.isPrimary && c.contactType === 'GENERAL') ??
+      contacts.find((c) => c.isPrimary);
+    const primaryAddress = addresses.find((a) => a.isPrimary);
+
+    // One transaction: number allocation, vendor, contacts, addresses, brand
+    // and product mappings, OCR linkage and the audit row all land or none do.
     const vendor = await this.prisma.$transaction(async (tx) => {
       const vendorCode = await this.numberingService.allocate(
         SEQUENCE_KEYS.VENDOR,
@@ -243,38 +320,34 @@ export class VendorsService {
           businessName: dto.businessName.trim(),
           legalName: cleanOptional(dto.legalName) ?? null,
           normalizedName: normalizeName(dto.businessName),
-          contactPerson: cleanOptional(dto.contactPerson) ?? null,
+          registrationNumber: cleanOptional(dto.registrationNumber) ?? null,
           email: normalizeEmail(dto.email) ?? null,
+          alternateEmail: normalizeEmail(dto.alternateEmail) ?? null,
           phone: normalizePhone(dto.phone) ?? null,
           alternatePhone: normalizePhone(dto.alternatePhone) ?? null,
           website: cleanOptional(dto.website) ?? null,
-          addressLine1: cleanOptional(dto.addressLine1) ?? null,
-          addressLine2: cleanOptional(dto.addressLine2) ?? null,
-          city: cleanOptional(dto.city) ?? null,
-          state: cleanOptional(dto.state) ?? null,
-          postalCode: cleanOptional(dto.postalCode) ?? null,
-          country: cleanOptional(dto.country) ?? 'India',
           gstin: normalizeTaxId(dto.gstin) ?? null,
           pan: normalizeTaxId(dto.pan) ?? null,
           categoryId: dto.categoryId ?? null,
           status: dto.status ?? VendorStatus.ACTIVE,
           notes: cleanOptional(dto.notes) ?? null,
+          // Mirrors of the primary child rows, written alongside them.
+          contactPerson: primaryContact?.name ?? null,
+          addressLine1: primaryAddress?.addressLine1 ?? null,
+          addressLine2: primaryAddress?.addressLine2 ?? null,
+          city: primaryAddress?.city ?? null,
+          state: primaryAddress?.state ?? null,
+          postalCode: primaryAddress?.postalCode ?? null,
+          country: primaryAddress?.country ?? 'India',
           createdById: actor.id,
           updatedById: actor.id,
-          contacts: dto.contacts?.length
-            ? {
-                create: dto.contacts.map((contact) => ({
-                  name: contact.name.trim(),
-                  designation: cleanOptional(contact.designation) ?? null,
-                  email: normalizeEmail(contact.email) ?? null,
-                  phone: normalizePhone(contact.phone) ?? null,
-                  isPrimary: contact.isPrimary ?? false,
-                  notes: cleanOptional(contact.notes) ?? null,
-                })),
-              }
+          contacts: contacts.length ? { create: contacts } : undefined,
+          addresses: addresses.length ? { create: addresses } : undefined,
+          companies: companyIds.length
+            ? { create: companyIds.map((companyId) => ({ companyId })) }
             : undefined,
-          companies: dto.companyIds?.length
-            ? { create: dto.companyIds.map((companyId) => ({ companyId })) }
+          products: products.length
+            ? { create: products.map((product) => ({ productId: product.id })) }
             : undefined,
         },
         include: vendorDetailInclude,
@@ -314,9 +387,17 @@ export class VendorsService {
         {
           actorUserId: actor.id,
           action: 'vendor.create',
-          entityType: 'Vendor',
+          entityType: VENDOR_ENTITY,
           entityId: created.id,
-          summary: `Created vendor ${created.vendorCode} - ${created.businessName}${ocrJob ? ' (from OCR draft)' : ''}`,
+          summary:
+            `Created vendor ${created.vendorCode} - ${created.businessName}` +
+            `${ocrJob ? ' (from reviewed OCR draft)' : ''}` +
+            describeCounts({
+              contact: contacts.length,
+              address: addresses.length,
+              brand: companyIds.length,
+              product: products.length,
+            }),
           after: this.auditSnapshot(created),
           ipAddress: context.ipAddress,
           userAgent: context.userAgent,
@@ -341,7 +422,7 @@ export class VendorsService {
       this.prisma.vendor.findMany({
         where,
         select: vendorListSelect,
-        orderBy: { [query.sortBy]: query.sortDir },
+        orderBy: this.buildOrderBy(query),
         skip: query.skip,
         take: query.take,
       }),
@@ -349,6 +430,51 @@ export class VendorsService {
     ]);
 
     return buildPaginatedResult(items, totalItems, query.page, query.pageSize);
+  }
+
+  /**
+   * Dashboard figures, all counted from live rows. Archived vendors are
+   * excluded everywhere: they are history, not part of the supplier base.
+   */
+  async summary() {
+    const live = { archivedAt: null } satisfies Prisma.VendorWhereInput;
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [
+      total,
+      active,
+      inactive,
+      archived,
+      addedLast30Days,
+      brandsCovered,
+      productMappings,
+      productMappingsLast30Days,
+      productsCovered,
+    ] = await this.prisma.$transaction([
+      this.prisma.vendor.count({ where: live }),
+      this.prisma.vendor.count({ where: { ...live, status: VendorStatus.ACTIVE } }),
+      this.prisma.vendor.count({ where: { ...live, status: VendorStatus.INACTIVE } }),
+      this.prisma.vendor.count({ where: { archivedAt: { not: null } } }),
+      this.prisma.vendor.count({ where: { ...live, createdAt: { gte: since } } }),
+      this.prisma.company.count({
+        where: { archivedAt: null, vendors: { some: { vendor: live } } },
+      }),
+      this.prisma.vendorProduct.count({ where: { vendor: live } }),
+      this.prisma.vendorProduct.count({
+        where: { vendor: live, createdAt: { gte: since } },
+      }),
+      this.prisma.product.count({
+        where: { archivedAt: null, vendors: { some: { vendor: live } } },
+      }),
+    ]);
+
+    return {
+      vendors: { total, active, inactive, archived, addedLast30Days },
+      brandsCovered,
+      productMappings: { total: productMappings, addedLast30Days: productMappingsLast30Days },
+      productsCovered,
+      generatedAt: new Date().toISOString(),
+    };
   }
 
   async findOne(id: string) {
@@ -364,6 +490,113 @@ export class VendorsService {
     return vendor;
   }
 
+  /**
+   * Activity history: audit rows for the vendor itself plus every child row
+   * (contacts, addresses, mappings, documents) linked to it as parent.
+   */
+  async activity(id: string, pagination: PaginationQueryDto) {
+    await this.assertVendorExists(id);
+
+    const where: Prisma.AuditLogWhereInput = {
+      OR: [
+        { entityType: VENDOR_ENTITY, entityId: id },
+        { parentEntityType: VENDOR_ENTITY, parentEntityId: id },
+      ],
+    };
+
+    const [items, totalItems] = await this.prisma.$transaction([
+      this.prisma.auditLog.findMany({
+        where,
+        select: {
+          id: true,
+          action: true,
+          entityType: true,
+          entityId: true,
+          summary: true,
+          before: true,
+          after: true,
+          createdAt: true,
+          actor: { select: { id: true, fullName: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: pagination.skip,
+        take: pagination.take,
+      }),
+      this.prisma.auditLog.count({ where }),
+    ]);
+
+    return buildPaginatedResult(items, totalItems, pagination.page, pagination.pageSize);
+  }
+
+  /**
+   * Lightweight selector for other modules (quotations, purchase flows):
+   * active, non-archived vendors only, optionally narrowed to those that
+   * supply a given product or brand.
+   */
+  async lookup(query: VendorLookupQueryDto) {
+    const and: Prisma.VendorWhereInput[] = [
+      { archivedAt: null, status: VendorStatus.ACTIVE },
+    ];
+
+    if (query.search) {
+      and.push({
+        OR: [
+          { businessName: { contains: query.search, mode: 'insensitive' } },
+          { vendorCode: { contains: query.search, mode: 'insensitive' } },
+          { gstin: { contains: query.search.toUpperCase() } },
+        ],
+      });
+    }
+    if (query.productId) and.push({ products: { some: { productId: query.productId } } });
+    if (query.companyId) and.push({ companies: { some: { companyId: query.companyId } } });
+
+    return this.prisma.vendor.findMany({
+      where: { AND: and },
+      select: {
+        id: true,
+        vendorCode: true,
+        businessName: true,
+        phone: true,
+        email: true,
+        city: true,
+        status: true,
+        products: query.productId
+          ? {
+              where: { productId: query.productId },
+              select: { vendorSku: true, leadTimeDays: true, isPreferred: true },
+            }
+          : undefined,
+      },
+      orderBy: { businessName: 'asc' },
+      take: 25,
+    });
+  }
+
+  /**
+   * The check every future business document (quotation, PO, ...) must run
+   * before referencing a vendor. Archived vendors are never selectable;
+   * inactive ones only with vendor.use_inactive.
+   */
+  async assertSelectableForTransaction(vendorId: string, actor: AuthenticatedUser) {
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { id: vendorId },
+      select: { id: true, vendorCode: true, businessName: true, status: true, archivedAt: true },
+    });
+    if (!vendor) throw new NotFoundException(`Vendor ${vendorId} was not found`);
+    if (vendor.archivedAt) {
+      throw new BadRequestException(`${vendor.businessName} is archived and cannot be used.`);
+    }
+    if (
+      vendor.status === VendorStatus.INACTIVE &&
+      !actor.permissions.includes(PERMISSIONS.VENDOR_USE_INACTIVE)
+    ) {
+      throw new BadRequestException(
+        `${vendor.businessName} is inactive. Activate it, or ask a user who may use inactive vendors.`,
+      );
+    }
+    return vendor;
+  }
+
   /** Flat rows for CSV/Excel export. Honours the same filters as the list. */
   async findAllForExport(query: QueryVendorsDto) {
     return this.prisma.vendor.findMany({
@@ -372,10 +605,13 @@ export class VendorsService {
         vendorCode: true,
         businessName: true,
         legalName: true,
+        registrationNumber: true,
         contactPerson: true,
         email: true,
+        alternateEmail: true,
         phone: true,
         alternatePhone: true,
+        website: true,
         addressLine1: true,
         addressLine2: true,
         city: true,
@@ -385,15 +621,40 @@ export class VendorsService {
         gstin: true,
         pan: true,
         status: true,
+        archivedAt: true,
         createdAt: true,
         category: { select: { name: true } },
+        contacts: {
+          where: { isPrimary: true },
+          orderBy: { contactType: 'asc' },
+          take: 1,
+          select: { name: true, phone: true, email: true },
+        },
         companies: { select: { company: { select: { name: true } } } },
         _count: { select: { products: true } },
       },
-      orderBy: { [query.sortBy]: query.sortDir },
+      orderBy: this.buildOrderBy(query),
       // Export is capped; a larger extract belongs in a background job.
       take: 5000,
     });
+  }
+
+  private buildOrderBy(query: QueryVendorsDto): Prisma.VendorOrderByWithRelationInput[] {
+    const dir = query.sortDir;
+    // A unique tie-breaker keeps pagination stable when many rows share a value.
+    const tieBreaker: Prisma.VendorOrderByWithRelationInput = { id: 'asc' };
+
+    switch (query.sortBy) {
+      case 'productCount':
+        return [{ products: { _count: dir } }, { businessName: 'asc' }, tieBreaker];
+      case 'brandCount':
+        return [{ companies: { _count: dir } }, { businessName: 'asc' }, tieBreaker];
+      default:
+        if (NULLABLE_SORT_FIELDS.has(query.sortBy)) {
+          return [{ [query.sortBy]: { sort: dir, nulls: 'last' } }, tieBreaker];
+        }
+        return [{ [query.sortBy]: dir }, tieBreaker];
+    }
   }
 
   private buildWhere(query: QueryVendorsDto): Prisma.VendorWhereInput {
@@ -410,26 +671,64 @@ export class VendorsService {
     }
 
     if (query.city) {
-      and.push({ city: { contains: query.city, mode: 'insensitive' } });
+      const city = { contains: query.city, mode: 'insensitive' } as const;
+      and.push({ OR: [{ city }, { addresses: { some: { city } } }] });
     }
 
     if (query.state) {
-      and.push({ state: { contains: query.state, mode: 'insensitive' } });
+      const state = { contains: query.state, mode: 'insensitive' } as const;
+      and.push({ OR: [{ state }, { addresses: { some: { state } } }] });
     }
 
     if (query.search) {
       const term = query.search;
+      const text = { contains: term, mode: 'insensitive' } as const;
+      // Phones are stored as digits; "98765 43210" must match "9876543210".
+      const digits = term.replace(/\D/g, '');
+      const phoneTerm = digits.length >= 4 ? digits : term;
+
       and.push({
         OR: [
-          { businessName: { contains: term, mode: 'insensitive' } },
-          { legalName: { contains: term, mode: 'insensitive' } },
+          { businessName: text },
+          { legalName: text },
           { normalizedName: { contains: normalizeName(term) } },
-          { vendorCode: { contains: term, mode: 'insensitive' } },
-          { contactPerson: { contains: term, mode: 'insensitive' } },
-          { email: { contains: term, mode: 'insensitive' } },
-          { phone: { contains: term } },
-          { city: { contains: term, mode: 'insensitive' } },
+          { vendorCode: text },
+          { registrationNumber: text },
+          { contactPerson: text },
+          { email: text },
+          { alternateEmail: text },
+          { phone: { contains: phoneTerm } },
+          { alternatePhone: { contains: phoneTerm } },
+          { city: text },
           { gstin: { contains: term.toUpperCase() } },
+          {
+            contacts: {
+              some: {
+                OR: [
+                  { name: text },
+                  { email: text },
+                  { alternateEmail: text },
+                  { phone: { contains: phoneTerm } },
+                  { alternatePhone: { contains: phoneTerm } },
+                ],
+              },
+            },
+          },
+          { companies: { some: { company: { name: text } } } },
+          {
+            products: {
+              some: {
+                product: {
+                  OR: [
+                    { name: text },
+                    { modelNumber: text },
+                    { designNumber: text },
+                    { productCode: text },
+                  ],
+                },
+              },
+            },
+          },
         ],
       });
     }
@@ -491,7 +790,7 @@ export class VendorsService {
   }
 
   // -------------------------------------------------------------------------
-  // Update / archive
+  // Update / status / archive / delete
   // -------------------------------------------------------------------------
 
   async update(
@@ -525,29 +824,27 @@ export class VendorsService {
       }
     }
 
-    await this.assertCategoryExists(dto.categoryId);
+    await this.assertCategoryExists(dto.categoryId ?? undefined);
 
     const data: Prisma.VendorUpdateInput = { updatedBy: { connect: { id: actor.id } } };
 
-    if (dto.businessName !== undefined) {
+    if (dto.businessName !== undefined && dto.businessName !== null) {
       data.businessName = dto.businessName.trim();
       data.normalizedName = normalizeName(dto.businessName);
     }
     if (dto.legalName !== undefined) data.legalName = cleanOptional(dto.legalName) ?? null;
-    if (dto.contactPerson !== undefined) data.contactPerson = cleanOptional(dto.contactPerson) ?? null;
+    if (dto.registrationNumber !== undefined) {
+      data.registrationNumber = cleanOptional(dto.registrationNumber) ?? null;
+    }
     if (dto.email !== undefined) data.email = normalizeEmail(dto.email) ?? null;
+    if (dto.alternateEmail !== undefined) {
+      data.alternateEmail = normalizeEmail(dto.alternateEmail) ?? null;
+    }
     if (dto.phone !== undefined) data.phone = normalizePhone(dto.phone) ?? null;
     if (dto.alternatePhone !== undefined) data.alternatePhone = normalizePhone(dto.alternatePhone) ?? null;
     if (dto.website !== undefined) data.website = cleanOptional(dto.website) ?? null;
-    if (dto.addressLine1 !== undefined) data.addressLine1 = cleanOptional(dto.addressLine1) ?? null;
-    if (dto.addressLine2 !== undefined) data.addressLine2 = cleanOptional(dto.addressLine2) ?? null;
-    if (dto.city !== undefined) data.city = cleanOptional(dto.city) ?? null;
-    if (dto.state !== undefined) data.state = cleanOptional(dto.state) ?? null;
-    if (dto.postalCode !== undefined) data.postalCode = cleanOptional(dto.postalCode) ?? null;
-    if (dto.country !== undefined) data.country = cleanOptional(dto.country) ?? 'India';
     if (dto.gstin !== undefined) data.gstin = nextGstin ?? null;
     if (dto.pan !== undefined) data.pan = nextPan ?? null;
-    if (dto.status !== undefined) data.status = dto.status;
     if (dto.notes !== undefined) data.notes = cleanOptional(dto.notes) ?? null;
     if (dto.categoryId !== undefined) {
       data.category = dto.categoryId
@@ -562,15 +859,68 @@ export class VendorsService {
         include: vendorDetailInclude,
       });
 
+      const before = this.auditSnapshot(existing);
+      const after = this.auditSnapshot(updated);
+      const changed = Object.keys(after).filter(
+        (key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]),
+      );
+
       await this.auditService.record(
         {
           actorUserId: actor.id,
           action: 'vendor.update',
-          entityType: 'Vendor',
+          entityType: VENDOR_ENTITY,
           entityId: id,
-          summary: `Updated vendor ${updated.vendorCode}`,
-          before: this.auditSnapshot(existing),
-          after: this.auditSnapshot(updated),
+          summary: changed.length
+            ? `Updated ${changed.join(', ')}`
+            : 'Saved without changes',
+          before,
+          after,
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
+        },
+        tx,
+      );
+
+      return updated;
+    });
+  }
+
+  /** Activate / deactivate. Deactivated vendors stay visible for history. */
+  async updateStatus(
+    id: string,
+    dto: UpdateVendorStatusDto,
+    actor: AuthenticatedUser,
+    context: RequestContext,
+  ) {
+    const existing = await this.prisma.vendor.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Vendor ${id} was not found`);
+    if (existing.archivedAt) {
+      throw new BadRequestException('This vendor is archived. Restore it first.');
+    }
+    if (existing.status === dto.status) {
+      throw new BadRequestException(
+        `This vendor is already ${dto.status === VendorStatus.ACTIVE ? 'active' : 'inactive'}.`,
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.vendor.update({
+        where: { id },
+        data: { status: dto.status, updatedById: actor.id },
+        select: { id: true, vendorCode: true, businessName: true, status: true },
+      });
+
+      const activated = dto.status === VendorStatus.ACTIVE;
+      await this.auditService.record(
+        {
+          actorUserId: actor.id,
+          action: activated ? 'vendor.activate' : 'vendor.deactivate',
+          entityType: VENDOR_ENTITY,
+          entityId: id,
+          summary: `${activated ? 'Activated' : 'Deactivated'} vendor${dto.reason ? `: ${dto.reason}` : ''}`,
+          before: { status: existing.status },
+          after: { status: updated.status, reason: dto.reason ?? null },
           ipAddress: context.ipAddress,
           userAgent: context.userAgent,
         },
@@ -582,8 +932,8 @@ export class VendorsService {
   }
 
   /**
-   * Soft delete. Vendors are never hard-deleted: historical purchases and
-   * documents must survive deactivation (docs/02_WORKFLOW.md 2).
+   * Soft delete. Vendors are never hard-deleted while anything refers to
+   * them: historical records must survive deactivation (docs/02_WORKFLOW.md 2).
    */
   async archive(
     id: string,
@@ -611,9 +961,9 @@ export class VendorsService {
         {
           actorUserId: actor.id,
           action: 'vendor.archive',
-          entityType: 'Vendor',
+          entityType: VENDOR_ENTITY,
           entityId: id,
-          summary: `Archived vendor ${archived.vendorCode}${reason ? `: ${reason}` : ''}`,
+          summary: `Archived vendor${reason ? `: ${reason}` : ''}`,
           before: this.auditSnapshot(existing),
           after: this.auditSnapshot(archived),
           ipAddress: context.ipAddress,
@@ -647,9 +997,9 @@ export class VendorsService {
         {
           actorUserId: actor.id,
           action: 'vendor.restore',
-          entityType: 'Vendor',
+          entityType: VENDOR_ENTITY,
           entityId: id,
-          summary: `Restored vendor ${restored.vendorCode}`,
+          summary: 'Restored vendor from archive',
           ipAddress: context.ipAddress,
           userAgent: context.userAgent,
         },
@@ -660,9 +1010,73 @@ export class VendorsService {
     });
   }
 
+  /**
+   * Records that keep a vendor from being physically deleted. Later modules
+   * add their own count here (quotations, purchase orders, payments...), so
+   * the deletion rule grows with the system instead of being bypassed by it.
+   */
+  async getReferenceCounts(id: string): Promise<Record<string, number>> {
+    const [productMappings, documents, ocrDrafts] = await this.prisma.$transaction([
+      this.prisma.vendorProduct.count({ where: { vendorId: id } }),
+      this.prisma.document.count({ where: { vendorId: id } }),
+      this.prisma.ocrJob.count({ where: { resultingVendorId: id } }),
+    ]);
+    return { productMappings, documents, ocrDrafts };
+  }
+
+  /**
+   * Permanent deletion, allowed only for a vendor nothing refers to (a record
+   * created by mistake). Anything with history must be deactivated or
+   * archived instead. Contacts, addresses and brand mappings are part of the
+   * vendor and go with it.
+   */
+  async remove(id: string, actor: AuthenticatedUser, context: RequestContext): Promise<void> {
+    const existing = await this.prisma.vendor.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Vendor ${id} was not found`);
+
+    const references = await this.getReferenceCounts(id);
+    const blocking = Object.entries(references).filter(([, count]) => count > 0);
+    if (blocking.length > 0) {
+      throw new ConflictException({
+        message:
+          'This vendor is referenced by other records and cannot be deleted. ' +
+          'Deactivate or archive it instead to keep its history.',
+        details: Object.fromEntries(blocking),
+      });
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.vendor.delete({ where: { id } });
+      await this.auditService.record(
+        {
+          actorUserId: actor.id,
+          action: 'vendor.delete',
+          entityType: VENDOR_ENTITY,
+          entityId: id,
+          summary: `Permanently deleted vendor ${existing.vendorCode} - ${existing.businessName}`,
+          before: this.auditSnapshot(existing),
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
+        },
+        tx,
+      );
+    });
+  }
+
   // -------------------------------------------------------------------------
-  // Brand and product mappings
+  // Brand mappings
   // -------------------------------------------------------------------------
+
+  async listCompanies(vendorId: string) {
+    await this.assertVendorExists(vendorId);
+    return this.prisma.vendorCompany.findMany({
+      where: { vendorId },
+      include: {
+        company: { select: { ...brandSelect, isActive: true, archivedAt: true } },
+      },
+      orderBy: { company: { name: 'asc' } },
+    });
+  }
 
   async mapCompany(
     vendorId: string,
@@ -681,30 +1095,85 @@ export class VendorsService {
       throw new ConflictException('This brand is already mapped to the vendor.');
     }
 
-    const mapping = await this.prisma.vendorCompany.create({
-      data: {
-        vendorId,
-        companyId: dto.companyId,
-        isAuthorized: dto.isAuthorized ?? false,
-        remarks: cleanOptional(dto.remarks) ?? null,
-      },
-      include: { company: { select: { id: true, name: true } } },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const mapping = await tx.vendorCompany.create({
+        data: {
+          vendorId,
+          companyId: dto.companyId,
+          isAuthorized: dto.isAuthorized ?? false,
+          remarks: cleanOptional(dto.remarks) ?? null,
+        },
+        include: { company: { select: brandSelect } },
+      });
 
-    await this.auditService.record({
-      actorUserId: actor.id,
-      action: 'vendor.company.map',
-      entityType: 'VendorCompany',
-      entityId: mapping.id,
-      summary: `Mapped brand ${mapping.company.name} to vendor ${vendorId}`,
-      after: { vendorId, companyId: dto.companyId, isAuthorized: mapping.isAuthorized },
-      ipAddress: context.ipAddress,
-      userAgent: context.userAgent,
-    });
+      await this.auditService.record(
+        {
+          actorUserId: actor.id,
+          action: 'vendor.company.map',
+          entityType: 'VendorCompany',
+          entityId: mapping.id,
+          parentEntityType: VENDOR_ENTITY,
+          parentEntityId: vendorId,
+          summary: `Mapped brand ${mapping.company.name}${mapping.isAuthorized ? ' (authorised partner)' : ''}`,
+          after: { vendorId, companyId: dto.companyId, isAuthorized: mapping.isAuthorized },
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
+        },
+        tx,
+      );
 
-    return mapping;
+      return mapping;
+    });
   }
 
+  async updateCompanyMapping(
+    vendorId: string,
+    companyId: string,
+    dto: UpdateVendorCompanyDto,
+    actor: AuthenticatedUser,
+    context: RequestContext,
+  ) {
+    const existing = await this.prisma.vendorCompany.findUnique({
+      where: { vendorId_companyId: { vendorId, companyId } },
+      include: { company: { select: { name: true } } },
+    });
+    if (!existing) throw new NotFoundException('This brand is not mapped to the vendor.');
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.vendorCompany.update({
+        where: { id: existing.id },
+        data: {
+          ...(dto.isAuthorized !== undefined ? { isAuthorized: dto.isAuthorized } : {}),
+          ...(dto.remarks !== undefined ? { remarks: cleanOptional(dto.remarks) ?? null } : {}),
+        },
+        include: { company: { select: brandSelect } },
+      });
+
+      await this.auditService.record(
+        {
+          actorUserId: actor.id,
+          action: 'vendor.company.update',
+          entityType: 'VendorCompany',
+          entityId: existing.id,
+          parentEntityType: VENDOR_ENTITY,
+          parentEntityId: vendorId,
+          summary: `Updated brand mapping ${existing.company.name}`,
+          before: { isAuthorized: existing.isAuthorized, remarks: existing.remarks },
+          after: { isAuthorized: updated.isAuthorized, remarks: updated.remarks },
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
+        },
+        tx,
+      );
+
+      return updated;
+    });
+  }
+
+  /**
+   * Removes a brand mapping. Refused while products of that brand are still
+   * mapped: the brand list must never contradict the product list.
+   */
   async unmapCompany(
     vendorId: string,
     companyId: string,
@@ -718,22 +1187,52 @@ export class VendorsService {
 
     if (!mapping) throw new NotFoundException('This brand is not mapped to the vendor.');
 
-    await this.prisma.vendorCompany.delete({ where: { id: mapping.id } });
+    const productsOfBrand = await this.prisma.vendorProduct.count({
+      where: { vendorId, product: { companyId } },
+    });
+    if (productsOfBrand > 0) {
+      throw new ConflictException(
+        `${productsOfBrand} ${mapping.company.name} product(s) are still mapped to this vendor. ` +
+          'Remove those product mappings first.',
+      );
+    }
 
-    await this.auditService.record({
-      actorUserId: actor.id,
-      action: 'vendor.company.unmap',
-      entityType: 'VendorCompany',
-      entityId: mapping.id,
-      summary: `Removed brand ${mapping.company.name} from vendor ${vendorId}`,
-      before: { vendorId, companyId },
-      ipAddress: context.ipAddress,
-      userAgent: context.userAgent,
+    await this.prisma.$transaction(async (tx) => {
+      await tx.vendorCompany.delete({ where: { id: mapping.id } });
+
+      await this.auditService.record(
+        {
+          actorUserId: actor.id,
+          action: 'vendor.company.unmap',
+          entityType: 'VendorCompany',
+          entityId: mapping.id,
+          parentEntityType: VENDOR_ENTITY,
+          parentEntityId: vendorId,
+          summary: `Removed brand ${mapping.company.name}`,
+          before: { vendorId, companyId },
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
+        },
+        tx,
+      );
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Product mappings
+  // -------------------------------------------------------------------------
+
+  async listProducts(vendorId: string) {
+    await this.assertVendorExists(vendorId);
+    return this.prisma.vendorProduct.findMany({
+      where: { vendorId },
+      include: { product: { select: productSummarySelect } },
+      orderBy: [{ product: { company: { name: 'asc' } } }, { product: { name: 'asc' } }],
     });
   }
 
   /**
-   * Maps a product to a vendor.
+   * Maps a shared catalogue product to a vendor.
    *
    * The product's brand is auto-mapped in the same transaction: a vendor that
    * supplies a Dell laptop necessarily supplies Dell, and letting the two
@@ -774,17 +1273,7 @@ export class VendorsService {
           isPreferred: dto.isPreferred ?? false,
           remarks: cleanOptional(dto.remarks) ?? null,
         },
-        include: {
-          product: {
-            select: {
-              id: true,
-              productCode: true,
-              name: true,
-              modelNumber: true,
-              company: { select: { id: true, name: true } },
-            },
-          },
-        },
+        include: { product: { select: productSummarySelect } },
       });
 
       // Idempotent: does nothing when the brand mapping already exists.
@@ -802,7 +1291,9 @@ export class VendorsService {
           action: 'vendor.product.map',
           entityType: 'VendorProduct',
           entityId: mapping.id,
-          summary: `Mapped product ${product.name} (${product.modelNumber}) to vendor ${vendorId}`,
+          parentEntityType: VENDOR_ENTITY,
+          parentEntityId: vendorId,
+          summary: `Mapped product ${product.name} (${product.modelNumber})`,
           after: {
             vendorId,
             productId: dto.productId,
@@ -828,42 +1319,56 @@ export class VendorsService {
   ) {
     const existing = await this.prisma.vendorProduct.findUnique({
       where: { vendorId_productId: { vendorId, productId } },
+      include: { product: { select: { name: true, modelNumber: true } } },
     });
 
     if (!existing) throw new NotFoundException('This product is not mapped to the vendor.');
 
-    const updated = await this.prisma.vendorProduct.update({
-      where: { id: existing.id },
-      data: {
-        ...(dto.vendorSku !== undefined
-          ? { vendorSku: cleanOptional(dto.vendorSku) ?? null }
-          : {}),
-        ...(dto.leadTimeDays !== undefined ? { leadTimeDays: dto.leadTimeDays } : {}),
-        ...(dto.isPreferred !== undefined ? { isPreferred: dto.isPreferred } : {}),
-        ...(dto.remarks !== undefined
-          ? { remarks: cleanOptional(dto.remarks) ?? null }
-          : {}),
-      },
-      include: {
-        product: {
-          select: { id: true, name: true, modelNumber: true, productCode: true },
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.vendorProduct.update({
+        where: { id: existing.id },
+        data: {
+          ...(dto.vendorSku !== undefined
+            ? { vendorSku: cleanOptional(dto.vendorSku) ?? null }
+            : {}),
+          ...(dto.leadTimeDays !== undefined ? { leadTimeDays: dto.leadTimeDays } : {}),
+          ...(dto.isPreferred !== undefined ? { isPreferred: dto.isPreferred } : {}),
+          ...(dto.remarks !== undefined
+            ? { remarks: cleanOptional(dto.remarks) ?? null }
+            : {}),
         },
-      },
-    });
+        include: { product: { select: productSummarySelect } },
+      });
 
-    await this.auditService.record({
-      actorUserId: actor.id,
-      action: 'vendor.product.update',
-      entityType: 'VendorProduct',
-      entityId: existing.id,
-      summary: `Updated product mapping for vendor ${vendorId}`,
-      before: { vendorSku: existing.vendorSku, leadTimeDays: existing.leadTimeDays, isPreferred: existing.isPreferred },
-      after: { vendorSku: updated.vendorSku, leadTimeDays: updated.leadTimeDays, isPreferred: updated.isPreferred },
-      ipAddress: context.ipAddress,
-      userAgent: context.userAgent,
-    });
+      await this.auditService.record(
+        {
+          actorUserId: actor.id,
+          action: 'vendor.product.update',
+          entityType: 'VendorProduct',
+          entityId: existing.id,
+          parentEntityType: VENDOR_ENTITY,
+          parentEntityId: vendorId,
+          summary: `Updated product mapping ${existing.product.name} (${existing.product.modelNumber})`,
+          before: {
+            vendorSku: existing.vendorSku,
+            leadTimeDays: existing.leadTimeDays,
+            isPreferred: existing.isPreferred,
+            remarks: existing.remarks,
+          },
+          after: {
+            vendorSku: updated.vendorSku,
+            leadTimeDays: updated.leadTimeDays,
+            isPreferred: updated.isPreferred,
+            remarks: updated.remarks,
+          },
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
+        },
+        tx,
+      );
 
-    return updated;
+      return updated;
+    });
   }
 
   async unmapProduct(
@@ -879,17 +1384,24 @@ export class VendorsService {
 
     if (!mapping) throw new NotFoundException('This product is not mapped to the vendor.');
 
-    await this.prisma.vendorProduct.delete({ where: { id: mapping.id } });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.vendorProduct.delete({ where: { id: mapping.id } });
 
-    await this.auditService.record({
-      actorUserId: actor.id,
-      action: 'vendor.product.unmap',
-      entityType: 'VendorProduct',
-      entityId: mapping.id,
-      summary: `Removed product ${mapping.product.name} (${mapping.product.modelNumber}) from vendor ${vendorId}`,
-      before: { vendorId, productId },
-      ipAddress: context.ipAddress,
-      userAgent: context.userAgent,
+      await this.auditService.record(
+        {
+          actorUserId: actor.id,
+          action: 'vendor.product.unmap',
+          entityType: 'VendorProduct',
+          entityId: mapping.id,
+          parentEntityType: VENDOR_ENTITY,
+          parentEntityId: vendorId,
+          summary: `Removed product ${mapping.product.name} (${mapping.product.modelNumber})`,
+          before: { vendorId, productId },
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
+        },
+        tx,
+      );
     });
   }
 
@@ -901,7 +1413,7 @@ export class VendorsService {
    * Characters 3-12 of a GSTIN are the holder's PAN. If both are supplied and
    * disagree, one of them is a typo.
    */
-  private assertGstinMatchesPan(gstin?: string, pan?: string): void {
+  private assertGstinMatchesPan(gstin?: string | null, pan?: string | null): void {
     const normalizedGstin = normalizeTaxId(gstin);
     const normalizedPan = normalizeTaxId(pan);
     if (!normalizedGstin || !normalizedPan) return;
@@ -914,7 +1426,16 @@ export class VendorsService {
     }
   }
 
-  private async assertVendorActive(vendorId: string): Promise<void> {
+  async assertVendorExists(vendorId: string): Promise<void> {
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { id: vendorId },
+      select: { id: true },
+    });
+    if (!vendor) throw new NotFoundException(`Vendor ${vendorId} was not found`);
+  }
+
+  /** Not archived. Inactive vendors may still have master data maintained. */
+  async assertVendorActive(vendorId: string): Promise<void> {
     const vendor = await this.prisma.vendor.findUnique({
       where: { id: vendorId },
       select: { id: true, archivedAt: true },
@@ -925,14 +1446,14 @@ export class VendorsService {
     }
   }
 
-  private async assertCategoryExists(categoryId?: string): Promise<void> {
+  private async assertCategoryExists(categoryId?: string | null): Promise<void> {
     if (!categoryId) return;
     const category = await this.prisma.vendorCategory.findUnique({
       where: { id: categoryId },
       select: { id: true, isActive: true },
     });
-    if (!category) throw new BadRequestException('The selected vendor category does not exist.');
-    if (!category.isActive) throw new BadRequestException('The selected vendor category is inactive.');
+    if (!category) throw new BadRequestException('The selected vendor type does not exist.');
+    if (!category.isActive) throw new BadRequestException('The selected vendor type is inactive.');
   }
 
   private async assertCompaniesExist(companyIds: string[]): Promise<void> {
@@ -943,6 +1464,18 @@ export class VendorsService {
     if (found !== unique.length) {
       throw new BadRequestException('One or more selected brands do not exist or are archived.');
     }
+  }
+
+  private async loadMappableProducts(productIds: string[]) {
+    const unique = [...new Set(productIds)];
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: unique }, archivedAt: null },
+      select: { id: true, companyId: true },
+    });
+    if (products.length !== unique.length) {
+      throw new BadRequestException('One or more selected products do not exist or are archived.');
+    }
+    return products;
   }
 
   private async loadUnconsumedOcrJob(ocrJobId: string) {
@@ -968,10 +1501,9 @@ export class VendorsService {
   /** Audit payload: business fields only, no relations or internal counters. */
   private auditSnapshot(vendor: Record<string, unknown>): Record<string, unknown> {
     const keys = [
-      'vendorCode', 'businessName', 'legalName', 'contactPerson', 'email',
-      'phone', 'alternatePhone', 'website', 'addressLine1', 'addressLine2',
-      'city', 'state', 'postalCode', 'country', 'gstin', 'pan', 'categoryId',
-      'status', 'notes', 'archivedAt',
+      'vendorCode', 'businessName', 'legalName', 'registrationNumber',
+      'email', 'alternateEmail', 'phone', 'alternatePhone', 'website',
+      'gstin', 'pan', 'categoryId', 'status', 'notes', 'archivedAt',
     ];
 
     const snapshot: Record<string, unknown> = {};
@@ -980,4 +1512,15 @@ export class VendorsService {
     }
     return snapshot;
   }
+}
+
+function uniqueDefined(values: Array<string | undefined>): string[] {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+}
+
+function describeCounts(counts: Record<string, number>): string {
+  const parts = Object.entries(counts)
+    .filter(([, count]) => count > 0)
+    .map(([label, count]) => `${count} ${label}${count === 1 ? '' : 's'}`);
+  return parts.length ? ` with ${parts.join(', ')}` : '';
 }

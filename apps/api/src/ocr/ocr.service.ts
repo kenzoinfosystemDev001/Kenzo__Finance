@@ -19,6 +19,7 @@ import {
   type PaginatedResult,
 } from '../common/dto/pagination.dto';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
+import { findBrandMentions } from './vendor-text-parser';
 
 const ocrJobSelect = {
   id: true,
@@ -99,6 +100,18 @@ export class OcrService {
         originalFilename: document.originalFilename,
       });
 
+      // Brands are suggested only from the shared brand master, so a review
+      // can preselect existing brands but OCR can never create one.
+      const suggestedBrands = result.text
+        ? findBrandMentions(
+            result.text,
+            await this.prisma.company.findMany({
+              where: { archivedAt: null, isActive: true },
+              select: { id: true, name: true },
+            }),
+          )
+        : [];
+
       const completed = await this.prisma.ocrJob.update({
         where: { id: job.id },
         data: {
@@ -108,6 +121,7 @@ export class OcrService {
           normalizedResult: {
             draft: result.draft,
             note: result.note ?? null,
+            suggestedBrands,
           } as unknown as Prisma.InputJsonValue,
           overallConfidence: result.overallConfidence,
         },
@@ -154,6 +168,21 @@ export class OcrService {
 
       return failed;
     }
+  }
+
+  /**
+   * What the configured engine can do, so the UI can tell users up front
+   * whether a scanned card will be read or must be typed in.
+   */
+  status() {
+    const readsScannedDocuments = this.provider.name !== 'stub';
+    return {
+      provider: this.provider.name,
+      readsScannedDocuments,
+      message: readsScannedDocuments
+        ? 'Scanned documents and photos are read automatically. Always verify the extracted values.'
+        : 'No OCR engine is configured. Text files are read automatically; for scanned cards and PDFs the file is stored and you enter the details by hand.',
+    };
   }
 
   async findOne(id: string) {

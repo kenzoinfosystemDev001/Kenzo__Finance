@@ -28,13 +28,25 @@ const toArray = ({ value }: { value: unknown }) => {
   return value;
 };
 
+/**
+ * Sortable list columns. `productCount` and `brandCount` sort by the number
+ * of mapped rows (a relation count), the rest by the column itself.
+ */
 export const VENDOR_SORT_FIELDS = [
   'businessName',
   'vendorCode',
+  'contactPerson',
+  'phone',
+  'email',
   'city',
+  'status',
+  'productCount',
+  'brandCount',
   'createdAt',
   'updatedAt',
 ] as const;
+
+export type VendorSortField = (typeof VENDOR_SORT_FIELDS)[number];
 
 /**
  * Advanced vendor search (docs/01_PRD.md 5.2).
@@ -45,8 +57,9 @@ export const VENDOR_SORT_FIELDS = [
 export class QueryVendorsDto extends PaginationQueryDto {
   @ApiPropertyOptional({
     description:
-      'Free-text search across vendor name, code, contact person, email, ' +
-      'phone, city and GSTIN.',
+      'Free-text search across vendor name, code, GSTIN, company and contact ' +
+      'person phone/email/name, city, mapped brand names, and mapped product ' +
+      'names and model numbers.',
   })
   @IsOptional()
   @IsString()
@@ -123,5 +136,5 @@ export class QueryVendorsDto extends PaginationQueryDto {
   @ApiPropertyOptional({ enum: VENDOR_SORT_FIELDS, default: 'createdAt' })
   @IsOptional()
   @IsIn(VENDOR_SORT_FIELDS)
-  sortBy: (typeof VENDOR_SORT_FIELDS)[number] = 'createdAt';
+  sortBy: VendorSortField = 'createdAt';
 }

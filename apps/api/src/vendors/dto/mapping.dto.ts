@@ -36,6 +36,20 @@ export class MapVendorCompanyDto {
   remarks?: string;
 }
 
+export class UpdateVendorCompanyDto {
+  @ApiPropertyOptional({ description: 'Vendor is an authorised partner/distributor for this brand' })
+  @IsOptional()
+  @IsBoolean()
+  isAuthorized?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  @Transform(trim)
+  remarks?: string;
+}
+
 /**
  * Links a vendor to a product it supplies.
  *
