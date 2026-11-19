@@ -240,6 +240,37 @@ Then open the Vercel URL and sign in. If the frontend shows
 | Works then logs out | `AUTH_*` secrets changed between deploys, invalidating issued tokens |
 
 
+### Build fails: "Property 'xyz' does not exist on type 'PrismaClient'"
+
+Typical lines, often dozens at once:
+
+```
+error TS2551: Property 'vendorProductModel' does not exist on type
+  'Omit<PrismaClient, ...>'. Did you mean 'vendorProduct'?
+error TS2339: Property 'status' does not exist on type '{ id: string; ... }'
+error TS7006: Parameter 'm' implicitly has an 'any' type
+```
+
+**Cause: the generated Prisma client is older than the schema.** It is not
+committed — it is generated into `node_modules`, so it has to be rebuilt
+whenever `schema.prisma` changes. Render restores `node_modules` from its
+build cache and `npm install` then reports "up to date", which means
+`@prisma/client`'s own postinstall never runs. A build command of just
+`nest build` therefore compiles new code against last week's client.
+
+The knock-on errors are the confusing part: once Prisma cannot type one
+model, `include`/`select` inference collapses and perfectly good code starts
+reporting missing properties and implicit `any`. **Fix the client and they all
+disappear together** — do not "fix" them individually.
+
+`apps/api`'s `build` script is now `prisma generate && nest build`, so this
+cannot recur regardless of build command, Root Directory or cache state.
+
+The same thing happens locally after pulling a branch that changed the
+schema. On Windows, `prisma generate` fails with `EPERM ... query_engine-
+windows.dll.node` while the API is running, because the live process holds
+the engine mapped — **stop the API first**, then build.
+
 ### Deploy fails with "No open ports detected" / exit 134
 
 The full symptom in the Render log is:
@@ -271,13 +302,12 @@ is no longer reachable by accident.
 | `nest start --watch` | Compiles and recompiles on change | Local development |
 | `node dist/main.js` | Runs the compiled server. Low memory | **Production** |
 
-> **Also check the Root Directory.** With Root Directory = `apps/api`, a build
-> command of `npm run build` runs `nest build` alone: it neither generates the
-> Prisma client nor applies migrations, so the service can compile and then
-> fail at runtime or run against an out-of-date schema. Clear the Root
-> Directory and use `npm install && npm run render:build`, which does all
-> three. If you would rather keep `apps/api` as the root, the equivalent is
-> `npm install && npm run prisma:generate && npm run prisma:deploy && npm run build`.
+> **Migrations are the one thing a bare `npm run build` still misses.** The
+> build generates the Prisma client and compiles, but deliberately does not
+> touch the database — a build should not mutate a live schema, and it would
+> fail whenever Neon happened to be asleep. Either use
+> `npm install && npm run render:build` (which runs `migrate deploy` first),
+> or set Render's **Pre-Deploy Command** to `npm run prisma:deploy`.
 
 ### The site loads but sign-in shows "temporarily unavailable"
 
