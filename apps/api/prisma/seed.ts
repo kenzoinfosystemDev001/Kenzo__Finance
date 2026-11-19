@@ -42,6 +42,8 @@ const DOCUMENT_SEQUENCES = [
   { key: 'PRODUCT', prefix: 'KI/PRD/', padding: 5 },
   { key: 'PRODUCT_MODEL', prefix: 'KI/MDL/', padding: 5 },
   { key: 'CUSTOMER', prefix: 'KI/CUS/', padding: 4 },
+  { key: 'ENQUIRY', prefix: 'KI/ENQ/', padding: 5 },
+  { key: 'QUOTATION', prefix: 'KI/QT/', padding: 5 },
 ];
 
 function normalizeName(value: string): string {
@@ -75,6 +77,29 @@ async function seedCustomerCategories(): Promise<void> {
     });
   }
   console.log(`  customer categories: ${CUSTOMER_CATEGORIES.length}`);
+}
+
+/** Starting enquiry sources. Editable (and deactivatable) by administrators. */
+const ENQUIRY_SOURCES = [
+  { name: 'Website', sortOrder: 10 },
+  { name: 'Email', sortOrder: 20 },
+  { name: 'Phone Call', sortOrder: 30 },
+  { name: 'WhatsApp', sortOrder: 40 },
+  { name: 'Direct Visit', sortOrder: 50 },
+  { name: 'Referral', sortOrder: 60 },
+  { name: 'Existing Customer', sortOrder: 70 },
+  { name: 'Other', sortOrder: 99 },
+];
+
+async function seedEnquirySources(): Promise<void> {
+  for (const source of ENQUIRY_SOURCES) {
+    await prisma.enquirySource.upsert({
+      where: { normalizedName: normalizeName(source.name) },
+      create: { ...source, normalizedName: normalizeName(source.name) },
+      update: {},
+    });
+  }
+  console.log(`  enquiry sources: ${ENQUIRY_SOURCES.length}`);
 }
 
 async function seedPermissions(): Promise<void> {
@@ -310,6 +335,7 @@ async function main(): Promise<void> {
   await seedSequences();
   await seedVendorCategories();
   await seedCustomerCategories();
+  await seedEnquirySources();
   await seedProductCategories();
   await seedSettings();
   await seedSuperAdmin();

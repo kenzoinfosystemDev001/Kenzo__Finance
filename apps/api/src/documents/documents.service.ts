@@ -27,6 +27,8 @@ export interface UploadInput {
   vendorId?: string;
   productId?: string;
   customerId?: string;
+  enquiryId?: string;
+  quotationId?: string;
   /** The current document this upload supersedes (replacement flow). */
   replacesDocumentId?: string;
 }
@@ -52,13 +54,17 @@ const documentSummarySelect = {
   vendorId: true,
   productId: true,
   customerId: true,
+  enquiryId: true,
+  quotationId: true,
   replacesDocumentId: true,
   createdAt: true,
   uploadedBy: { select: { id: true, fullName: true } },
 } satisfies Prisma.DocumentSelect;
 
 /** Audit parent for a document: the record it is attached to, if any. */
-function parentOf(document: { vendorId: string | null; productId: string | null; customerId?: string | null }) {
+function parentOf(document: { vendorId: string | null; productId: string | null; customerId?: string | null; enquiryId?: string | null; quotationId?: string | null }) {
+  if (document.quotationId) return { parentEntityType: 'Quotation', parentEntityId: document.quotationId };
+  if (document.enquiryId) return { parentEntityType: 'Enquiry', parentEntityId: document.enquiryId };
   if (document.customerId) return { parentEntityType: 'Customer', parentEntityId: document.customerId };
   if (document.vendorId) return { parentEntityType: 'Vendor', parentEntityId: document.vendorId };
   if (document.productId) return { parentEntityType: 'Product', parentEntityId: document.productId };
@@ -119,8 +125,22 @@ export class DocumentsService {
       if (!customer) throw new BadRequestException('The referenced customer does not exist.');
     }
 
+    if (input.enquiryId) {
+      const enquiry = await this.prisma.enquiry.findUnique({ where: { id: input.enquiryId }, select: { id: true } });
+      if (!enquiry) throw new BadRequestException('The referenced enquiry does not exist.');
+    }
+
+    if (input.quotationId) {
+      const quotation = await this.prisma.quotation.findUnique({ where: { id: input.quotationId }, select: { id: true } });
+      if (!quotation) throw new BadRequestException('The referenced quotation does not exist.');
+    }
+
     const stored = await this.storageService.save(input.buffer, {
-      folder: input.customerId
+      folder: input.quotationId
+        ? 'quotations'
+        : input.enquiryId
+        ? 'enquiries'
+        : input.customerId
         ? 'customers'
         : input.productId
         ? 'products'
@@ -145,6 +165,8 @@ export class DocumentsService {
           vendorId: input.vendorId ?? null,
           productId: input.productId ?? null,
           customerId: input.customerId ?? null,
+          enquiryId: input.enquiryId ?? null,
+          quotationId: input.quotationId ?? null,
           replacesDocumentId: input.replacesDocumentId ?? null,
           uploadedById: actor.id,
         },
@@ -177,6 +199,8 @@ export class DocumentsService {
             sizeBytes: document.sizeBytes,
             vendorId: document.vendorId,
             customerId: document.customerId,
+            enquiryId: document.enquiryId,
+            quotationId: document.quotationId,
             productId: document.productId,
             replacesDocumentId: document.replacesDocumentId,
           },

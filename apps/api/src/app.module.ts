@@ -18,6 +18,8 @@ import { SettingsModule } from './settings/settings.module';
 import { StockModule } from './stock/stock.module';
 import { BrandingModule } from './branding/branding.module';
 import { CustomersModule } from './customers/customers.module';
+import { EnquiriesModule } from './enquiries/enquiries.module';
+import { QuotationsModule } from './quotations/quotations.module';
 import { HealthController } from './health/health.controller';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
@@ -48,6 +50,8 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     OcrModule,
     BrandingModule,
     CustomersModule,
+    EnquiriesModule,
+    QuotationsModule,
   ],
   controllers: [HealthController],
   providers: [

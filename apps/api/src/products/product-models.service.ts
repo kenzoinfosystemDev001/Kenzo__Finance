@@ -130,16 +130,23 @@ export class ProductModelsService {
   }
 
   /**
-   * Permanent delete, only while nothing refers to the model. Later modules
-   * add their references (quotation lines, ...) to this check.
+   * Permanent delete, only while nothing refers to the model (vendor
+   * mappings, enquiry and quotation lines, customer interests).
    */
   async remove(modelId: string, actor: AuthenticatedUser, context: RequestContext): Promise<void> {
     const existing = await this.loadModel(modelId);
-    const vendorMappings = await this.prisma.vendorProductModel.count({ where: { productModelId: modelId } });
-    if (vendorMappings > 0) {
+    const [vendorMappings, enquiryItems, customerInterests, quotationItems] = await this.prisma.$transaction([
+      this.prisma.vendorProductModel.count({ where: { productModelId: modelId } }),
+      this.prisma.enquiryItem.count({ where: { productModelId: modelId } }),
+      this.prisma.customerProductInterest.count({ where: { productModelId: modelId } }),
+      this.prisma.quotationItem.count({ where: { productModelId: modelId } }),
+    ]);
+    if (vendorMappings + enquiryItems + customerInterests + quotationItems > 0) {
       throw new ConflictException({
-        message: `This model is mapped to ${vendorMappings} vendor(s). Remove those mappings or deactivate the model instead.`,
-        details: { vendorMappings },
+        message: 'This model is used by vendor mappings, enquiries, quotations or customer interests. Deactivate it instead to keep history.',
+        details: Object.fromEntries(
+          Object.entries({ vendorMappings, enquiryItems, customerInterests, quotationItems }).filter(([, count]) => count > 0),
+        ),
       });
     }
 

@@ -112,3 +112,70 @@ Before creating an enquiry/quotation/PI call
 `CustomersService.getReferenceCounts()`. Selector: `GET /customers/lookup`.
 The customer profile's "Business Transactions" tab is where those records
 should then be listed by `customerId`.
+
+## 7. Enquiries (Module 4)
+
+| Table | Notes |
+| --- | --- |
+| `enquiries` | `enquiryNumber` generated (KI/ENQ/00001). `customerId` Restrict, optional `customerContactId`, `sourceId` (configurable `enquiry_sources`), `assignedToId` (existing users; there is no separate employee master). `convertedAt` / `convertedReference` record the single conversion. |
+| `enquiry_items` | Product requirements; reference `products` / `product_models` (Restrict). |
+| `enquiry_follow_ups`, `enquiry_status_history` | History; `nextFollowUpDate` on the enquiry is kept in sync. |
+
+Lifecycle and locks live in `enquiry-rules.ts`. CONVERTED, LOST and CLOSED
+enquiries are read-only. CONVERTED can only be reached through the hand-off:
+
+- `EnquiriesService.conversionHandoff(id, actor)` returns readiness
+  (`ready`, `problems`) and the customer, contact, currency and items.
+  It creates nothing. HTTP: `GET /enquiries/:id/conversion`.
+- `EnquiriesService.markConverted(tx, enquiryId, reference, actor)` must run
+  inside the transaction that creates the downstream document. Its guarded
+  update allows exactly one conversion.
+- `EnquiriesService.revertConversion(tx, enquiryId, reference, actor)` undoes
+  it when that document is deleted before it was ever issued.
+
+Permissions: `enquiry.read`, `create`, `update`, `delete`, `assign`,
+`change_status`, `manage_follow_ups`, `upload_attachments`,
+`delete_attachments`, `convert`, `export`.
+
+## 8. Quotations (Module 5)
+
+| Table | Notes |
+| --- | --- |
+| `quotations` | Header. `quotationNumber` (KI/QT/00001), `customerId` Restrict, `enquiryId` **unique** (one quotation per enquiry), `status` / `currentRevisionNumber` / `currentTotal` mirror the current revision for listing, `acceptedRevisionId` pins acceptance. |
+| `quotation_revisions` | Content of each version: dates, terms, totals (`Decimal(14,2)`), `taxBreakdown`, and `customerSnapshot`, which is frozen when the revision is issued. `issuedAt` is set on Mark as Sent. `pdfDocumentId` is the stored PDF. |
+| `quotation_items` | Snapshot lines (product, brand and model names, specs) plus `productId` / `productModelId` references. Prices, discount and tax are per line and entered by the user. |
+| `quotation_status_history`, `quotation_communications` | History. A communication is a record of what happened; nothing is sent by the system. |
+
+Rules:
+
+- Only a DRAFT revision is editable (`PATCH /quotations/:id/draft`).
+- Changing an issued quotation creates a new revision
+  (`POST /quotations/:id/revisions`). The previous revision becomes
+  SUPERSEDED and is never modified. Superseded revisions cannot be accepted.
+- Lifecycle: see `quotation-rules.ts`. Approval is optional through the
+  `quotation.approvalRequired` setting (default off). When it is on, a draft
+  goes through PENDING_APPROVAL → APPROVED before it can be sent.
+- Amounts are computed on the server in `quotation-calc.ts` with exact
+  decimals.
+  - **Pending business decision:** the additional (header) discount is
+    applied after tax, as a flat reduction.
+- PDFs come from the revision snapshot only. An issued revision is rendered
+  once and stored (`QUOTATION_PDF`). An unissued revision renders on demand
+  with a DRAFT watermark. The company block comes from the
+  `branding.companyProfile` setting (`PUT /quotations/settings/company-profile`).
+
+**Proforma Invoice hand-off (Module 6).** Call
+`GET /quotations/:id/revisions/:n/proforma-handoff` (or
+`QuotationsService.proformaHandoff`). It returns `ready` only for the accepted
+revision, along with the items, totals, customer and currency, and creates
+nothing. The PI module should:
+
+- store `quotationId` and `revisionId` (Restrict);
+- copy the lines into its own tables;
+- add itself to `QuotationsService.remove` guards and to the customer and
+  product reference counts.
+
+Permissions: `quotation.read`, `create` (from enquiry), `create_manual`,
+`update`, `revise`, `submit`, `approve`, `send` (mark sent and record
+customer responses), `download`, `cancel`, `delete` (never-issued drafts
+only), `export`, `reports`.

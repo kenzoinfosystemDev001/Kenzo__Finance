@@ -7,6 +7,8 @@ export const SEQUENCE_KEYS = {
   PRODUCT: 'PRODUCT',
   PRODUCT_MODEL: 'PRODUCT_MODEL',
   CUSTOMER: 'CUSTOMER',
+  ENQUIRY: 'ENQUIRY',
+  QUOTATION: 'QUOTATION',
 } as const;
 
 export type SequenceKey = (typeof SEQUENCE_KEYS)[keyof typeof SEQUENCE_KEYS];

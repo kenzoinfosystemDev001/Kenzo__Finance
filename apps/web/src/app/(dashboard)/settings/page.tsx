@@ -2,10 +2,11 @@ import type { Metadata } from 'next';
 import { apiFetch } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth-actions';
 import { setStockTrackingAction } from '@/lib/inventory-actions';
-import type { AppSetting } from '@/lib/types';
+import type { AppSetting, QuotationSettings } from '@/lib/types';
 import { PageHeader, SectionCard } from '@/components/ui';
 import { getLoginBranding, loginBackgroundUrl } from '@/lib/branding';
 import { LoginBrandingSettings } from './login-branding-settings';
+import { QuotationSettingsPanel } from './quotation-settings';
 
 export const metadata: Metadata = { title: 'Settings' };
 
@@ -18,9 +19,15 @@ export default async function SettingsPage() {
   ).catch(() => ({ settings: [] as AppSetting[] }));
 
   const branding = await getLoginBranding();
+  const canReadQuotations = user?.permissions.includes('quotation.read') ?? false;
+  const quotationSettings = canReadQuotations
+    ? await apiFetch<QuotationSettings>('/quotations/settings').catch(() => null)
+    : null;
 
   const stockTracking =
     settings.find((s) => s.key === 'inventory.stockTrackingEnabled')?.value === true;
+  const quotationApproval =
+    settings.find((s) => s.key === 'quotation.approvalRequired')?.value === true;
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
@@ -92,6 +99,20 @@ export default async function SettingsPage() {
         </div>
       </SectionCard>
 
+      {(canManage || canReadQuotations) && (
+        <SectionCard
+          title="Quotations"
+          description="Approval before sending, default terms and the company details printed on quotation PDFs."
+        >
+          <QuotationSettingsPanel
+            approvalRequired={quotationApproval}
+            defaultTerms={quotationSettings ? quotationSettings.defaultTerms : null}
+            companyProfile={quotationSettings ? quotationSettings.companyProfile : null}
+            canManage={canManage}
+          />
+        </SectionCard>
+      )}
+
       <SectionCard
         title="All settings"
         description="Current effective values."
@@ -110,7 +131,7 @@ export default async function SettingsPage() {
               {settings.map((setting) => (
                 <tr key={setting.key}>
                   <td className="font-mono text-sm">{setting.key}</td>
-                  <td className="font-mono text-sm">{setting.value === null ? '—' : String(setting.value)}</td>
+                  <td className="font-mono text-sm">{setting.value === null ? '—' : typeof setting.value === 'object' ? JSON.stringify(setting.value) : String(setting.value)}</td>
                   <td className="text-ink-muted">{setting.description}</td>
                 </tr>
               ))}
