@@ -14,6 +14,8 @@ blueprint for the Kenzo Infosystems ERP and Business Management System.
     Level 1 and Level 2 data flow diagrams
 5.  [`05_REPOSITORY_STRUCTURE.md`](./05_REPOSITORY_STRUCTURE.md) --
     Monorepo and application folder structure
+6.  [`06_DEPLOYMENT.md`](./06_DEPLOYMENT.md) -- Deploying to Vercel (web),
+    Render (API) and Neon, with the full environment-variable matrix
 
 ## Implementation status
 

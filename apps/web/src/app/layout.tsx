@@ -3,10 +3,10 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Axiom Technologies',
-    template: '%s | Axiom Technologies',
+    default: 'Kenzo Infosystems',
+    template: '%s | Kenzo Infosystems',
   },
-  description: 'Axiom Technologies Business Management Software.',
+  description: 'Kenzo Infosystems Business Management Software.',
 };
 
 export const viewport: Viewport = {

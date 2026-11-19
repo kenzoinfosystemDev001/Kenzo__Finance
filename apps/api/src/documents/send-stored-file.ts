@@ -1,4 +1,6 @@
-import type { ReadStream } from 'node:fs';
+// Readable rather than fs.ReadStream: a remote storage driver (Cloudinary,
+// S3) streams over the network and never opens a file descriptor.
+import type { Readable } from 'node:stream';
 import type { Response } from 'express';
 
 /**
@@ -15,7 +17,7 @@ import type { Response } from 'express';
 export function sendStoredFile(
   response: Response,
   file: {
-    stream: ReadStream;
+    stream: Readable;
     filename: string;
     mimeType: string;
     sizeBytes: number;

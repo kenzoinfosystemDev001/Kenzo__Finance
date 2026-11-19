@@ -12,7 +12,9 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
 
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('API_PORT', 4000);
+  // A platform-injected PORT takes precedence over the local API_PORT.
+  const port =
+    configService.get<number>('PORT') ?? configService.get<number>('API_PORT', 4000);
   const webUrl = configService.get<string>('WEB_URL', 'http://localhost:3000');
   const isProduction = configService.get<string>('NODE_ENV') === 'production';
 
@@ -43,7 +45,7 @@ async function bootstrap(): Promise<void> {
   // production, where it would leak the full API surface to anonymous callers.
   if (!isProduction) {
     const config = new DocumentBuilder()
-      .setTitle('Axiom Technologies Business Management API')
+      .setTitle('Kenzo Infosystems Business Management API')
       .setDescription(
         'Shared API for all modules. Module 1: Vendor Management; ' +
           'Module 2 catalogue and inventory.',
@@ -65,8 +67,11 @@ async function bootstrap(): Promise<void> {
   await prismaService.enableShutdownHooks(app);
   app.enableShutdownHooks();
 
-  await app.listen(port);
-  logger.log(`API listening on http://localhost:${port}/api/v1`);
+  // Bind to all interfaces. Containers route external traffic to the
+  // container IP, so listening only on localhost would be unreachable.
+  await app.listen(port, '0.0.0.0');
+  logger.log(`API listening on port ${port} (base path /api/v1)`);
+  logger.log(`CORS origin: ${webUrl}`);
 }
 
 void bootstrap();

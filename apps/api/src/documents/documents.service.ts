@@ -7,7 +7,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentKind, Prisma } from '@prisma/client';
-import type { ReadStream } from 'node:fs';
+// Readable, not fs.ReadStream: a remote storage driver (Cloudinary, S3)
+// streams over the network and never opens a file descriptor.
+import type { Readable } from 'node:stream';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { StorageService } from '../storage/storage.service';
@@ -113,6 +115,7 @@ export class DocumentsService {
           ? 'branding'
           : 'vendors',
       originalFilename: `file.${detected.extension}`,
+      mimeType: detected.mimeType,
     });
 
     // The new row, the archiving of a replaced file and the audit entry
@@ -220,7 +223,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
     options: { preview?: boolean } = {},
   ): Promise<{
-    stream: ReadStream;
+    stream: Readable;
     filename: string;
     mimeType: string;
     sizeBytes: number;
@@ -244,7 +247,7 @@ export class DocumentsService {
     });
 
     return {
-      stream: this.storageService.createReadStream(document.storageKey),
+      stream: await this.storageService.createReadStream(document.storageKey),
       filename: document.originalFilename,
       mimeType: document.mimeType,
       sizeBytes: document.sizeBytes,

@@ -89,7 +89,7 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
             <path d="M20 15 28 30h-7.5L17 23.5Z" fill="#60a5fa" />
           </svg>
           <div className="min-w-0">
-            <p className="truncate text-lg font-bold leading-tight tracking-wide text-white">AXIOM</p>
+            <p className="truncate text-lg font-bold leading-tight tracking-wide text-white">KENZO</p>
             <p className="truncate text-[0.65rem] font-medium uppercase leading-tight tracking-[0.2em] text-sidebar-muted">
               Technologies
             </p>
@@ -142,7 +142,7 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
         </nav>
 
         <div className="m-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs leading-relaxed text-sidebar-muted">
-          <p className="font-medium text-sidebar-ink">Axiom Technologies</p>
+          <p className="font-medium text-sidebar-ink">Kenzo Infosystems</p>
           <p>Business Management</p>
         </div>
       </aside>

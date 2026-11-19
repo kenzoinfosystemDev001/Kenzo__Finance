@@ -69,6 +69,22 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             Smart Business.
             <br />
             Greater Growth.
+    <main className="flex min-h-screen items-center justify-center px-4 py-12">
+      <div className="w-full max-w-sm">
+        <div className="mb-8">
+          <div className="mb-6 flex items-center gap-2.5">
+            <svg viewBox="0 0 40 32" className="h-9 w-11" aria-hidden>
+              <path d="M20 2 36 30h-8L20 15 12 30H4Z" fill="rgb(var(--accent))" />
+              <path d="M20 15 28 30h-7.5L17 23.5Z" fill="#60a5fa" />
+            </svg>
+            <div>
+              <p className="text-base font-bold leading-tight tracking-wide text-ink">
+                KENZO INFOSYSTEMS
+              </p>
+              <p className="text-xs leading-tight text-ink-subtle">
+                Business Management
+              </p>
+            </div>
           </div>
         </div>
 
