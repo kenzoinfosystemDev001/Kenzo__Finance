@@ -11,31 +11,38 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   Res,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import {
-  ApiBearerAuth,
-  ApiBody,
-  ApiConsumes,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
-import type { Response } from 'express';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { Request, Response } from 'express';
 import { ProductsService } from './products.service';
 import {
   CreateProductCategoryDto,
   CreateProductDto,
+  MapProductVendorDto,
+  ProductLookupQueryDto,
   QueryProductsDto,
+  StatusDto,
   UpdateProductCategoryDto,
   UpdateProductDto,
 } from './dto/product.dto';
+import { UpdateVendorProductDto } from '../vendors/dto/mapping.dto';
+import { PaginationQueryDto } from '../common/dto/pagination.dto';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
 import { PERMISSIONS } from '../common/authz/permissions';
 import { toCsv } from '../common/utils/csv';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
+import { contextOf } from '../vendors/vendor-shared';
+
+const uuid = () => new ParseUUIDPipe({ version: '4' });
+
+const imageBody = {
+  schema: { type: 'object', required: ['file'], properties: { file: { type: 'string', format: 'binary' } } },
+};
 
 @ApiTags('Products')
 @ApiBearerAuth()
@@ -43,57 +50,64 @@ import type { AuthenticatedUser } from '../common/authz/authenticated-user';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  // --- Collection routes (declared before :id) ------------------------------
+
   @Get()
   @RequirePermissions(PERMISSIONS.PRODUCT_READ)
   @ApiOperation({
-    summary: 'Search products by name, model, brand, design number or category',
+    summary: 'Search, filter, sort and paginate products',
     description:
-      'Multiple filters combine. When stock tracking is on, each row also ' +
-      'carries on-hand quantity and low/out-of-stock flags.',
+      'search matches product name/code/SKU, brand, model name/number/code and mapped vendor names. ' +
+      'Filters combine. With stock tracking on, rows also carry on-hand figures.',
   })
   async findAll(@Query() query: QueryProductsDto) {
     return this.productsService.findAll(query);
   }
 
+  @Get('summary')
+  @RequirePermissions(PERMISSIONS.PRODUCT_READ)
+  @ApiOperation({ summary: 'Dashboard figures counted from live records' })
+  async summary() {
+    return this.productsService.summary();
+  }
+
+  @Get('lookup')
+  @RequirePermissions(PERMISSIONS.PRODUCT_READ)
+  @ApiOperation({
+    summary: 'Active products with active models, for other modules',
+    description: 'Selector for enquiry / quotation / PI lines. Filter by vendorId for what a vendor supplies.',
+  })
+  async lookup(@Query() query: ProductLookupQueryDto) {
+    return this.productsService.lookup(query);
+  }
+
   @Get('export')
   @RequirePermissions(PERMISSIONS.PRODUCT_EXPORT)
   @ApiOperation({ summary: 'Export the filtered catalogue as CSV' })
-  async export(
-    @Query() query: QueryProductsDto,
-    @Res() response: Response,
-  ): Promise<void> {
-    const { products, balances, trackingEnabled } =
-      await this.productsService.findAllForExport(query);
+  async export(@Query() query: QueryProductsDto, @Res() response: Response): Promise<void> {
+    const { products, balances, trackingEnabled } = await this.productsService.findAllForExport(query);
 
     const csv = toCsv(
       products.map((product) => {
-        const specs = product.specifications as Record<string, string> | null;
-
         const row: Record<string, unknown> = {
-          'Product Code': product.productCode,
+          'Product ID': product.productCode,
+          SKU: product.sku ?? '',
           'Product Name': product.name,
           Brand: product.company.name,
-          'Model Number': product.modelNumber,
-          'Design Number': product.designNumber ?? '',
           Category: product.category?.name ?? '',
-          Description: product.description ?? '',
-          Specifications: specs
-            ? Object.entries(specs)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join('; ')
-            : '',
+          Models: product.models.map((m) => `${m.modelName} (${m.modelNumber})`).join('; '),
+          'Model Count': product.models.length,
           Vendors: product.vendors.map((v) => v.vendor.businessName).join('; '),
+          Description: product.description ?? '',
           Status: product.isActive ? 'Active' : 'Inactive',
           'Created At': product.createdAt.toISOString(),
         };
-
-        // Only emit stock columns when quantities actually exist; a column of
-        // zeros would read as "nothing in stock" rather than "not tracked".
+        // Stock columns only exist when quantities are tracked; zeros would
+        // read as "nothing in stock" rather than "not tracked".
         if (trackingEnabled) {
           row['On Hand'] = balances.get(product.id) ?? 0;
           row['Reorder Level'] = product.reorderLevel ?? '';
         }
-
         return row;
       }),
     );
@@ -104,7 +118,7 @@ export class ProductsController {
     response.send('﻿' + csv);
   }
 
-  // --- Categories (declared before :id so they are not read as an id) -------
+  // --- Categories -----------------------------------------------------------
 
   @Get('categories')
   @RequirePermissions(PERMISSIONS.PRODUCT_READ)
@@ -116,10 +130,7 @@ export class ProductsController {
   @Post('categories')
   @RequirePermissions(PERMISSIONS.PRODUCT_CREATE)
   @ApiOperation({ summary: 'Create a product category' })
-  async createCategory(
-    @Body() dto: CreateProductCategoryDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
+  async createCategory(@Body() dto: CreateProductCategoryDto, @CurrentUser() user: AuthenticatedUser) {
     return this.productsService.createCategory(dto, user);
   }
 
@@ -127,109 +138,162 @@ export class ProductsController {
   @RequirePermissions(PERMISSIONS.PRODUCT_UPDATE)
   @ApiOperation({ summary: 'Rename or deactivate a product category' })
   async updateCategory(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Param('id', uuid()) id: string,
     @Body() dto: UpdateProductCategoryDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.productsService.updateCategory(id, dto, user);
   }
 
+  @Post()
+  @RequirePermissions(PERMISSIONS.PRODUCT_CREATE)
+  @ApiOperation({
+    summary: 'Create a product (optionally with its first models)',
+    description: 'Brand must exist in the shared brand master. A brand cannot have two products with the same name.',
+  })
+  async create(@Body() dto: CreateProductDto, @CurrentUser() user: AuthenticatedUser, @Req() request: Request) {
+    return this.productsService.create(dto, user, contextOf(request));
+  }
+
   // --- Single product -------------------------------------------------------
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS.PRODUCT_READ)
-  @ApiOperation({
-    summary: 'Product detail with specifications, vendors and stock position',
-  })
-  async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {
+  @ApiOperation({ summary: 'Product profile: models, vendors (with model mappings), documents, stock' })
+  async findOne(@Param('id', uuid()) id: string) {
     return this.productsService.findOne(id);
   }
 
-  @Post()
-  @RequirePermissions(PERMISSIONS.PRODUCT_CREATE)
-  @ApiOperation({ summary: 'Create a product' })
-  async create(
-    @Body() dto: CreateProductDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.productsService.create(dto, user);
+  @Get(':id/activity')
+  @RequirePermissions(PERMISSIONS.PRODUCT_READ)
+  @ApiOperation({ summary: 'Activity history of the product, its models, documents and vendor mappings' })
+  async activity(@Param('id', uuid()) id: string, @Query() pagination: PaginationQueryDto) {
+    return this.productsService.activity(id, pagination);
   }
 
   @Patch(':id')
   @RequirePermissions(PERMISSIONS.PRODUCT_UPDATE)
-  @ApiOperation({ summary: 'Update a product' })
+  @ApiOperation({ summary: 'Update product details (send null to clear a field)' })
   async update(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Param('id', uuid()) id: string,
     @Body() dto: UpdateProductDto,
     @CurrentUser() user: AuthenticatedUser,
+    @Req() request: Request,
   ) {
-    return this.productsService.update(id, dto, user);
+    return this.productsService.update(id, dto, user, contextOf(request));
+  }
+
+  @Patch(':id/status')
+  @RequirePermissions(PERMISSIONS.PRODUCT_UPDATE)
+  @ApiOperation({ summary: 'Activate or deactivate a product' })
+  async setStatus(
+    @Param('id', uuid()) id: string,
+    @Body() dto: StatusDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() request: Request,
+  ) {
+    return this.productsService.setStatus(id, dto, user, contextOf(request));
   }
 
   @Post(':id/archive')
   @RequirePermissions(PERMISSIONS.PRODUCT_ARCHIVE)
-  @ApiOperation({
-    summary: 'Archive a product',
-    description: 'Refused while the product still has stock on hand.',
-  })
-  async archive(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
+  @ApiOperation({ summary: 'Archive a product', description: 'Refused while the product still has stock on hand.' })
+  async archive(@Param('id', uuid()) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.productsService.archive(id, user);
   }
 
   @Post(':id/restore')
   @RequirePermissions(PERMISSIONS.PRODUCT_ARCHIVE)
   @ApiOperation({ summary: 'Restore an archived product' })
-  async restore(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
+  async restore(@Param('id', uuid()) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.productsService.restore(id, user);
   }
 
-  // --- Catalogue image ------------------------------------------------------
+  @Delete(':id')
+  @RequirePermissions(PERMISSIONS.PRODUCT_DELETE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Permanently delete an unreferenced product',
+    description: 'Refused (409) while vendor mappings, stock movements or documents exist.',
+  })
+  async remove(@Param('id', uuid()) id: string, @CurrentUser() user: AuthenticatedUser, @Req() request: Request) {
+    await this.productsService.remove(id, user, contextOf(request));
+  }
+
+  // --- Vendor mappings --------------------------------------------------------
+
+  @Get(':id/vendors')
+  @RequirePermissions(PERMISSIONS.PRODUCT_READ, PERMISSIONS.VENDOR_READ)
+  @ApiOperation({ summary: 'Vendors supplying this product, with model mappings' })
+  async listVendors(@Param('id', uuid()) id: string) {
+    return this.productsService.listVendors(id);
+  }
+
+  @Post(':id/vendors')
+  @RequirePermissions(PERMISSIONS.PRODUCT_MANAGE_VENDORS)
+  @ApiOperation({
+    summary: 'Map a vendor to this product (optionally to specific models)',
+    description:
+      'The vendor must already be mapped to the product brand; otherwise 409 VENDOR_BRAND_NOT_MAPPED ' +
+      'unless mapBrand=true and the user may manage vendor brands.',
+  })
+  async mapVendor(
+    @Param('id', uuid()) id: string,
+    @Body() dto: MapProductVendorDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() request: Request,
+  ) {
+    return this.productsService.mapVendor(id, dto, user, contextOf(request));
+  }
+
+  @Patch(':id/vendors/:vendorId')
+  @RequirePermissions(PERMISSIONS.PRODUCT_MANAGE_VENDORS)
+  @ApiOperation({ summary: 'Update a vendor mapping: models, SKU, lead time, preferred flag, status' })
+  async updateVendorMapping(
+    @Param('id', uuid()) id: string,
+    @Param('vendorId', uuid()) vendorId: string,
+    @Body() dto: UpdateVendorProductDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() request: Request,
+  ) {
+    return this.productsService.updateVendorMapping(id, vendorId, dto, user, contextOf(request));
+  }
+
+  @Delete(':id/vendors/:vendorId')
+  @RequirePermissions(PERMISSIONS.PRODUCT_MANAGE_VENDORS)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove a vendor mapping (the vendor and product are not changed)' })
+  async unmapVendor(
+    @Param('id', uuid()) id: string,
+    @Param('vendorId', uuid()) vendorId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() request: Request,
+  ): Promise<void> {
+    await this.productsService.unmapVendor(id, vendorId, user, contextOf(request));
+  }
+
+  // --- Product image ----------------------------------------------------------
 
   @Post(':id/image')
-  @RequirePermissions(PERMISSIONS.PRODUCT_UPDATE, PERMISSIONS.DOCUMENT_UPLOAD)
+  @RequirePermissions(PERMISSIONS.PRODUCT_UPLOAD_DOCUMENTS)
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({
-    summary: 'Set the catalogue image',
-    description:
-      'Verified by file signature. Replacing an image archives the previous ' +
-      'one rather than deleting it.',
-  })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['file'],
-      properties: { file: { type: 'string', format: 'binary' } },
-    },
-  })
+  @ApiBody(imageBody)
+  @ApiOperation({ summary: 'Set or replace the product image (previous image is archived)' })
   async setImage(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Param('id', uuid()) id: string,
     @UploadedFile() file: Express.Multer.File | undefined,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     if (!file) throw new BadRequestException('No file was uploaded.');
-
-    return this.productsService.setImage(
-      id,
-      { buffer: file.buffer, originalFilename: file.originalname },
-      user,
-    );
+    return this.productsService.setImage(id, { buffer: file.buffer, originalFilename: file.originalname }, user);
   }
 
   @Delete(':id/image')
-  @RequirePermissions(PERMISSIONS.PRODUCT_UPDATE)
+  @RequirePermissions(PERMISSIONS.PRODUCT_DELETE_DOCUMENTS)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Remove the catalogue image' })
-  async removeImage(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ): Promise<void> {
+  @ApiOperation({ summary: 'Remove the product image' })
+  async removeImage(@Param('id', uuid()) id: string, @CurrentUser() user: AuthenticatedUser): Promise<void> {
     await this.productsService.removeImage(id, user);
   }
 }

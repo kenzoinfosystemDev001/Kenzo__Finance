@@ -300,7 +300,7 @@ export class StockService {
       id: string;
       productCode: string;
       name: string;
-      modelNumber: string;
+      modelNumber: string | null;
       reorderLevel: number | null;
       company: { id: string; name: string };
       category: { id: string; name: string } | null;

@@ -40,6 +40,7 @@ const VENDOR_CATEGORIES = [
 const DOCUMENT_SEQUENCES = [
   { key: 'VENDOR', prefix: 'KI/VEN/', padding: 4 },
   { key: 'PRODUCT', prefix: 'KI/PRD/', padding: 5 },
+  { key: 'PRODUCT_MODEL', prefix: 'KI/MDL/', padding: 5 },
 ];
 
 function normalizeName(value: string): string {

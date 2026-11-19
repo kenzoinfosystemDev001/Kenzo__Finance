@@ -10,6 +10,8 @@ import {
   Pagination,
 } from '@/components/ui';
 import { CreateCompanyForm } from './create-company-form';
+import { MasterRecordActions } from '@/components/master-record-actions';
+import { setBrandActiveAction, updateBrandAction } from '@/lib/catalogue-actions';
 
 export const metadata: Metadata = { title: 'Brands' };
 
@@ -21,6 +23,7 @@ export default async function CompaniesPage({
   const params = await searchParams;
   const user = await getCurrentUser();
   const canCreate = user?.permissions.includes('company.create') ?? false;
+  const canUpdate = user?.permissions.includes('company.update') ?? false;
 
   const data = await apiFetch<PaginatedResponse<Company>>(
     `/companies${queryString({
@@ -36,7 +39,8 @@ export default async function CompaniesPage({
     <>
       <PageHeader
         title="Brands"
-        description="The manufacturers and brands your vendors supply. Products belong to a brand."
+        description="The shared brand master. Vendors are mapped to brands, and every product belongs to one."
+        actions={<Link href="/products" className="btn-secondary">Product Management</Link>}
       />
 
       {canCreate && (
@@ -96,6 +100,7 @@ export default async function CompaniesPage({
                       Vendors
                     </th>
                     <th scope="col">Status</th>
+                    {canUpdate && <th scope="col" className="text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -118,6 +123,24 @@ export default async function CompaniesPage({
                           <Badge>Inactive</Badge>
                         )}
                       </td>
+                      {canUpdate && (
+                        <td>
+                          <MasterRecordActions
+                            entityLabel="Brand"
+                            recordName={company.name}
+                            isActive={company.isActive}
+                            fields={[
+                              { name: 'name', label: 'Brand Name', required: true, maxLength: 150 },
+                              { name: 'code', label: 'Short Code', maxLength: 20, hint: 'Optional, unique' },
+                              { name: 'website', label: 'Website', maxLength: 200 },
+                            ]}
+                            initialValues={{ name: company.name, code: company.code ?? '', website: company.website ?? '' }}
+                            deactivateNote={`${company.name} will not be offered for new products or vendor mappings. Existing products, models and vendor mappings stay intact.`}
+                            onSave={updateBrandAction.bind(null, company.id)}
+                            onSetActive={setBrandActiveAction.bind(null, company.id)}
+                          />
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

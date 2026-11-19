@@ -23,6 +23,18 @@ export const ADDRESS_TYPE_LABELS: Record<VendorAddressType, string> = {
   OTHER: 'Other',
 };
 
+/** Product document kinds (images are handled separately). */
+export const PRODUCT_DOCUMENT_KIND_LABELS = {
+  PRODUCT_BROCHURE: 'Product Brochure',
+  PRODUCT_TECH_SPEC: 'Technical Specification',
+  PRODUCT_DATASHEET: 'Datasheet',
+  PRODUCT_MANUAL: 'Product Manual',
+  PRODUCT_WARRANTY: 'Warranty Document',
+  PRODUCT_OTHER: 'Other Document',
+} as const;
+
+export type ProductDocumentKind = keyof typeof PRODUCT_DOCUMENT_KIND_LABELS;
+
 export const DOCUMENT_KIND_LABELS: Record<VendorDocumentKind, string> = {
   VENDOR_VISITING_CARD: 'Visiting Card',
   VENDOR_GST_CERTIFICATE: 'GST Certificate',
@@ -46,7 +58,24 @@ export const UPLOADABLE_DOCUMENT_KINDS: VendorDocumentKind[] = [
 ];
 
 export function documentKindLabel(kind: string): string {
-  return DOCUMENT_KIND_LABELS[kind as VendorDocumentKind] ?? kind.replace(/_/g, ' ').toLowerCase();
+  return (
+    DOCUMENT_KIND_LABELS[kind as VendorDocumentKind] ??
+    PRODUCT_DOCUMENT_KIND_LABELS[kind as ProductDocumentKind] ??
+    kind.replace(/_/g, ' ').toLowerCase()
+  );
+}
+
+/** Specifications arrive as [{name,value}] or, for legacy rows, as {key: value}. */
+export function specificationList(value: unknown): Array<{ name: string; value: string }> {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => item && typeof item === 'object' && 'name' in item)
+      .map((item) => ({ name: String(item.name), value: String(item.value ?? '') }));
+  }
+  if (value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).map(([name, v]) => ({ name, value: String(v) }));
+  }
+  return [];
 }
 
 export const ACTIVITY_LABELS: Record<string, string> = {
@@ -74,6 +103,24 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   'document.archive': 'Document removed',
   'document.download': 'Document downloaded',
   'document.preview': 'Document previewed',
+  'product.create': 'Product created',
+  'product.update': 'Product updated',
+  'product.activate': 'Product activated',
+  'product.deactivate': 'Product deactivated',
+  'product.archive': 'Product archived',
+  'product.restore': 'Product restored',
+  'product.delete': 'Product deleted',
+  'product.image.set': 'Product image added',
+  'product.image.replace': 'Product image replaced',
+  'product.image.remove': 'Product image removed',
+  'product.model.create': 'Model added',
+  'product.model.update': 'Model updated',
+  'product.model.activate': 'Model activated',
+  'product.model.deactivate': 'Model deactivated',
+  'product.model.delete': 'Model deleted',
+  'product.model.image.set': 'Model image added',
+  'product.model.image.replace': 'Model image replaced',
+  'product.model.image.remove': 'Model image removed',
 };
 
 export function activityLabel(action: string): string {

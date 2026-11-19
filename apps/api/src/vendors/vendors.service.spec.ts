@@ -38,7 +38,8 @@ describe('VendorsService', () => {
     company: { count: jest.Mock };
     product: { findFirst: jest.Mock };
     vendorProduct: { findUnique: jest.Mock; create: jest.Mock };
-    vendorCompany: { upsert: jest.Mock };
+    vendorCompany: { upsert: jest.Mock; findUnique: jest.Mock; create: jest.Mock };
+    productModel: { count: jest.Mock };
     ocrJob: { findUnique: jest.Mock; updateMany: jest.Mock };
     document: { update: jest.Mock };
     $transaction: jest.Mock;
@@ -65,7 +66,12 @@ describe('VendorsService', () => {
       company: { count: jest.fn().mockResolvedValue(0) },
       product: { findFirst: jest.fn() },
       vendorProduct: { findUnique: jest.fn(), create: jest.fn() },
-      vendorCompany: { upsert: jest.fn() },
+      vendorCompany: {
+        upsert: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({ id: 'vc1' }),
+      },
+      productModel: { count: jest.fn().mockResolvedValue(0) },
       ocrJob: { findUnique: jest.fn(), updateMany: jest.fn() },
       document: { update: jest.fn() },
       // Runs the callback with the mock itself standing in for the tx client.
@@ -380,30 +386,61 @@ describe('VendorsService', () => {
   });
 
   describe('mapProduct', () => {
-    it("also maps the product's brand so brand search stays consistent", async () => {
+    const dellLaptop = {
+      id: 'p1',
+      name: 'Latitude Laptop',
+      companyId: 'c1',
+      company: { name: 'Dell' },
+    };
+    const createdMapping = {
+      id: 'vp1',
+      vendorSku: null,
+      isPreferred: false,
+      models: [],
+      product: { id: 'p1', name: 'Latitude Laptop' },
+    };
+
+    it('refuses a product whose brand is not mapped to the vendor', async () => {
       prisma.vendor.findUnique.mockResolvedValue({ id: 'v1', archivedAt: null });
-      prisma.product.findFirst.mockResolvedValue({
-        id: 'p1',
-        name: 'Latitude 3540',
-        modelNumber: 'LAT-3540',
-        companyId: 'c1',
-      });
+      prisma.product.findFirst.mockResolvedValue(dellLaptop);
       prisma.vendorProduct.findUnique.mockResolvedValue(null);
-      prisma.vendorProduct.create.mockResolvedValue({
-        id: 'vp1',
-        vendorSku: null,
-        isPreferred: false,
-        product: { id: 'p1', name: 'Latitude 3540' },
+
+      await expect(
+        service.mapProduct('v1', { productId: 'p1' }, actor, context),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.vendorProduct.create).not.toHaveBeenCalled();
+      expect(prisma.vendorCompany.create).not.toHaveBeenCalled();
+    });
+
+    it('maps the brand too only when explicitly confirmed', async () => {
+      prisma.vendor.findUnique.mockResolvedValue({ id: 'v1', archivedAt: null });
+      prisma.product.findFirst.mockResolvedValue(dellLaptop);
+      prisma.vendorProduct.findUnique.mockResolvedValue(null);
+      prisma.vendorProduct.create.mockResolvedValue(createdMapping);
+
+      await service.mapProduct(
+        'v1',
+        { productId: 'p1', mapBrand: true },
+        { ...actor, permissions: [...actor.permissions, 'vendor.manage_brands'] },
+        context,
+      );
+
+      expect(prisma.vendorCompany.create).toHaveBeenCalledWith({
+        data: { vendorId: 'v1', companyId: 'c1' },
       });
+    });
+
+    it('maps directly when the brand is already mapped', async () => {
+      prisma.vendor.findUnique.mockResolvedValue({ id: 'v1', archivedAt: null });
+      prisma.product.findFirst.mockResolvedValue(dellLaptop);
+      prisma.vendorProduct.findUnique.mockResolvedValue(null);
+      prisma.vendorCompany.findUnique.mockResolvedValue({ id: 'vc1' });
+      prisma.vendorProduct.create.mockResolvedValue(createdMapping);
 
       await service.mapProduct('v1', { productId: 'p1' }, actor, context);
 
-      expect(prisma.vendorCompany.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          create: { vendorId: 'v1', companyId: 'c1' },
-          update: {},
-        }),
-      );
+      expect(prisma.vendorProduct.create).toHaveBeenCalled();
+      expect(prisma.vendorCompany.create).not.toHaveBeenCalled();
     });
 
     it('refuses to map a product to an archived vendor', async () => {

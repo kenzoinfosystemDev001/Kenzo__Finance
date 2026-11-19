@@ -259,8 +259,9 @@ export function VendorForm({
     async (term: string) =>
       (await searchProductsAction(term)).map((product) => ({
         id: product.id,
-        label: `${product.name} — ${product.modelNumber}`,
-        detail: `${product.company.name}${product.category ? ` · ${product.category.name}` : ''}`,
+        label: product.name,
+        detail: `${product.company.name}${product.category ? ` · ${product.category.name}` : ''} · ${product._count.models} model(s)`,
+        meta: { id: product.company.id, label: product.company.name },
       })),
     [],
   );
@@ -658,16 +659,26 @@ export function VendorForm({
             <div className="mt-6 border-t border-border pt-5">
               {sectionTitle('E', 'Product / Model Mapping', "Pick existing catalogue models. Each product's brand is mapped automatically.")}
               <SearchSelect
-                label="Products and models supplied"
+                label="Products supplied"
                 multiple
                 placeholder="Search by product name, model or code..."
                 search={productSearch}
                 selected={products}
-                onChange={setProducts}
+                onChange={(next) => {
+                  setProducts(next);
+                  // A vendor can only supply brands it is mapped to. Add the
+                  // brands of picked products visibly, so the choice is explicit.
+                  setBrands((current) => {
+                    const ids = new Set(current.map((b) => b.id));
+                    const added = next.map((p) => p.meta).filter((m): m is SearchOption => Boolean(m && !ids.has(m.id) && ids.add(m.id)));
+                    return added.length ? [...current, ...added] : current;
+                  });
+                }}
                 emptyText="No product found"
               />
               <p className="field-hint">
-                SKU, lead time and preferred-supplier details can be added per product from the vendor profile after saving.
+                Picking a product adds its brand to section D. Specific models, SKU, lead time and preferred-supplier
+                details can be set per product from the vendor profile after saving.
                 {can('product.create') && (
                   <>
                     {' '}Model not in the catalogue?{' '}
@@ -747,6 +758,7 @@ export function QuickProductModal({
   defaultBrand?: SearchOption;
 }) {
   const [name, setName] = useState('');
+  const [modelName, setModelName] = useState('');
   const [modelNumber, setModelNumber] = useState('');
   const [brand, setBrand] = useState<SearchOption[]>(defaultBrand ? [defaultBrand] : []);
   const [categoryId, setCategoryId] = useState('');
@@ -764,10 +776,11 @@ export function QuickProductModal({
         setResult({ error: 'Select the brand this product belongs to.' });
         return;
       }
-      const outcome = await quickCreateProductAction({ name, modelNumber, companyId: brand[0].id, categoryId });
+      const outcome = await quickCreateProductAction({ name, modelName, modelNumber, companyId: brand[0].id, categoryId });
       if (outcome.product) {
-        onCreated({ id: outcome.product.id, label: `${outcome.product.name} — ${outcome.product.modelNumber}`, detail: brand[0].label });
+        onCreated({ id: outcome.product.id, label: outcome.product.name, detail: brand[0].label, meta: brand[0] });
         setName('');
+        setModelName('');
         setModelNumber('');
         setResult({});
       } else {
@@ -794,8 +807,9 @@ export function QuickProductModal({
         <div className="sm:col-span-2">
           <SearchSelect label="Brand *" placeholder="Search brands..." search={brandSearch} selected={brand} onChange={setBrand} />
         </div>
-        <TextField label="Product Name" required value={name} onChange={setName} placeholder="e.g. HP ProBook Laptop" />
-        <TextField label="Model Number" required value={modelNumber} onChange={setModelNumber} placeholder="e.g. ProBook 440 G10" />
+        <TextField className="sm:col-span-2" label="Product Name" required value={name} onChange={setName} placeholder="e.g. HP ProBook Laptop" />
+        <TextField label="First Model Name" value={modelName} onChange={setModelName} placeholder="e.g. ProBook 440 G10" hint="Optional; more models can be added in Product Management" />
+        <TextField label="Model Number" value={modelNumber} onChange={setModelNumber} placeholder="e.g. 8A5D7PA" />
         <SelectField className="sm:col-span-2" label="Category" value={categoryId} onChange={setCategoryId} placeholder="Not categorised" options={categoryOptions} />
         <div className="sm:col-span-2">
           <ResultAlert result={result} />

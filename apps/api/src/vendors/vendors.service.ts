@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -69,13 +70,22 @@ const productSummarySelect = {
   id: true,
   productCode: true,
   name: true,
-  modelNumber: true,
-  designNumber: true,
   isActive: true,
   archivedAt: true,
   company: { select: { id: true, name: true } },
   category: { select: { id: true, name: true } },
+  _count: { select: { models: true } },
 } satisfies Prisma.ProductSelect;
+
+/** Model-level detail of a vendor<->product mapping. */
+const mappingModelsInclude = {
+  orderBy: { createdAt: 'asc' },
+  include: {
+    productModel: {
+      select: { id: true, modelCode: true, modelName: true, modelNumber: true, isActive: true },
+    },
+  },
+} satisfies Prisma.VendorProduct$modelsArgs;
 
 /** Vendor fields returned on list rows. Keeps payloads small and predictable. */
 const vendorListSelect = {
@@ -119,7 +129,7 @@ const vendorDetailInclude = {
     orderBy: { createdAt: 'asc' },
   },
   products: {
-    include: { product: { select: productSummarySelect } },
+    include: { product: { select: productSummarySelect }, models: mappingModelsInclude },
     orderBy: { createdAt: 'asc' },
   },
   documents: {
@@ -293,9 +303,17 @@ export class VendorsService {
     const products = dto.productIds?.length
       ? await this.loadMappableProducts(dto.productIds)
       : [];
-    const companyIds = [
-      ...new Set([...(dto.companyIds ?? []), ...products.map((p) => p.companyId)]),
-    ];
+    const companyIds = [...new Set(dto.companyIds ?? [])];
+    // Products need their brand mapped too, and that must be an explicit
+    // choice: refuse rather than silently adding a vendor-brand relationship.
+    const missingBrands = products.filter((p) => !companyIds.includes(p.companyId));
+    if (missingBrands.length > 0) {
+      throw new BadRequestException(
+        `Select the brand of every chosen product as well: ${[
+          ...new Set(missingBrands.map((p) => p.company.name)),
+        ].join(', ')}.`,
+      );
+    }
 
     const ocrJob = dto.ocrJobId
       ? await this.loadUnconsumedOcrJob(dto.ocrJobId)
@@ -721,9 +739,9 @@ export class VendorsService {
                 product: {
                   OR: [
                     { name: text },
-                    { modelNumber: text },
-                    { designNumber: text },
                     { productCode: text },
+                    { sku: text },
+                    { models: { some: { OR: [{ modelName: text }, { modelNumber: text }, { modelCode: text }] } } },
                   ],
                 },
               },
@@ -778,7 +796,16 @@ export class VendorsService {
             product: {
               OR: [
                 { modelNumber: { contains: query.modelNumber, mode: 'insensitive' } },
-                { designNumber: { contains: query.modelNumber, mode: 'insensitive' } },
+                {
+                  models: {
+                    some: {
+                      OR: [
+                        { modelNumber: { contains: query.modelNumber, mode: 'insensitive' } },
+                        { modelName: { contains: query.modelNumber, mode: 'insensitive' } },
+                      ],
+                    },
+                  },
+                },
               ],
             },
           },
@@ -1226,17 +1253,21 @@ export class VendorsService {
     await this.assertVendorExists(vendorId);
     return this.prisma.vendorProduct.findMany({
       where: { vendorId },
-      include: { product: { select: productSummarySelect } },
+      include: { product: { select: productSummarySelect }, models: mappingModelsInclude },
       orderBy: [{ product: { company: { name: 'asc' } } }, { product: { name: 'asc' } }],
     });
   }
 
   /**
-   * Maps a shared catalogue product to a vendor.
+   * Maps a shared catalogue product (optionally specific models) to a vendor.
+   * This is the single implementation used from both the vendor profile and
+   * the product profile.
    *
-   * The product's brand is auto-mapped in the same transaction: a vendor that
-   * supplies a Dell laptop necessarily supplies Dell, and letting the two
-   * drift apart would make brand search unreliable.
+   * Vendor-brand rule: a vendor can only supply products of brands it is
+   * mapped to. When the brand is not mapped the request is refused with
+   * code VENDOR_BRAND_NOT_MAPPED, unless the caller explicitly asks to map
+   * the brand too (mapBrand) and holds vendor.manage_brands. Nothing is
+   * created silently.
    */
   async mapProduct(
     vendorId: string,
@@ -1248,7 +1279,7 @@ export class VendorsService {
 
     const product = await this.prisma.product.findFirst({
       where: { id: dto.productId, archivedAt: null },
-      select: { id: true, name: true, companyId: true, modelNumber: true },
+      select: { id: true, name: true, companyId: true, company: { select: { name: true } } },
     });
 
     if (!product) {
@@ -1263,7 +1294,52 @@ export class VendorsService {
       throw new ConflictException('This product is already mapped to the vendor.');
     }
 
+    const brandMapping = await this.prisma.vendorCompany.findUnique({
+      where: { vendorId_companyId: { vendorId, companyId: product.companyId } },
+      select: { id: true },
+    });
+
+    if (!brandMapping) {
+      if (!dto.mapBrand) {
+        throw new ConflictException({
+          message:
+            `This vendor is not mapped to the brand ${product.company.name}. ` +
+            'Map the brand to the vendor first, or confirm mapping the brand together with this product.',
+          code: 'VENDOR_BRAND_NOT_MAPPED',
+          brand: { id: product.companyId, name: product.company.name },
+        });
+      }
+      if (!actor.permissions.includes(PERMISSIONS.VENDOR_MANAGE_BRANDS)) {
+        throw new ForbiddenException(
+          `Mapping ${product.company.name} to this vendor requires permission to manage vendor brands.`,
+        );
+      }
+    }
+
+    const modelIds = await this.validateModelIds(product.id, dto.modelIds);
+
     return this.prisma.$transaction(async (tx) => {
+      if (!brandMapping) {
+        const brand = await tx.vendorCompany.create({
+          data: { vendorId, companyId: product.companyId },
+        });
+        await this.auditService.record(
+          {
+            actorUserId: actor.id,
+            action: 'vendor.company.map',
+            entityType: 'VendorCompany',
+            entityId: brand.id,
+            parentEntityType: VENDOR_ENTITY,
+            parentEntityId: vendorId,
+            summary: `Mapped brand ${product.company.name} (confirmed while mapping ${product.name})`,
+            after: { vendorId, companyId: product.companyId },
+            ipAddress: context.ipAddress,
+            userAgent: context.userAgent,
+          },
+          tx,
+        );
+      }
+
       const mapping = await tx.vendorProduct.create({
         data: {
           vendorId,
@@ -1272,17 +1348,11 @@ export class VendorsService {
           leadTimeDays: dto.leadTimeDays ?? null,
           isPreferred: dto.isPreferred ?? false,
           remarks: cleanOptional(dto.remarks) ?? null,
+          models: modelIds.length
+            ? { create: modelIds.map((productModelId) => ({ productModelId })) }
+            : undefined,
         },
-        include: { product: { select: productSummarySelect } },
-      });
-
-      // Idempotent: does nothing when the brand mapping already exists.
-      await tx.vendorCompany.upsert({
-        where: {
-          vendorId_companyId: { vendorId, companyId: product.companyId },
-        },
-        create: { vendorId, companyId: product.companyId },
-        update: {},
+        include: { product: { select: productSummarySelect }, models: mappingModelsInclude },
       });
 
       await this.auditService.record(
@@ -1293,10 +1363,15 @@ export class VendorsService {
           entityId: mapping.id,
           parentEntityType: VENDOR_ENTITY,
           parentEntityId: vendorId,
-          summary: `Mapped product ${product.name} (${product.modelNumber})`,
+          summary:
+            `Mapped product ${product.name}` +
+            (mapping.models.length
+              ? ` (models: ${mapping.models.map((m) => m.productModel.modelName).join(', ')})`
+              : ''),
           after: {
             vendorId,
             productId: dto.productId,
+            modelIds,
             vendorSku: mapping.vendorSku,
             isPreferred: mapping.isPreferred,
           },
@@ -1319,12 +1394,29 @@ export class VendorsService {
   ) {
     const existing = await this.prisma.vendorProduct.findUnique({
       where: { vendorId_productId: { vendorId, productId } },
-      include: { product: { select: { name: true, modelNumber: true } } },
+      include: { product: { select: { name: true } }, models: { select: { productModelId: true } } },
     });
 
     if (!existing) throw new NotFoundException('This product is not mapped to the vendor.');
 
+    const modelIds =
+      dto.modelIds !== undefined ? await this.validateModelIds(productId, dto.modelIds) : undefined;
+    const previousModelIds = existing.models.map((m) => m.productModelId);
+
     return this.prisma.$transaction(async (tx) => {
+      if (modelIds !== undefined) {
+        // Replace the model set: drop the ones no longer selected, add new ones.
+        await tx.vendorProductModel.deleteMany({
+          where: { vendorProductId: existing.id, productModelId: { notIn: modelIds } },
+        });
+        const toAdd = modelIds.filter((id) => !previousModelIds.includes(id));
+        if (toAdd.length) {
+          await tx.vendorProductModel.createMany({
+            data: toAdd.map((productModelId) => ({ vendorProductId: existing.id, productModelId })),
+          });
+        }
+      }
+
       const updated = await tx.vendorProduct.update({
         where: { id: existing.id },
         data: {
@@ -1333,11 +1425,12 @@ export class VendorsService {
             : {}),
           ...(dto.leadTimeDays !== undefined ? { leadTimeDays: dto.leadTimeDays } : {}),
           ...(dto.isPreferred !== undefined ? { isPreferred: dto.isPreferred } : {}),
+          ...(dto.status !== undefined ? { status: dto.status } : {}),
           ...(dto.remarks !== undefined
             ? { remarks: cleanOptional(dto.remarks) ?? null }
             : {}),
         },
-        include: { product: { select: productSummarySelect } },
+        include: { product: { select: productSummarySelect }, models: mappingModelsInclude },
       });
 
       await this.auditService.record(
@@ -1348,17 +1441,23 @@ export class VendorsService {
           entityId: existing.id,
           parentEntityType: VENDOR_ENTITY,
           parentEntityId: vendorId,
-          summary: `Updated product mapping ${existing.product.name} (${existing.product.modelNumber})`,
+          summary: `Updated product mapping ${existing.product.name}`,
           before: {
+            productId,
+            modelIds: previousModelIds,
             vendorSku: existing.vendorSku,
             leadTimeDays: existing.leadTimeDays,
             isPreferred: existing.isPreferred,
+            status: existing.status,
             remarks: existing.remarks,
           },
           after: {
+            productId,
+            modelIds: updated.models.map((m) => m.productModelId),
             vendorSku: updated.vendorSku,
             leadTimeDays: updated.leadTimeDays,
             isPreferred: updated.isPreferred,
+            status: updated.status,
             remarks: updated.remarks,
           },
           ipAddress: context.ipAddress,
@@ -1371,6 +1470,19 @@ export class VendorsService {
     });
   }
 
+  /** Models must belong to the product; duplicates are collapsed. */
+  private async validateModelIds(productId: string, modelIds?: string[]): Promise<string[]> {
+    const unique = [...new Set(modelIds ?? [])];
+    if (unique.length === 0) return [];
+    const found = await this.prisma.productModel.count({
+      where: { id: { in: unique }, productId },
+    });
+    if (found !== unique.length) {
+      throw new BadRequestException('One or more selected models do not belong to this product.');
+    }
+    return unique;
+  }
+
   async unmapProduct(
     vendorId: string,
     productId: string,
@@ -1379,7 +1491,7 @@ export class VendorsService {
   ): Promise<void> {
     const mapping = await this.prisma.vendorProduct.findUnique({
       where: { vendorId_productId: { vendorId, productId } },
-      include: { product: { select: { name: true, modelNumber: true } } },
+      include: { product: { select: { name: true } } },
     });
 
     if (!mapping) throw new NotFoundException('This product is not mapped to the vendor.');
@@ -1395,7 +1507,7 @@ export class VendorsService {
           entityId: mapping.id,
           parentEntityType: VENDOR_ENTITY,
           parentEntityId: vendorId,
-          summary: `Removed product ${mapping.product.name} (${mapping.product.modelNumber})`,
+          summary: `Removed product ${mapping.product.name}`,
           before: { vendorId, productId },
           ipAddress: context.ipAddress,
           userAgent: context.userAgent,
@@ -1470,7 +1582,7 @@ export class VendorsService {
     const unique = [...new Set(productIds)];
     const products = await this.prisma.product.findMany({
       where: { id: { in: unique }, archivedAt: null },
-      select: { id: true, companyId: true },
+      select: { id: true, companyId: true, company: { select: { name: true } } },
     });
     if (products.length !== unique.length) {
       throw new BadRequestException('One or more selected products do not exist or are archived.');

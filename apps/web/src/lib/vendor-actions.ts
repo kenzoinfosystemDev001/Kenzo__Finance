@@ -426,25 +426,48 @@ function mappingBody(input: ProductMappingInput, forUpdate: boolean) {
   };
 }
 
+export interface MapProductsResult extends ActionResult {
+  /** Products refused because the vendor is not mapped to their brand. */
+  brandMissing?: Array<{ productId: string; brandName: string }>;
+}
+
+/**
+ * Maps several products. A product whose brand is not mapped to the vendor is
+ * refused by the API unless `mapBrand` is set (an explicit user choice); those
+ * are reported separately so the UI can ask.
+ */
 export async function mapProductsAction(
   vendorId: string,
   productIds: string[],
   input: ProductMappingInput,
-): Promise<ActionResult> {
+  mapBrand = false,
+): Promise<MapProductsResult> {
   const id = assertId(vendorId, 'vendor');
   const failures: string[] = [];
+  const brandMissing: NonNullable<MapProductsResult['brandMissing']> = [];
   for (const productId of productIds) {
     try {
       await apiFetch(`/vendors/${id}/products`, {
         method: 'POST',
-        body: { productId: assertId(productId, 'product'), ...mappingBody(input, false) },
+        body: { productId: assertId(productId, 'product'), ...mappingBody(input, false), mapBrand },
       });
     } catch (error) {
-      failures.push(error instanceof ApiError ? error.messages[0] : 'A product could not be mapped.');
+      const body = error instanceof ApiError ? (error.body as { code?: string; brand?: { name: string } }) : {};
+      if (body.code === 'VENDOR_BRAND_NOT_MAPPED') {
+        brandMissing.push({ productId, brandName: body.brand?.name ?? 'its brand' });
+      } else {
+        failures.push(error instanceof ApiError ? error.messages[0] : 'A product could not be mapped.');
+      }
     }
   }
   refreshVendor(id);
-  if (failures.length) return { error: failures[0], errors: failures.length > 1 ? failures : undefined };
+  if (failures.length || brandMissing.length) {
+    return {
+      error: failures[0] ?? 'Some products belong to brands this vendor is not mapped to.',
+      errors: failures.length > 1 ? failures : undefined,
+      brandMissing: brandMissing.length ? brandMissing : undefined,
+    };
+  }
   return { ok: true };
 }
 
@@ -531,19 +554,22 @@ export async function quickCreateBrandAction(name: string): Promise<ActionResult
 export async function quickCreateProductAction(input: {
   name: string;
   companyId: string;
+  modelName: string;
   modelNumber: string;
   categoryId: string;
 }): Promise<ActionResult & { product?: Product }> {
   if (!input.name.trim()) return { error: 'Product name is required.' };
-  if (!input.modelNumber.trim()) return { error: 'Model number is required.' };
+  if (input.modelName.trim() && !input.modelNumber.trim()) return { error: 'Enter the model number for the model.' };
   try {
     const product = await apiFetch<Product>('/products', {
       method: 'POST',
       body: {
         name: input.name.trim(),
         companyId: assertId(input.companyId, 'brand'),
-        modelNumber: input.modelNumber.trim(),
         ...(input.categoryId ? { categoryId: assertId(input.categoryId, 'category') } : {}),
+        ...(input.modelNumber.trim()
+          ? { models: [{ modelName: input.modelName.trim() || input.name.trim(), modelNumber: input.modelNumber.trim() }] }
+          : {}),
       },
     });
     revalidatePath('/products');

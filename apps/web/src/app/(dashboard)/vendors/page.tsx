@@ -174,7 +174,7 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
 
       <VendorToolbar
         selectedBrand={brand ? { id: brand.id, label: brand.name } : null}
-        selectedProduct={product ? { id: product.id, label: product.name, detail: product.modelNumber } : null}
+        selectedProduct={product ? { id: product.id, label: product.name, detail: product.company.name } : null}
         exportHref={exportHref}
       />
 

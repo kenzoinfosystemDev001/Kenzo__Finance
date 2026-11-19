@@ -5,12 +5,15 @@ import { getCurrentUser } from '@/lib/auth-actions';
 import type { ProductCategory } from '@/lib/types';
 import { Badge, EmptyState, PageHeader } from '@/components/ui';
 import { CreateCategoryForm } from './create-category-form';
+import { MasterRecordActions } from '@/components/master-record-actions';
+import { setCategoryActiveAction, updateCategoryAction } from '@/lib/catalogue-actions';
 
 export const metadata: Metadata = { title: 'Product categories' };
 
 export default async function ProductCategoriesPage() {
   const user = await getCurrentUser();
   const canCreate = user?.permissions.includes('product.create') ?? false;
+  const canUpdate = user?.permissions.includes('product.update') ?? false;
 
   const categories = await apiFetch<ProductCategory[]>(
     '/products/categories?includeInactive=true',
@@ -51,6 +54,7 @@ export default async function ProductCategoriesPage() {
                     Products
                   </th>
                   <th scope="col">Status</th>
+                  {canUpdate && <th scope="col" className="text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -68,6 +72,23 @@ export default async function ProductCategoriesPage() {
                         <Badge>Inactive</Badge>
                       )}
                     </td>
+                    {canUpdate && (
+                      <td>
+                        <MasterRecordActions
+                          entityLabel="Category"
+                          recordName={category.name}
+                          isActive={category.isActive}
+                          fields={[
+                            { name: 'name', label: 'Category Name', required: true, maxLength: 100 },
+                            { name: 'description', label: 'Description', maxLength: 300 },
+                          ]}
+                          initialValues={{ name: category.name, description: category.description ?? '' }}
+                          deactivateNote={`${category.name} will no longer be offered on product forms. It is refused while active products still use it.`}
+                          onSave={updateCategoryAction.bind(null, category.id)}
+                          onSetActive={setCategoryActiveAction.bind(null, category.id)}
+                        />
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

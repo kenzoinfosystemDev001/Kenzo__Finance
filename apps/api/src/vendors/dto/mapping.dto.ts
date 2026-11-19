@@ -1,7 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -10,6 +13,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { VendorMappingStatus } from '@prisma/client';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
@@ -86,6 +90,26 @@ export class MapVendorProductDto {
   @MaxLength(500)
   @Transform(trim)
   remarks?: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Specific models of the product this vendor supplies. Omit for the product as a whole.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsUUID('4', { each: true })
+  modelIds?: string[];
+
+  @ApiPropertyOptional({
+    default: false,
+    description:
+      "Also map the product's brand to the vendor when it is not mapped yet. " +
+      'Requires vendor.manage_brands. Without it, an unmapped brand is refused (409).',
+  })
+  @IsOptional()
+  @IsBoolean()
+  mapBrand?: boolean;
 }
 
 export class UpdateVendorProductDto {
@@ -114,4 +138,16 @@ export class UpdateVendorProductDto {
   @MaxLength(500)
   @Transform(trim)
   remarks?: string;
+
+  @ApiPropertyOptional({ type: [String], description: 'Replaces the set of mapped models. [] = whole product.' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsUUID('4', { each: true })
+  modelIds?: string[];
+
+  @ApiPropertyOptional({ enum: VendorMappingStatus })
+  @IsOptional()
+  @IsEnum(VendorMappingStatus)
+  status?: VendorMappingStatus;
 }
