@@ -18,7 +18,9 @@ export interface VendorOcrDraft {
   businessName: ExtractedField;
   legalName: ExtractedField;
   contactPerson: ExtractedField;
+  designation: ExtractedField;
   email: ExtractedField;
+  alternateEmail: ExtractedField;
   phone: ExtractedField;
   alternatePhone: ExtractedField;
   website: ExtractedField;
@@ -38,6 +40,11 @@ export interface OcrExtractionResult {
   overallConfidence: number | null;
   /** Human-readable note surfaced on the review screen. */
   note?: string;
+  /**
+   * The plain text the provider read, when it has one. Used to recognise
+   * names from the shared brand master; never stored on a business record.
+   */
+  text?: string;
 }
 
 export interface OcrInput {
@@ -62,7 +69,9 @@ export function emptyVendorDraft(): VendorOcrDraft {
     businessName: emptyField(),
     legalName: emptyField(),
     contactPerson: emptyField(),
+    designation: emptyField(),
     email: emptyField(),
+    alternateEmail: emptyField(),
     phone: emptyField(),
     alternatePhone: emptyField(),
     website: emptyField(),

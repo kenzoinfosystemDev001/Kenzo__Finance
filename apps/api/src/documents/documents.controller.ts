@@ -6,6 +6,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Res,
   UploadedFile,
   UseInterceptors,
@@ -16,11 +17,13 @@ import {
   ApiBody,
   ApiConsumes,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { DocumentKind } from '@prisma/client';
 import type { Response } from 'express';
 import { DocumentsService } from './documents.service';
+import { sendStoredFile } from './send-stored-file';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
 import { PERMISSIONS } from '../common/authz/permissions';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
@@ -84,24 +87,23 @@ export class DocumentsController {
 
   @Get(':id/download')
   @RequirePermissions(PERMISSIONS.DOCUMENT_DOWNLOAD)
-  @ApiOperation({ summary: 'Download the stored file' })
+  @ApiOperation({
+    summary: 'Download (or preview) the stored file',
+    description:
+      'preview=true serves PDF and raster images inline for an in-browser ' +
+      'preview. Every other type is always sent as an attachment.',
+  })
+  @ApiQuery({ name: 'preview', required: false, type: Boolean })
   async download(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Query('preview') preview: string | undefined,
     @CurrentUser() user: AuthenticatedUser,
     @Res() response: Response,
   ): Promise<void> {
-    const file = await this.documentsService.openForDownload(id, user);
-
-    response.setHeader('Content-Type', file.mimeType);
-    response.setHeader('Content-Length', file.sizeBytes);
-    // attachment + nosniff: an uploaded file must never render inline as HTML.
-    response.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${encodeURIComponent(file.filename)}"`,
-    );
-    response.setHeader('X-Content-Type-Options', 'nosniff');
-
-    file.stream.pipe(response);
+    const file = await this.documentsService.openForDownload(id, user, {
+      preview: preview === 'true',
+    });
+    sendStoredFile(response, file);
   }
 
   @Post(':id/archive')

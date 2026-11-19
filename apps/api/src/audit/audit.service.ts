@@ -7,6 +7,9 @@ export interface AuditEntry {
   action: string;
   entityType: string;
   entityId?: string | null;
+  /** Aggregate the entity belongs to, e.g. the Vendor of a VendorContact. */
+  parentEntityType?: string | null;
+  parentEntityId?: string | null;
   summary?: string | null;
   before?: unknown;
   after?: unknown;
@@ -53,6 +56,8 @@ export class AuditService {
       action: entry.action,
       entityType: entry.entityType,
       entityId: entry.entityId ?? null,
+      parentEntityType: entry.parentEntityType ?? null,
+      parentEntityId: entry.parentEntityId ?? null,
       summary: entry.summary ?? null,
       before: this.sanitize(entry.before),
       after: this.sanitize(entry.after),

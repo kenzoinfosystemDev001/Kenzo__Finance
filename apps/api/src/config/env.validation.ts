@@ -30,7 +30,9 @@ export const envSchema = z.object({
   STORAGE_LOCAL_ROOT: z.string().default('./storage'),
   UPLOAD_MAX_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
 
-  OCR_PROVIDER: z.enum(['stub']).default('stub'),
+  // stub: reads text files only and never guesses at scanned documents.
+  // google-vision: Google Cloud Vision REST API, requires OCR_API_KEY.
+  OCR_PROVIDER: z.enum(['stub', 'google-vision']).default('stub'),
   OCR_API_KEY: z.string().optional(),
 });
 
@@ -55,6 +57,13 @@ export function validateEnv(raw: Record<string, unknown>): Env {
   if (parsed.data.AUTH_ACCESS_SECRET === parsed.data.AUTH_REFRESH_SECRET) {
     throw new Error(
       'AUTH_ACCESS_SECRET and AUTH_REFRESH_SECRET must be different values.',
+    );
+  }
+
+  if (parsed.data.OCR_PROVIDER !== 'stub' && !parsed.data.OCR_API_KEY?.trim()) {
+    throw new Error(
+      `OCR_PROVIDER=${parsed.data.OCR_PROVIDER} requires OCR_API_KEY. ` +
+        'Set the key, or use OCR_PROVIDER=stub.',
     );
   }
 

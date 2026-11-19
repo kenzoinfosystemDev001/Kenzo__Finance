@@ -10,8 +10,11 @@ coverage/
 .env.*
 !.env.example
 
-storage/
-uploads/
+# Runtime upload folders only. Anchored so src/storage/ (source code) is NOT ignored.
+/storage/
+/apps/api/storage/
+/uploads/
+/apps/api/uploads/
 *.log
 npm-debug.log*
 

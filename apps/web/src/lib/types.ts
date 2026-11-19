@@ -20,6 +20,26 @@ export interface CurrentUser {
 
 export type VendorStatus = 'ACTIVE' | 'INACTIVE';
 
+export type VendorContactType =
+  | 'GENERAL'
+  | 'SALES'
+  | 'ACCOUNTS'
+  | 'SUPPORT'
+  | 'MANAGEMENT'
+  | 'LOGISTICS';
+
+export type VendorAddressType = 'REGISTERED_OFFICE' | 'OFFICE' | 'WAREHOUSE' | 'OTHER';
+
+export type VendorDocumentKind =
+  | 'VENDOR_VISITING_CARD'
+  | 'VENDOR_GST_CERTIFICATE'
+  | 'VENDOR_PAN'
+  | 'VENDOR_REGISTRATION_CERTIFICATE'
+  | 'VENDOR_AGREEMENT'
+  | 'VENDOR_PRODUCT_CATALOGUE'
+  | 'VENDOR_ONBOARDING'
+  | 'VENDOR_OTHER';
+
 export interface VendorListItem {
   id: string;
   vendorCode: string;
@@ -36,10 +56,35 @@ export interface VendorListItem {
   createdAt: string;
   updatedAt: string;
   category: { id: string; name: string } | null;
+  contacts: Array<{
+    id: string;
+    name: string;
+    designation: string | null;
+    phone: string | null;
+    email: string | null;
+  }>;
+  companies: Array<{ company: { id: string; name: string } }>;
   _count: { products: number; companies: number };
 }
 
-export interface VendorDetail extends Omit<VendorListItem, '_count'> {
+export interface VendorSummary {
+  vendors: {
+    total: number;
+    active: number;
+    inactive: number;
+    archived: number;
+    addedLast30Days: number;
+  };
+  brandsCovered: number;
+  productMappings: { total: number; addedLast30Days: number };
+  productsCovered: number;
+  generatedAt: string;
+}
+
+export interface VendorDetail
+  extends Omit<VendorListItem, '_count' | 'contacts' | 'companies'> {
+  registrationNumber: string | null;
+  alternateEmail: string | null;
   alternatePhone: string | null;
   website: string | null;
   addressLine1: string | null;
@@ -49,6 +94,7 @@ export interface VendorDetail extends Omit<VendorListItem, '_count'> {
   pan: string | null;
   notes: string | null;
   contacts: VendorContact[];
+  addresses: VendorAddress[];
   companies: VendorCompanyMapping[];
   products: VendorProductMapping[];
   documents: VendorDocument[];
@@ -58,12 +104,28 @@ export interface VendorDetail extends Omit<VendorListItem, '_count'> {
 
 export interface VendorContact {
   id: string;
+  contactType: VendorContactType;
   name: string;
   designation: string | null;
   email: string | null;
+  alternateEmail: string | null;
   phone: string | null;
+  alternatePhone: string | null;
   isPrimary: boolean;
   notes: string | null;
+}
+
+export interface VendorAddress {
+  id: string;
+  addressType: VendorAddressType;
+  label: string | null;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string;
+  isPrimary: boolean;
 }
 
 export interface VendorCompanyMapping {
@@ -71,6 +133,7 @@ export interface VendorCompanyMapping {
   companyId: string;
   isAuthorized: boolean;
   remarks: string | null;
+  createdAt: string;
   company: { id: string; name: string; code: string | null };
 }
 
@@ -81,12 +144,15 @@ export interface VendorProductMapping {
   leadTimeDays: number | null;
   isPreferred: boolean;
   remarks: string | null;
+  createdAt: string;
   product: {
     id: string;
     productCode: string;
     name: string;
     modelNumber: string;
     designNumber: string | null;
+    isActive: boolean;
+    archivedAt: string | null;
     company: { id: string; name: string };
     category: { id: string; name: string } | null;
   };
@@ -94,11 +160,25 @@ export interface VendorProductMapping {
 
 export interface VendorDocument {
   id: string;
-  kind: string;
+  kind: VendorDocumentKind | string;
   originalFilename: string;
   mimeType: string;
   sizeBytes: number;
   createdAt: string;
+  replacesDocumentId: string | null;
+  uploadedBy: { id: string; fullName: string } | null;
+}
+
+export interface ActivityEntry {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  summary: string | null;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+  createdAt: string;
+  actor: { id: string; fullName: string } | null;
 }
 
 export interface VendorCategory {
@@ -253,8 +333,16 @@ export interface DuplicateMatch {
   vendorId: string;
   vendorCode: string;
   businessName: string;
+  status?: VendorStatus;
+  archived?: boolean;
   matchedOn: 'gstin' | 'name' | 'email' | 'phone';
   severity: 'blocking' | 'warning';
+}
+
+export interface OcrEngineStatus {
+  provider: string;
+  readsScannedDocuments: boolean;
+  message: string;
 }
 
 export interface OcrJob {
@@ -269,6 +357,7 @@ export interface OcrJob {
   normalizedResult: {
     draft?: Record<string, { value: string | null; confidence: number | null }>;
     note?: string | null;
+    suggestedBrands?: Array<{ id: string; name: string }>;
   } | null;
   document: {
     id: string;
