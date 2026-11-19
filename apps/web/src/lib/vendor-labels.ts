@@ -1,3 +1,4 @@
+import { CUSTOMER_DOCUMENT_KIND_LABELS } from './customer-labels';
 import type {
   VendorAddress,
   VendorAddressType,
@@ -61,6 +62,7 @@ export function documentKindLabel(kind: string): string {
   return (
     DOCUMENT_KIND_LABELS[kind as VendorDocumentKind] ??
     PRODUCT_DOCUMENT_KIND_LABELS[kind as ProductDocumentKind] ??
+    (CUSTOMER_DOCUMENT_KIND_LABELS as Record<string, string>)[kind] ??
     kind.replace(/_/g, ' ').toLowerCase()
   );
 }
@@ -121,6 +123,20 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   'product.model.image.set': 'Model image added',
   'product.model.image.replace': 'Model image replaced',
   'product.model.image.remove': 'Model image removed',
+  'customer.create': 'Customer created',
+  'customer.update': 'Customer updated',
+  'customer.activate': 'Customer activated',
+  'customer.deactivate': 'Customer deactivated',
+  'customer.delete': 'Customer deleted',
+  'customer.contact.create': 'Contact added',
+  'customer.contact.update': 'Contact updated',
+  'customer.contact.delete': 'Contact removed',
+  'customer.address.create': 'Address added',
+  'customer.address.update': 'Address updated',
+  'customer.address.delete': 'Address removed',
+  'customer.product.add': 'Product associated',
+  'customer.product.update': 'Product interest updated',
+  'customer.product.remove': 'Product association removed',
 };
 
 export function activityLabel(action: string): string {

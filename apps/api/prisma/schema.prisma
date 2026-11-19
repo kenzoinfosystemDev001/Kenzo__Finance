@@ -48,15 +48,18 @@ model User {
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]     @relation("AuditActor")
 
-  createdVendors  Vendor[]        @relation("VendorCreatedBy")
-  updatedVendors  Vendor[]        @relation("VendorUpdatedBy")
-  uploadedDocs    Document[]      @relation("DocumentUploadedBy")
-  requestedOcr    OcrJob[]        @relation("OcrRequestedBy")
-  stockMovements  StockMovement[] @relation("StockMovementCreatedBy")
-  createdProducts Product[]       @relation("ProductCreatedBy")
-  updatedProducts Product[]       @relation("ProductUpdatedBy")
-  createdModels   ProductModel[]  @relation("ProductModelCreatedBy")
-  updatedSettings Setting[]       @relation("SettingUpdatedBy")
+  createdVendors    Vendor[]                  @relation("VendorCreatedBy")
+  updatedVendors    Vendor[]                  @relation("VendorUpdatedBy")
+  uploadedDocs      Document[]                @relation("DocumentUploadedBy")
+  requestedOcr      OcrJob[]                  @relation("OcrRequestedBy")
+  stockMovements    StockMovement[]           @relation("StockMovementCreatedBy")
+  createdProducts   Product[]                 @relation("ProductCreatedBy")
+  updatedProducts   Product[]                 @relation("ProductUpdatedBy")
+  createdModels     ProductModel[]            @relation("ProductModelCreatedBy")
+  createdCustomers  Customer[]                @relation("CustomerCreatedBy")
+  updatedCustomers  Customer[]                @relation("CustomerUpdatedBy")
+  customerInterests CustomerProductInterest[] @relation("CustomerInterestCreatedBy")
+  updatedSettings   Setting[]                 @relation("SettingUpdatedBy")
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -376,12 +379,13 @@ model Product {
   imageDocumentId String?   @unique @db.Uuid
   imageDocument   Document? @relation("ProductPrimaryImage", fields: [imageDocumentId], references: [id], onDelete: SetNull)
 
-  company   Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  category  ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  models    ProductModel[]
-  vendors   VendorProduct[]
-  documents Document[]       @relation("ProductDocuments")
-  movements StockMovement[]
+  company           Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  category          ProductCategory?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  models            ProductModel[]
+  vendors           VendorProduct[]
+  customerInterests CustomerProductInterest[]
+  documents         Document[]                @relation("ProductDocuments")
+  movements         StockMovement[]
 
   createdById String? @db.Uuid
   updatedById String? @db.Uuid
@@ -479,8 +483,9 @@ model ProductModel {
   imageDocumentId String?   @unique @db.Uuid
   imageDocument   Document? @relation("ProductModelImage", fields: [imageDocumentId], references: [id], onDelete: SetNull)
 
-  product Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
-  vendors VendorProductModel[]
+  product           Product                   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vendors           VendorProductModel[]
+  customerInterests CustomerProductInterest[]
 
   createdById String? @db.Uuid
   createdBy   User?   @relation("ProductModelCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
@@ -537,6 +542,12 @@ enum DocumentKind {
   PRODUCT_MANUAL
   PRODUCT_WARRANTY
   PRODUCT_OTHER
+  CUSTOMER_GST_CERTIFICATE
+  CUSTOMER_PAN
+  CUSTOMER_REGISTRATION_CERTIFICATE
+  CUSTOMER_AGREEMENT
+  CUSTOMER_PURCHASE_AUTHORIZATION
+  CUSTOMER_OTHER
   // Application branding (login page background). Not owned by a record;
   // referenced from the "branding.loginBackgroundDocumentId" setting.
   BRANDING_IMAGE
@@ -560,6 +571,10 @@ model Document {
   productId String?  @db.Uuid
   product   Product? @relation("ProductDocuments", fields: [productId], references: [id], onDelete: Cascade)
 
+  // Restrict: a customer with documents cannot be hard-deleted.
+  customerId String?   @db.Uuid
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
   // Back-references for the product / model using this file as its image.
   primaryImageOf Product?      @relation("ProductPrimaryImage")
   modelImageOf   ProductModel? @relation("ProductModelImage")
@@ -580,6 +595,7 @@ model Document {
 
   @@index([vendorId])
   @@index([productId])
+  @@index([customerId])
   @@index([kind])
   @@map("documents")
 }
@@ -778,4 +794,176 @@ model DocumentSequence {
   updatedAt DateTime @updatedAt
 
   @@map("document_sequences")
+}
+
+// ===========================================================================
+// Customer management (Module 3)
+//
+// The single source of customer information for enquiries, quotations, PIs,
+// payments and deliveries, which reference customers.id. Customer master
+// data is never copied into those transactions beyond print snapshots.
+// ===========================================================================
+
+enum CustomerType {
+  INDIVIDUAL
+  BUSINESS
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CustomerAddressType {
+  BILLING
+  SHIPPING
+  OFFICE
+  REGISTERED
+  OTHER
+}
+
+// Configurable grouping (Corporate, SME, Government, ...). Editable at runtime.
+model CustomerCategory {
+  id             String  @id @default(uuid()) @db.Uuid
+  name           String
+  normalizedName String  @unique
+  description    String?
+  isActive       Boolean @default(true)
+  sortOrder      Int     @default(0)
+
+  customers Customer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("customer_categories")
+}
+
+model Customer {
+  id             String         @id @default(uuid()) @db.Uuid
+  // Human-facing id allocated by DocumentSequence (KI/CUS/0001).
+  customerCode   String         @unique
+  customerType   CustomerType
+  // Person or company name.
+  name           String
+  normalizedName String
+  categoryId     String?        @db.Uuid
+  industry       String?
+  website        String?
+  description    String?
+  status         CustomerStatus @default(ACTIVE)
+
+  // Tax jurisdiction. Indian identifiers (GSTIN/PAN/CIN) are accepted only
+  // when this is India; other countries use taxRegistrationNumber.
+  taxCountry            String  @default("India")
+  // Unique when present; NULLs do not collide.
+  gstin                 String? @unique
+  pan                   String?
+  cin                   String?
+  taxRegistrationNumber String?
+  otherRegistration     String?
+
+  // Optional business profile (business customers only).
+  companySize         String?
+  businessType        String?
+  annualTurnoverRange String?
+  employeeCount       Int?
+
+  category  CustomerCategory?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  contacts  CustomerContact[]
+  addresses CustomerAddress[]
+  interests CustomerProductInterest[]
+  documents Document[]
+
+  createdById String? @db.Uuid
+  updatedById String? @db.Uuid
+  createdBy   User?   @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?   @relation("CustomerUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([normalizedName])
+  @@index([customerType])
+  @@index([status])
+  @@index([categoryId])
+  @@index([industry])
+  @@index([pan])
+  @@index([createdAt])
+  @@map("customers")
+}
+
+// Exactly one primary contact per customer (enforced under a row lock).
+model CustomerContact {
+  id             String  @id @default(uuid()) @db.Uuid
+  customerId     String  @db.Uuid
+  name           String
+  designation    String?
+  department     String?
+  email          String?
+  phone          String?
+  alternatePhone String?
+  isPrimary      Boolean @default(false)
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([email])
+  @@index([phone])
+  @@map("customer_contacts")
+}
+
+// Many per customer; at most one default per address type (one default
+// billing, one default shipping, ...).
+model CustomerAddress {
+  id           String              @id @default(uuid()) @db.Uuid
+  customerId   String              @db.Uuid
+  addressType  CustomerAddressType
+  addressLine1 String
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String              @default("India")
+  isDefault    Boolean             @default(false)
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId, addressType])
+  @@index([city])
+  @@index([state])
+  @@index([country])
+  @@map("customer_addresses")
+}
+
+// Products / models a customer is interested in. References the shared
+// catalogue only; this is not an enquiry, order or sale.
+model CustomerProductInterest {
+  id             String  @id @default(uuid()) @db.Uuid
+  customerId     String  @db.Uuid
+  productId      String  @db.Uuid
+  // Null = interest in the product generally rather than one model.
+  productModelId String? @db.Uuid
+  notes          String?
+
+  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productModel ProductModel? @relation(fields: [productModelId], references: [id], onDelete: Restrict)
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("CustomerInterestCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([productId])
+  @@index([productModelId])
+  @@map("customer_product_interests")
 }

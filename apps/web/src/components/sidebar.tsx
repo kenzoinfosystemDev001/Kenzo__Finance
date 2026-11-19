@@ -39,7 +39,7 @@ const NAV: NavItem[] = [
   { label: 'Product Management', href: '/products', icon: IconBox, permission: 'product.read' },
   { label: 'Brands', href: '/companies', icon: IconTag, permission: 'company.read', child: true },
   { label: 'Inventory', href: '/inventory', icon: IconWarehouse, permission: 'stock.read', child: true },
-  { label: 'Customer Management', href: '/customers', icon: IconUsers, comingSoon: true },
+  { label: 'Customer Management', href: '/customers', icon: IconUsers, permission: 'customer.read' },
   { label: 'Enquiry Management', href: '/enquiries', icon: IconInbox, comingSoon: true },
   { label: 'Quotation Management', href: '/quotations', icon: IconQuote, comingSoon: true },
   { label: 'Proforma Invoice', href: '/proforma-invoices', icon: IconInvoice, comingSoon: true },

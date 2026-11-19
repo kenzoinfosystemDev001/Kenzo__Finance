@@ -412,3 +412,127 @@ export interface OcrJob {
   };
   prefill?: Record<string, string>;
 }
+
+// ---------------------------------------------------------------------------
+// Customer Management (Module 3)
+// ---------------------------------------------------------------------------
+
+export type CustomerType = 'INDIVIDUAL' | 'BUSINESS';
+export type CustomerStatus = 'ACTIVE' | 'INACTIVE';
+export type CustomerAddressType = 'BILLING' | 'SHIPPING' | 'OFFICE' | 'REGISTERED' | 'OTHER';
+
+export interface CustomerCategory {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  _count?: { customers: number };
+}
+
+export interface CustomerListItem {
+  id: string;
+  customerCode: string;
+  name: string;
+  customerType: CustomerType;
+  status: CustomerStatus;
+  industry: string | null;
+  gstin: string | null;
+  createdAt: string;
+  updatedAt: string;
+  category: { id: string; name: string } | null;
+  contacts: Array<{ id: string; name: string; designation: string | null; phone: string | null; email: string | null }>;
+  addresses: Array<{ city: string | null; state: string | null; country: string; addressType: CustomerAddressType }>;
+  _count: { contacts: number; addresses: number; interests: number; documents: number };
+}
+
+export interface CustomerContact {
+  id: string;
+  name: string;
+  designation: string | null;
+  department: string | null;
+  email: string | null;
+  phone: string | null;
+  alternatePhone: string | null;
+  isPrimary: boolean;
+}
+
+export interface CustomerAddress {
+  id: string;
+  addressType: CustomerAddressType;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string;
+  isDefault: boolean;
+}
+
+export interface CustomerProductInterest {
+  id: string;
+  productId: string;
+  productModelId: string | null;
+  notes: string | null;
+  createdAt: string;
+  product: { id: string; productCode: string; name: string; isActive: boolean; archivedAt: string | null; company: { id: string; name: string } };
+  productModel: { id: string; modelCode: string; modelName: string; modelNumber: string; isActive: boolean } | null;
+  createdBy: { id: string; fullName: string } | null;
+}
+
+export interface CustomerDetail {
+  id: string;
+  customerCode: string;
+  customerType: CustomerType;
+  name: string;
+  status: CustomerStatus;
+  industry: string | null;
+  website: string | null;
+  description: string | null;
+  taxCountry: string;
+  gstin: string | null;
+  pan: string | null;
+  cin: string | null;
+  taxRegistrationNumber: string | null;
+  otherRegistration: string | null;
+  companySize: string | null;
+  businessType: string | null;
+  annualTurnoverRange: string | null;
+  employeeCount: number | null;
+  createdAt: string;
+  updatedAt: string;
+  category: CustomerCategory | null;
+  contacts: CustomerContact[];
+  addresses: CustomerAddress[];
+  interests: CustomerProductInterest[];
+  documents: Array<{
+    id: string;
+    kind: string;
+    originalFilename: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: string;
+    replacesDocumentId: string | null;
+    uploadedBy: { id: string; fullName: string } | null;
+  }>;
+  createdBy: { id: string; fullName: string } | null;
+  updatedBy: { id: string; fullName: string } | null;
+}
+
+export interface CustomerSummary {
+  total: number;
+  active: number;
+  inactive: number;
+  individual: number;
+  business: number;
+  newThisMonth: number;
+  generatedAt: string;
+}
+
+export interface CustomerDuplicate {
+  customerId: string;
+  customerCode: string;
+  name: string;
+  status: CustomerStatus;
+  matchedOn: 'gstin' | 'pan' | 'name' | 'email' | 'phone';
+  severity: 'blocking' | 'warning';
+}

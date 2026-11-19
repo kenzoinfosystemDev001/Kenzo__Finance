@@ -91,3 +91,24 @@ Product permissions: `product.read` (view), `product.create`, `product.update`
 (edit + status), `product.archive`, `product.delete`, `product.export`,
 `product.manage_models`, `product.manage_vendors`, `product.upload_documents`,
 `product.delete_documents`, `product.use_inactive`.
+
+## 6. Customers (Module 3)
+
+`customers` is the single customer master. Later modules store `customerId`
+(FK, `onDelete: Restrict`) and never copy customer data except print
+snapshots on issued documents.
+
+| Table | Notes |
+| --- | --- |
+| `customers` | `customerCode` generated (KI/CUS/0001). `customerType` INDIVIDUAL / BUSINESS. GSTIN (unique), PAN and CIN are accepted only when `taxCountry` is India; other countries use `taxRegistrationNumber`. |
+| `customer_contacts` | Many; exactly one primary. A customer always keeps at least one contact with a phone or email. |
+| `customer_addresses` | Many; BILLING / SHIPPING / OFFICE / REGISTERED / OTHER, one default per type. Quotations and PIs should pick the default billing/shipping address. |
+| `customer_product_interests` | References existing `products` / `product_models` only. Not an enquiry or order. |
+| `customer_categories` | Configurable (settings.manage). |
+
+Before creating an enquiry/quotation/PI call
+`CustomersService.assertSelectableForTransaction(customerId, actor)`
+(inactive needs `customer.use_inactive`) and add the new table to
+`CustomersService.getReferenceCounts()`. Selector: `GET /customers/lookup`.
+The customer profile's "Business Transactions" tab is where those records
+should then be listed by `customerId`.

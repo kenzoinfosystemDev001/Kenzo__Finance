@@ -26,6 +26,7 @@ export interface UploadInput {
   /** At most one owner is set; the column keeps referential integrity. */
   vendorId?: string;
   productId?: string;
+  customerId?: string;
   /** The current document this upload supersedes (replacement flow). */
   replacesDocumentId?: string;
 }
@@ -50,13 +51,15 @@ const documentSummarySelect = {
   sizeBytes: true,
   vendorId: true,
   productId: true,
+  customerId: true,
   replacesDocumentId: true,
   createdAt: true,
   uploadedBy: { select: { id: true, fullName: true } },
 } satisfies Prisma.DocumentSelect;
 
 /** Audit parent for a document: the record it is attached to, if any. */
-function parentOf(document: { vendorId: string | null; productId: string | null }) {
+function parentOf(document: { vendorId: string | null; productId: string | null; customerId?: string | null }) {
+  if (document.customerId) return { parentEntityType: 'Customer', parentEntityId: document.customerId };
   if (document.vendorId) return { parentEntityType: 'Vendor', parentEntityId: document.vendorId };
   if (document.productId) return { parentEntityType: 'Product', parentEntityId: document.productId };
   return {};
@@ -108,8 +111,18 @@ export class DocumentsService {
       if (!product) throw new BadRequestException('The referenced product does not exist.');
     }
 
+    if (input.customerId) {
+      const customer = await this.prisma.customer.findUnique({
+        where: { id: input.customerId },
+        select: { id: true },
+      });
+      if (!customer) throw new BadRequestException('The referenced customer does not exist.');
+    }
+
     const stored = await this.storageService.save(input.buffer, {
-      folder: input.productId
+      folder: input.customerId
+        ? 'customers'
+        : input.productId
         ? 'products'
         : input.kind === DocumentKind.BRANDING_IMAGE
           ? 'branding'
@@ -131,6 +144,7 @@ export class DocumentsService {
           checksumSha256: stored.checksumSha256,
           vendorId: input.vendorId ?? null,
           productId: input.productId ?? null,
+          customerId: input.customerId ?? null,
           replacesDocumentId: input.replacesDocumentId ?? null,
           uploadedById: actor.id,
         },
@@ -162,6 +176,7 @@ export class DocumentsService {
             mimeType: document.mimeType,
             sizeBytes: document.sizeBytes,
             vendorId: document.vendorId,
+            customerId: document.customerId,
             productId: document.productId,
             replacesDocumentId: document.replacesDocumentId,
           },
