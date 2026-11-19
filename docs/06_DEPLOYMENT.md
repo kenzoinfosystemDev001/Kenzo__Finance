@@ -327,6 +327,43 @@ is no longer reachable by accident.
 > fail whenever Neon happened to be asleep. Use
 > `npm install && npm run render:build`, which runs `migrate deploy` first.
 
+### Starts then exits: `STORAGE_DRIVER=cloudinary requires either...`
+
+The build succeeds and the container restart-loops. The startup check reports
+what it found, which is usually the answer:
+
+```
+STORAGE_DRIVER=cloudinary requires either CLOUDINARY_URL, or all of
+CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET.
+  Recognised and set: CLOUDINARY_API_KEY
+  Set but NOT read by this application: CLOUD_NAME, CLOUDINRY_URL
+  -> These look like Cloudinary variables under the wrong name.
+```
+
+Three mistakes account for nearly every occurrence:
+
+| Mistake | Looks like | Fix |
+| --- | --- | --- |
+| Shortened name | `CLOUD_NAME` | `CLOUDINARY_CLOUD_NAME` |
+| Misspelling | `CLOUDINRY_URL` | `CLOUDINARY_URL` |
+| Key pasted into the value | `CLOUDINARY_URL=cloudinary://...` | value is **only** `cloudinary://...` |
+
+The last one is now repaired automatically, along with wrapping quotes, but
+the variable still has to be named correctly — nothing can rescue a name the
+application never reads.
+
+**Simplest working setup is one variable:**
+
+```
+STORAGE_DRIVER=cloudinary
+CLOUDINARY_URL=cloudinary://<api_key>:<api_secret>@<cloud_name>
+```
+
+Delete `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and
+`CLOUDINARY_API_SECRET` if you use the URL — it already contains all three.
+Find it in Cloudinary under **Dashboard → API Keys → API environment
+variable**; copy the part from `cloudinary://` onwards.
+
 ### Build fails: `Missing script: "render:build"`
 
 ```
