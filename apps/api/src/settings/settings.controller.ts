@@ -10,7 +10,8 @@ import { CurrentUser, RequirePermissions } from '../common/decorators';
 import { PERMISSIONS } from '../common/authz/permissions';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
 
-const WRITABLE_KEYS = Object.values(SETTING_KEYS);
+// Only the boolean business switches. Branding values go through /branding.
+const WRITABLE_KEYS: string[] = Object.values(SETTING_KEYS);
 
 export class UpdateSettingDto {
   @ApiProperty({ enum: WRITABLE_KEYS })
@@ -45,7 +46,7 @@ export class SettingsController {
     @Body() dto: UpdateSettingDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    if (!(dto.key in SETTING_DEFAULTS)) {
+    if (!(dto.key in SETTING_DEFAULTS) || !WRITABLE_KEYS.includes(dto.key)) {
       throw new BadRequestException('Unknown setting key.');
     }
     return this.settingsService.set(dto.key, dto.value, user);

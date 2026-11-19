@@ -10,6 +10,8 @@ import { cookies } from 'next/headers';
  */
 const ACCESS_COOKIE = 'kenzo_at';
 const REFRESH_COOKIE = 'kenzo_rt';
+/** "1" when the user ticked Remember me; decides whether cookies outlive the browser. */
+const REMEMBER_COOKIE = 'kenzo_rm';
 
 const baseOptions = {
   httpOnly: true,
@@ -18,12 +20,20 @@ const baseOptions = {
   path: '/',
 };
 
-export async function setSessionCookies(tokens: {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-}): Promise<void> {
+/**
+ * Writes the session cookies.
+ *
+ * `remember` is passed at sign-in. On a silent refresh it is omitted and the
+ * choice made at sign-in is kept. Without Remember me the refresh cookie is a
+ * browser-session cookie, so closing the browser ends the session.
+ */
+export async function setSessionCookies(
+  tokens: { accessToken: string; refreshToken: string; expiresIn: number },
+  remember?: boolean,
+): Promise<void> {
   const store = await cookies();
+  const persistent = remember ?? store.get(REMEMBER_COOKIE)?.value === '1';
+  const refreshMaxAge = persistent ? { maxAge: 60 * 60 * 24 * 7 } : {};
 
   store.set(ACCESS_COOKIE, tokens.accessToken, {
     ...baseOptions,
@@ -31,10 +41,8 @@ export async function setSessionCookies(tokens: {
   });
 
   // The refresh cookie outlives the access token so a session can be renewed.
-  store.set(REFRESH_COOKIE, tokens.refreshToken, {
-    ...baseOptions,
-    maxAge: 60 * 60 * 24 * 7,
-  });
+  store.set(REFRESH_COOKIE, tokens.refreshToken, { ...baseOptions, ...refreshMaxAge });
+  store.set(REMEMBER_COOKIE, persistent ? '1' : '0', { ...baseOptions, ...refreshMaxAge });
 }
 
 export async function getAccessToken(): Promise<string | undefined> {
@@ -49,4 +57,5 @@ export async function clearSessionCookies(): Promise<void> {
   const store = await cookies();
   store.delete(ACCESS_COOKIE);
   store.delete(REFRESH_COOKIE);
+  store.delete(REMEMBER_COOKIE);
 }

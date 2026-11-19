@@ -55,7 +55,7 @@ export async function loginAction(
     };
   }
 
-  await setSessionCookies(tokens);
+  await setSessionCookies(tokens, formData.get('remember') === 'on');
 
   // redirect() throws internally, so it must sit outside the try block.
   redirect('/dashboard');

@@ -16,6 +16,7 @@ import { NumberingModule } from './numbering/numbering.module';
 import { StorageModule } from './storage/storage.module';
 import { SettingsModule } from './settings/settings.module';
 import { StockModule } from './stock/stock.module';
+import { BrandingModule } from './branding/branding.module';
 import { HealthController } from './health/health.controller';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
@@ -44,6 +45,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     StockModule,
     DocumentsModule,
     OcrModule,
+    BrandingModule,
   ],
   controllers: [HealthController],
   providers: [

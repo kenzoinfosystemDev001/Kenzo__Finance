@@ -4,6 +4,8 @@ import { getCurrentUser } from '@/lib/auth-actions';
 import { setStockTrackingAction } from '@/lib/inventory-actions';
 import type { AppSetting } from '@/lib/types';
 import { PageHeader, SectionCard } from '@/components/ui';
+import { getLoginBranding, loginBackgroundUrl } from '@/lib/branding';
+import { LoginBrandingSettings } from './login-branding-settings';
 
 export const metadata: Metadata = { title: 'Settings' };
 
@@ -15,15 +17,28 @@ export default async function SettingsPage() {
     '/settings',
   ).catch(() => ({ settings: [] as AppSetting[] }));
 
+  const branding = await getLoginBranding();
+
   const stockTracking =
     settings.find((s) => s.key === 'inventory.stockTrackingEnabled')?.value === true;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className="mx-auto max-w-4xl space-y-4">
       <PageHeader
         title="Settings"
         description="Business switches that take effect immediately. Every change is recorded in the audit log."
       />
+
+      <SectionCard
+        title="Sign-in Page"
+        description="Background image and administrator contact shown on the login screen."
+      >
+        <LoginBrandingSettings
+          backgroundUrl={branding.backgroundId ? loginBackgroundUrl(branding.backgroundId) : null}
+          supportEmail={branding.supportEmail}
+          canManage={canManage}
+        />
+      </SectionCard>
 
       <SectionCard
         title="Inventory"
@@ -95,7 +110,7 @@ export default async function SettingsPage() {
               {settings.map((setting) => (
                 <tr key={setting.key}>
                   <td className="font-mono text-sm">{setting.key}</td>
-                  <td className="font-mono text-sm">{String(setting.value)}</td>
+                  <td className="font-mono text-sm">{setting.value === null ? '—' : String(setting.value)}</td>
                   <td className="text-ink-muted">{setting.description}</td>
                 </tr>
               ))}

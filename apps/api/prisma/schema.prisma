@@ -443,6 +443,9 @@ enum DocumentKind {
   PRODUCT_IMAGE
   PRODUCT_DATASHEET
   PRODUCT_OTHER
+  // Application branding (login page background). Not owned by a record;
+  // referenced from the "branding.loginBackgroundDocumentId" setting.
+  BRANDING_IMAGE
 }
 
 model Document {
