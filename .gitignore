@@ -10,8 +10,11 @@ coverage/
 .env.*
 !.env.example
 
-storage/
-uploads/
+# Anchored to the repo root: a bare "storage/" also matched the
+# apps/api/src/storage SOURCE module and silently excluded it from commits.
+/storage/
+/apps/api/storage/
+/uploads/
 *.log
 npm-debug.log*
 

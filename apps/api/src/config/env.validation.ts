@@ -9,7 +9,15 @@ export const envSchema = z.object({
     .enum(['development', 'test', 'staging', 'production'])
     .default('development'),
 
+  // Render, Railway, Heroku and most PaaS hosts inject PORT and require the
+  // process to bind to it. API_PORT stays for local development, but PORT
+  // wins when the host sets it - otherwise the platform sees no open port and
+  // marks the deploy as failed.
+  PORT: z.coerce.number().int().positive().optional(),
   API_PORT: z.coerce.number().int().positive().default(4000),
+
+  // Browser origin allowed by CORS. In production this must be the deployed
+  // frontend URL, with no trailing slash.
   WEB_URL: z.string().url().default('http://localhost:3000'),
 
   DATABASE_URL: z
