@@ -1,90 +1,98 @@
-import { Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createHash, randomUUID } from 'node:crypto';
-import { createReadStream, existsSync, ReadStream } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
-import * as path from 'node:path';
+import type { Readable } from 'node:stream';
+import {
+  STORAGE_DRIVER_TOKEN,
+  type SaveOptions,
+  type StorageDriver,
+  type StoredFile,
+} from './storage-driver.interface';
 
-export interface SaveOptions {
-  /** Logical sub-folder inside the storage root, e.g. "vendors". */
-  folder: string;
-  /** Used only to derive the file extension; never used as the on-disk name. */
-  originalFilename: string;
-}
-
-export interface StoredFile {
-  /** Opaque, POSIX-style key relative to the storage root. */
-  storageKey: string;
-  sizeBytes: number;
-  checksumSha256: string;
-}
+export type { StoredFile } from './storage-driver.interface';
 
 /**
- * Private, disk-backed document storage (STORAGE_DRIVER=local).
+ * Private document storage.
  *
- * Files are written under STORAGE_LOCAL_ROOT with random names, so user input
- * never decides an on-disk path. Nothing here is statically served; files
- * leave storage only through permission-checked streams.
+ * A thin facade over the configured driver, so calling modules never know or
+ * care whether files live on disk or in Cloudinary. Files are addressed by an
+ * opaque key generated here; a client-supplied filename never reaches the
+ * storage path, which closes off traversal. Nothing is publicly served.
  */
 @Injectable()
 export class StorageService {
   private readonly logger = new Logger(StorageService.name);
-  private readonly root: string;
 
-  constructor(configService: ConfigService) {
-    this.root = path.resolve(configService.get<string>('STORAGE_LOCAL_ROOT', './storage'));
+  constructor(
+    @Inject(STORAGE_DRIVER_TOKEN) private readonly driver: StorageDriver,
+    private readonly configService: ConfigService,
+  ) {
+    this.warnIfStorageIsEphemeral();
   }
 
-  async save(buffer: Buffer, options: SaveOptions): Promise<StoredFile> {
-    const folder = this.sanitizeSegment(options.folder);
-    const extension = this.extractExtension(options.originalFilename);
-    const now = new Date();
-    const yyyy = String(now.getUTCFullYear());
-    const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+  get driverName(): string {
+    return this.driver.name;
+  }
 
-    const storageKey = [folder, yyyy, mm, `${randomUUID()}${extension}`].join('/');
-    const absolutePath = this.resolveKey(storageKey);
-
-    try {
-      await mkdir(path.dirname(absolutePath), { recursive: true });
-      // "wx" fails if the file already exists, so a key is never overwritten.
-      await writeFile(absolutePath, buffer, { flag: 'wx' });
-    } catch (error) {
-      this.logger.error(`Failed to write ${storageKey}`, error as Error);
-      throw new InternalServerErrorException('Could not store the uploaded file.');
-    }
-
-    return {
-      storageKey,
-      sizeBytes: buffer.length,
-      checksumSha256: createHash('sha256').update(buffer).digest('hex'),
+  async save(
+    buffer: Buffer,
+    options: { folder: string; originalFilename: string; mimeType?: string },
+  ): Promise<StoredFile> {
+    const saveOptions: SaveOptions = {
+      folder: options.folder,
+      originalFilename: options.originalFilename,
+      mimeType: options.mimeType ?? 'application/octet-stream',
     };
+
+    return this.driver.save(buffer, saveOptions);
   }
 
-  createReadStream(storageKey: string): ReadStream {
-    const absolutePath = this.resolveKey(storageKey);
-    if (!existsSync(absolutePath)) {
-      throw new NotFoundException('The stored file could not be found.');
+  async createReadStream(storageKey: string): Promise<Readable> {
+    return this.driver.createReadStream(storageKey);
+  }
+
+  async remove(storageKey: string): Promise<void> {
+    await this.driver.remove(storageKey);
+  }
+
+  /**
+   * Most PaaS containers (Render, Railway, Heroku) have an ephemeral
+   * filesystem: anything written is lost on the next deploy or restart. With
+   * the local driver that silently destroys every uploaded vendor document,
+   * OCR source file and product image, while the database keeps rows pointing
+   * at files that no longer exist.
+   *
+   * There is no safe automatic fallback, so this says so loudly at startup.
+   * Fix it with STORAGE_DRIVER=cloudinary, or by mounting a persistent disk
+   * and pointing STORAGE_LOCAL_ROOT at it.
+   */
+  private warnIfStorageIsEphemeral(): void {
+    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+    if (!isProduction) return;
+    if (this.driver.name !== 'local') return;
+
+    const configuredRoot = this.configService.get<string>(
+      'STORAGE_LOCAL_ROOT',
+      './storage',
+    );
+
+    // Tests the CONFIGURED value, not a resolved path: resolve() rewrites a
+    // POSIX mount path into a drive-letter path on Windows, which would make
+    // a correctly configured deployment look misconfigured.
+    const looksLikeMountedDisk = /^\/(var\/data|data|mnt|persistent)(\/|$)/.test(
+      configuredRoot,
+    );
+
+    if (looksLikeMountedDisk) {
+      this.logger.log(`Document storage: ${configuredRoot} (persistent disk)`);
+      return;
     }
-    return createReadStream(absolutePath);
-  }
 
-  /** Maps a storage key to an absolute path, refusing anything outside the root. */
-  private resolveKey(storageKey: string): string {
-    const absolutePath = path.resolve(this.root, storageKey);
-    if (absolutePath !== this.root && !absolutePath.startsWith(this.root + path.sep)) {
-      throw new NotFoundException('The stored file could not be found.');
-    }
-    return absolutePath;
-  }
-
-  private sanitizeSegment(segment: string): string {
-    const cleaned = segment.replace(/[^a-zA-Z0-9_-]/g, '');
-    return cleaned || 'misc';
-  }
-
-  private extractExtension(filename: string): string {
-    const ext = path.extname(filename).toLowerCase();
-    return /^\.[a-z0-9]{1,10}$/.test(ext) ? ext : '';
+    this.logger.warn(
+      `Document storage is the local filesystem at ${configuredRoot}. On a ` +
+        'host with an ephemeral filesystem every uploaded file is lost on ' +
+        'redeploy, leaving database records pointing at missing files. Set ' +
+        'STORAGE_DRIVER=cloudinary, or mount a persistent disk and point ' +
+        'STORAGE_LOCAL_ROOT at it.',
+    );
   }
 }
