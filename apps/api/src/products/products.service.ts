@@ -683,12 +683,15 @@ export class ProductsService {
    * (enquiry, quotation, PI and delivery lines) add their counts here.
    */
   async getReferenceCounts(id: string): Promise<Record<string, number>> {
-    const [vendorMappings, stockMovements, documents] = await this.prisma.$transaction([
+    const [vendorMappings, stockMovements, documents, enquiryItems, customerInterests, quotationItems] = await this.prisma.$transaction([
       this.prisma.vendorProduct.count({ where: { productId: id } }),
       this.prisma.stockMovement.count({ where: { productId: id } }),
       this.prisma.document.count({ where: { productId: id, kind: { not: DocumentKind.PRODUCT_IMAGE } } }),
+      this.prisma.enquiryItem.count({ where: { productId: id } }),
+      this.prisma.customerProductInterest.count({ where: { productId: id } }),
+      this.prisma.quotationItem.count({ where: { productId: id } }),
     ]);
-    return { vendorMappings, stockMovements, documents };
+    return { vendorMappings, stockMovements, documents, enquiryItems, customerInterests, quotationItems };
   }
 
   /** Permanent delete of an unreferenced product (e.g. created by mistake). Its models go with it. */

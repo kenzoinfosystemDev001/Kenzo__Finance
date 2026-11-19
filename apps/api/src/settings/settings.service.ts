@@ -28,6 +28,13 @@ export const SETTING_KEYS = {
    * error, and no approved rule permits it.
    */
   ALLOW_NEGATIVE_STOCK: 'inventory.allowNegativeStock',
+
+  /**
+   * Whether quotations must be approved before they can be sent. Off by
+   * default: no approval policy has been confirmed. When on, Draft goes to
+   * Pending Approval and only a user with quotation.approve can approve.
+   */
+  QUOTATION_APPROVAL_REQUIRED: 'quotation.approvalRequired',
 } as const;
 
 /**
@@ -40,6 +47,10 @@ export const BRANDING_SETTING_KEYS = {
   LOGIN_BACKGROUND_DOCUMENT_ID: 'branding.loginBackgroundDocumentId',
   /** Address behind the login page's "Contact Administrator", or null. */
   SUPPORT_EMAIL: 'branding.supportEmail',
+  /** Company details printed on quotation PDFs: { name, address, phone, email, website, gstin, pan }. */
+  COMPANY_PROFILE: 'branding.companyProfile',
+  /** Default terms copied into new quotations (empty until an administrator sets them). */
+  QUOTATION_DEFAULT_TERMS: 'quotation.defaultTerms',
 } as const;
 
 export const SETTING_DEFAULTS: Record<string, unknown> = {
@@ -47,6 +58,9 @@ export const SETTING_DEFAULTS: Record<string, unknown> = {
   [SETTING_KEYS.ALLOW_NEGATIVE_STOCK]: false,
   [BRANDING_SETTING_KEYS.LOGIN_BACKGROUND_DOCUMENT_ID]: null,
   [BRANDING_SETTING_KEYS.SUPPORT_EMAIL]: null,
+  [SETTING_KEYS.QUOTATION_APPROVAL_REQUIRED]: false,
+  [BRANDING_SETTING_KEYS.COMPANY_PROFILE]: null,
+  [BRANDING_SETTING_KEYS.QUOTATION_DEFAULT_TERMS]: null,
 };
 
 export const SETTING_DESCRIPTIONS: Record<string, string> = {
@@ -58,6 +72,10 @@ export const SETTING_DESCRIPTIONS: Record<string, string> = {
     'Image shown behind the sign-in page. Empty uses the plain navy background.',
   [BRANDING_SETTING_KEYS.SUPPORT_EMAIL]:
     'Email address users are directed to from the sign-in page for access or password help.',
+  [SETTING_KEYS.QUOTATION_APPROVAL_REQUIRED]:
+    'Quotations must be approved by a user with quotation approval permission before they can be sent.',
+  [BRANDING_SETTING_KEYS.COMPANY_PROFILE]: 'Company name, address and registration details printed on quotations.',
+  [BRANDING_SETTING_KEYS.QUOTATION_DEFAULT_TERMS]: 'Terms and conditions copied into new quotations (editable per quotation).',
 };
 
 @Injectable()

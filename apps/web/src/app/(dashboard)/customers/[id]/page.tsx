@@ -3,12 +3,16 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiFetch, ApiError, queryString } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth-actions';
-import type { ActivityEntry, CustomerAddress, CustomerDetail, PaginatedResponse } from '@/lib/types';
+import type { ActivityEntry, CustomerAddress, CustomerDetail, EnquiryListItem, PaginatedResponse, QuotationListItem } from '@/lib/types';
 import { CUSTOMER_ADDRESS_TYPE_LABELS, CUSTOMER_TYPE_LABELS } from '@/lib/customer-labels';
 import { activityLabel, formatAddress, formatDate, formatDateTime, formatPhone } from '@/lib/vendor-labels';
 import { DefinitionList, ErrorState, Pagination, Tabs, VendorStatusBadge } from '@/components/ui';
 import { EmptyStateClient } from '@/components/panel-shared';
-import { IconChevronLeft, IconPencil, IconUser, IconWarehouse } from '@/components/icons';
+import { EnquiryStatusBadge } from '@/components/enquiry-badges';
+import { PastValidityBadge, QuotationStatusBadge } from '@/components/quotation-badges';
+import { formatMoney } from '@/lib/quotation-labels';
+import { isFollowUpOverdue } from '@/lib/enquiry-labels';
+import { IconChevronLeft, IconPencil, IconPlus, IconUser, IconWarehouse } from '@/components/icons';
 import { CustomerRowActions } from '../customer-row-actions';
 import { CustomerAddressesPanel, CustomerContactsPanel, CustomerDocumentsPanel, CustomerProductsPanel } from './customer-panels';
 
@@ -179,21 +183,14 @@ export default async function CustomerProfilePage({
       )}
       {tab === 'activity' && <ActivityTab customerId={customer.id} page={query.page} />}
       {tab === 'transactions' && (
-        <section className="card p-6">
-          <h2 className="text-lg font-semibold text-ink">Business transactions</h2>
-          <p className="mt-1 max-w-2xl text-sm text-ink-muted">
-            Enquiries, quotations, proforma invoices, payments and deliveries for this customer will appear here, linked by
-            customer ID {customer.customerCode}. Those modules are not built yet, so there is nothing to show.
-          </p>
-          <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {['Enquiries', 'Quotations', 'Proforma Invoices', 'Payments', 'Deliveries'].map((label) => (
-              <li key={label} className="rounded-xl border border-dashed border-border-strong px-4 py-3">
-                <p className="text-sm font-semibold text-ink">{label}</p>
-                <p className="text-xs text-ink-subtle">Module not yet available</p>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <TransactionsTab
+          customerId={customer.id}
+          customerCode={customer.customerCode}
+          canReadEnquiries={can('enquiry.read')}
+          canCreateEnquiry={can('enquiry.create') && customer.status === 'ACTIVE'}
+          canReadQuotations={can('quotation.read')}
+          canCreateQuotation={can('quotation.create_manual') && customer.status === 'ACTIVE'}
+        />
       )}
     </div>
   );
@@ -235,5 +232,183 @@ async function ActivityTab({ customerId, page }: { customerId: string; page?: st
         </>
       )}
     </section>
+  );
+}
+
+/** Business documents for this customer. Enquiries are live; later modules slot in beside them. */
+async function TransactionsTab({
+  customerId,
+  customerCode,
+  canReadEnquiries,
+  canCreateEnquiry,
+  canReadQuotations,
+  canCreateQuotation,
+}: {
+  customerId: string;
+  customerCode: string;
+  canReadEnquiries: boolean;
+  canCreateEnquiry: boolean;
+  canReadQuotations: boolean;
+  canCreateQuotation: boolean;
+}) {
+  let enquiries: PaginatedResponse<EnquiryListItem> | null = null;
+  let enquiryError: string | null = null;
+  if (canReadEnquiries) {
+    try {
+      enquiries = await apiFetch<PaginatedResponse<EnquiryListItem>>(`/enquiries${queryString({ customerId, pageSize: 50, sortBy: 'enquiryDate', sortDir: 'desc' })}`);
+    } catch (error) {
+      enquiryError = error instanceof ApiError ? error.messages[0] : 'The server could not be reached.';
+    }
+  }
+  let quotations: PaginatedResponse<QuotationListItem> | null = null;
+  let quotationError: string | null = null;
+  if (canReadQuotations) {
+    try {
+      quotations = await apiFetch<PaginatedResponse<QuotationListItem>>(`/quotations${queryString({ customerId, pageSize: 50, sortBy: 'createdAt', sortDir: 'desc' })}`);
+    } catch (error) {
+      quotationError = error instanceof ApiError ? error.messages[0] : 'The server could not be reached.';
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      {canReadEnquiries && (
+        <section className="card">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+            <div>
+              <h2 className="text-lg font-semibold text-ink">Enquiries</h2>
+              <p className="text-sm text-ink-muted">
+                {enquiries && enquiries.meta.totalItems > enquiries.items.length
+                  ? `Latest ${enquiries.items.length} of ${enquiries.meta.totalItems} enquiries.`
+                  : 'Enquiries recorded for this customer.'}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {enquiries && enquiries.meta.totalItems > enquiries.items.length && (
+                <Link href={`/enquiries?customerId=${customerId}`} className="btn-secondary">View all</Link>
+              )}
+              {canCreateEnquiry && <Link href={`/enquiries/new?customerId=${customerId}`} className="btn-primary"><IconPlus size={16} /> Add Enquiry</Link>}
+            </div>
+          </div>
+          {enquiryError ? (
+            <div className="p-5"><ErrorState title="Could not load enquiries" message={enquiryError} /></div>
+          ) : !enquiries || enquiries.items.length === 0 ? (
+            <EmptyStateClient title="No enquiries yet" description="Enquiries created for this customer will appear here." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Enquiry ID</th>
+                    <th scope="col">Enquiry Date</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" className="text-right">Products</th>
+                    <th scope="col">Assigned To</th>
+                    <th scope="col">Next Follow-up</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {enquiries.items.map((e) => {
+                    const overdue = isFollowUpOverdue(e.nextFollowUpDate, e.status);
+                    return (
+                      <tr key={e.id}>
+                        <td className="whitespace-nowrap">
+                          <Link href={`/enquiries/${e.id}`} className="font-mono text-sm font-semibold text-ink hover:text-accent hover:underline">{e.enquiryNumber}</Link>
+                        </td>
+                        <td className="whitespace-nowrap">{formatDate(e.enquiryDate)}</td>
+                        <td><EnquiryStatusBadge status={e.status} /></td>
+                        <td className="text-right tabular-nums">{e._count.items}</td>
+                        <td className="whitespace-nowrap">{e.assignedTo?.fullName ?? <span className="text-ink-subtle">Unassigned</span>}</td>
+                        <td className={overdue ? 'whitespace-nowrap font-semibold text-danger' : 'whitespace-nowrap'}>
+                          {e.nextFollowUpDate ? formatDate(e.nextFollowUpDate) : <span className="text-ink-subtle">&mdash;</span>}
+                          {overdue && ' (overdue)'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {canReadQuotations && (
+        <section className="card">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+            <div>
+              <h2 className="text-lg font-semibold text-ink">Quotations</h2>
+              <p className="text-sm text-ink-muted">
+                {quotations && quotations.meta.totalItems > quotations.items.length
+                  ? `Latest ${quotations.items.length} of ${quotations.meta.totalItems} quotations.`
+                  : 'Quotations prepared for this customer.'}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {quotations && quotations.meta.totalItems > quotations.items.length && (
+                <Link href={`/quotations?customerId=${customerId}`} className="btn-secondary">View all</Link>
+              )}
+              {canCreateQuotation && <Link href={`/quotations/new?customerId=${customerId}`} className="btn-primary"><IconPlus size={16} /> New Quotation</Link>}
+            </div>
+          </div>
+          {quotationError ? (
+            <div className="p-5"><ErrorState title="Could not load quotations" message={quotationError} /></div>
+          ) : !quotations || quotations.items.length === 0 ? (
+            <EmptyStateClient title="No quotations yet" description="Quotations prepared for this customer will appear here." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Quotation No.</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Enquiry</th>
+                    <th scope="col" className="text-right">Revision</th>
+                    <th scope="col" className="text-right">Grand Total</th>
+                    <th scope="col">Valid Until</th>
+                    <th scope="col">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {quotations.items.map((q) => (
+                    <tr key={q.id}>
+                      <td className="whitespace-nowrap">
+                        <Link href={`/quotations/${q.id}`} className="font-mono text-sm font-semibold text-ink hover:text-accent hover:underline">{q.quotationNumber}</Link>
+                      </td>
+                      <td className="whitespace-nowrap">{q.quotationDate ? formatDate(q.quotationDate) : <span className="text-ink-subtle">&mdash;</span>}</td>
+                      <td className="whitespace-nowrap font-mono text-sm">{q.enquiry?.enquiryNumber ?? <span className="font-sans text-ink-subtle">Manual</span>}</td>
+                      <td className="text-right tabular-nums">R{q.currentRevisionNumber}</td>
+                      <td className="whitespace-nowrap text-right tabular-nums">{formatMoney(q.currentTotal, q.currency)}</td>
+                      <td className="whitespace-nowrap">
+                        {q.validUntil ? formatDate(q.validUntil) : <span className="text-ink-subtle">&mdash;</span>}
+                        {q.pastValidity && <div className="mt-0.5"><PastValidityBadge /></div>}
+                      </td>
+                      <td><QuotationStatusBadge status={q.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Later modules: shown as unavailable until they exist. */}
+      <section className="card p-6">
+        <h2 className="text-lg font-semibold text-ink">Other business transactions</h2>
+        <p className="mt-1 max-w-2xl text-sm text-ink-muted">
+          Proforma invoices, payments and deliveries for this customer will appear here, linked by customer ID {customerCode}.
+          Those modules are not available yet, so there is nothing to show.
+        </p>
+        <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {['Proforma Invoices', 'Payments', 'Deliveries'].map((label) => (
+            <li key={label} className="rounded-xl border border-dashed border-border-strong px-4 py-3">
+              <p className="text-sm font-semibold text-ink">{label}</p>
+              <p className="text-xs text-ink-subtle">Module not yet available</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
   );
 }

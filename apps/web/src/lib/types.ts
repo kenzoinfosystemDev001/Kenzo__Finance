@@ -536,3 +536,504 @@ export interface CustomerDuplicate {
   matchedOn: 'gstin' | 'pan' | 'name' | 'email' | 'phone';
   severity: 'blocking' | 'warning';
 }
+
+// ---------------------------------------------------------------------------
+// Enquiry Management (Module 4)
+// ---------------------------------------------------------------------------
+
+export type EnquiryStatus =
+  | 'NEW'
+  | 'ASSIGNED'
+  | 'IN_PROGRESS'
+  | 'FOLLOW_UP_PENDING'
+  | 'REQUIREMENT_CLARIFICATION'
+  | 'READY_FOR_QUOTATION'
+  | 'CONVERTED'
+  | 'ON_HOLD'
+  | 'LOST'
+  | 'CLOSED';
+export type EnquiryPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+export type FollowUpMethod = 'PHONE' | 'EMAIL' | 'WHATSAPP' | 'MEETING' | 'OTHER';
+export type FollowUpOutcome =
+  | 'INTERESTED'
+  | 'CLARIFICATION_NEEDED'
+  | 'AWAITING_RESPONSE'
+  | 'NEGOTIATION_REQUIRED'
+  | 'READY_FOR_QUOTATION'
+  | 'NOT_INTERESTED'
+  | 'OTHER';
+export type EnquiryDocumentKind =
+  | 'ENQUIRY_REQUIREMENT'
+  | 'ENQUIRY_TECH_SPEC'
+  | 'ENQUIRY_REFERENCE_IMAGE'
+  | 'ENQUIRY_EXISTING_QUOTATION'
+  | 'ENQUIRY_OTHER';
+
+export interface UserRef {
+  id: string;
+  fullName: string;
+}
+
+export interface EnquirySource {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  _count?: { enquiries: number };
+}
+
+export interface EnquiryAssignee {
+  id: string;
+  fullName: string;
+  email: string;
+}
+
+export interface EnquiryListItem {
+  id: string;
+  enquiryNumber: string;
+  enquiryDate: string;
+  status: EnquiryStatus;
+  priority: EnquiryPriority;
+  nextFollowUpDate: string | null;
+  createdAt: string;
+  customer: { id: string; customerCode: string; name: string; customerType: CustomerType; status: CustomerStatus };
+  customerContact: { id: string; name: string; phone: string | null; email: string | null } | null;
+  /** The chosen contact, or the customer's primary contact when none was chosen. */
+  contact: { id: string; name: string; phone: string | null; email: string | null } | null;
+  source: { id: string; name: string } | null;
+  assignedTo: UserRef | null;
+  _count: { items: number; followUps: number };
+}
+
+export interface EnquirySummary {
+  total: number;
+  new: number;
+  inProgress: number;
+  followUpPending: number;
+  quotationPending: number;
+  converted: number;
+  lostClosed: number;
+  onHold: number;
+  overdueFollowUps: number;
+  generatedAt: string;
+}
+
+export interface EnquiryItem {
+  id: string;
+  enquiryId: string;
+  productId: string;
+  productModelId: string | null;
+  quantity: number;
+  unit: string;
+  technicalRequirements: string | null;
+  remarks: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  product: { id: string; productCode: string; name: string; isActive: boolean; archivedAt: string | null; company: { id: string; name: string } };
+  productModel: {
+    id: string;
+    modelCode: string;
+    modelName: string;
+    modelNumber: string;
+    specifications: Specification[] | Record<string, string> | null;
+    isActive: boolean;
+  } | null;
+}
+
+export interface EnquiryFollowUp {
+  id: string;
+  enquiryId: string;
+  contactId: string | null;
+  followUpDate: string;
+  method: FollowUpMethod;
+  discussionSummary: string;
+  customerResponse: string | null;
+  outcome: FollowUpOutcome;
+  nextFollowUpDate: string | null;
+  assignedToId: string | null;
+  internalNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  contact: { id: string; name: string } | null;
+  assignedTo: UserRef | null;
+  createdBy: UserRef | null;
+}
+
+export interface EnquiryStatusChange {
+  id: string;
+  previousStatus: EnquiryStatus | null;
+  newStatus: EnquiryStatus;
+  reason: string | null;
+  changedAt: string;
+  changedBy: UserRef | null;
+}
+
+export interface EnquiryDetail {
+  id: string;
+  enquiryNumber: string;
+  enquiryDate: string;
+  status: EnquiryStatus;
+  priority: EnquiryPriority;
+  customerId: string;
+  customerContactId: string | null;
+  sourceId: string | null;
+  assignedToId: string | null;
+  description: string | null;
+  internalRemarks: string | null;
+  expectedDecisionDate: string | null;
+  /** Prisma Decimal, serialised as a string. */
+  expectedBudget: string | null;
+  currency: string;
+  expectedDeliveryTimeline: string | null;
+  paymentPreference: string | null;
+  commercialNotes: string | null;
+  nextFollowUpDate: string | null;
+  convertedAt: string | null;
+  convertedReference: string | null;
+  createdAt: string;
+  updatedAt: string;
+  customer: Pick<
+    CustomerDetail,
+    'id' | 'customerCode' | 'customerType' | 'name' | 'status' | 'industry' | 'website' | 'gstin' | 'pan' | 'taxCountry'
+  > & {
+    category: { id: string; name: string } | null;
+    contacts: CustomerContact[];
+    /** Default addresses only. */
+    addresses: CustomerAddress[];
+  };
+  customerContact: CustomerContact | null;
+  source: { id: string; name: string } | null;
+  assignedTo: UserRef | null;
+  createdBy: UserRef | null;
+  updatedBy: UserRef | null;
+  convertedBy: UserRef | null;
+  items: EnquiryItem[];
+  followUps: EnquiryFollowUp[];
+  statusHistory: EnquiryStatusChange[];
+  documents: Array<{
+    id: string;
+    kind: string;
+    originalFilename: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: string;
+    replacesDocumentId: string | null;
+    uploadedBy: UserRef | null;
+  }>;
+}
+
+/** Row of the follow-up board for today / upcoming / overdue (open enquiries by next follow-up). */
+export interface FollowUpBoardEnquiry {
+  id: string;
+  enquiryNumber: string;
+  status: EnquiryStatus;
+  priority: EnquiryPriority;
+  nextFollowUpDate: string | null;
+  customer: { id: string; name: string };
+  customerContact: { name: string; phone: string | null } | null;
+  assignedTo: UserRef | null;
+  followUps: Array<{ followUpDate: string; outcome: FollowUpOutcome; discussionSummary: string }>;
+}
+
+/** Row of the follow-up board for completed (recorded follow-ups). */
+export interface FollowUpBoardRecord extends Omit<EnquiryFollowUp, 'contact'> {
+  enquiry: { id: string; enquiryNumber: string; status: EnquiryStatus; customer: { id: string; name: string } };
+  contact: { name: string } | null;
+}
+
+export interface FollowUpCounts {
+  today: number;
+  upcoming: number;
+  overdue: number;
+  completed: number;
+}
+
+/** Active customer offered in pickers (GET /customers/lookup). */
+export interface CustomerLookupItem {
+  id: string;
+  customerCode: string;
+  name: string;
+  customerType: CustomerType;
+  status: CustomerStatus;
+  gstin: string | null;
+  contacts: Array<{ name: string; phone: string | null; email: string | null }>;
+  addresses: Array<{ id: string; addressType: CustomerAddressType; city: string | null; state: string | null; country: string }>;
+}
+
+export interface EnquiryConversionCheck {
+  ready: boolean;
+  problems: string[];
+  enquiryId: string;
+  enquiryNumber: string;
+  customerId: string;
+  customerContactId: string | null;
+  currency: string;
+  items: Array<{ enquiryItemId: string; productId: string; productModelId: string | null; quantity: number; unit: string; technicalRequirements: string | null }>;
+  quotationModuleAvailable: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Quotation Management (Module 5). Money values are decimal strings.
+// ---------------------------------------------------------------------------
+
+export type QuotationStatus =
+  | 'DRAFT'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'SENT'
+  | 'UNDER_NEGOTIATION'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'EXPIRED'
+  | 'CANCELLED'
+  | 'SUPERSEDED';
+export type DiscountType = 'NONE' | 'PERCENT' | 'AMOUNT';
+export type QuotationDocumentKind = 'QUOTATION_PDF' | 'QUOTATION_CUSTOMER_DOCUMENT' | 'QUOTATION_ATTACHMENT';
+
+export interface QuotationListItem {
+  id: string;
+  quotationNumber: string;
+  status: QuotationStatus;
+  currency: string;
+  currentRevisionNumber: number;
+  currentTotal: string;
+  createdAt: string;
+  customer: { id: string; name: string; customerCode: string };
+  enquiry: { id: string; enquiryNumber: string } | null;
+  assignedTo: UserRef | null;
+  quotationDate: string | null;
+  validUntil: string | null;
+  /** Validity date passed while still open (not marked expired). */
+  pastValidity: boolean;
+}
+
+export interface QuotationSummary {
+  total: number;
+  draft: number;
+  pendingApproval: number;
+  approved: number;
+  sent: number;
+  underNegotiation: number;
+  accepted: number;
+  rejected: number;
+  expired: number;
+  cancelled: number;
+  /** Open quotations whose current revision's validity date has passed. */
+  pastValidity: number;
+  approvalRequired: boolean;
+  generatedAt: string;
+}
+
+export interface QuotationAddressSnapshot {
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string;
+}
+
+/** Customer details stored on a revision (frozen once issued). */
+export interface QuotationCustomerSnapshot {
+  customerCode: string;
+  name: string;
+  customerType: CustomerType;
+  contactName: string | null;
+  contactDesignation: string | null;
+  phone: string | null;
+  email: string | null;
+  billingAddress: QuotationAddressSnapshot | null;
+  shippingAddress: QuotationAddressSnapshot | null;
+  taxCountry: string | null;
+  gstin: string | null;
+  pan: string | null;
+  taxRegistrationNumber: string | null;
+}
+
+export interface QuotationItem {
+  id: string;
+  revisionId: string;
+  sortOrder: number;
+  productId: string;
+  productModelId: string | null;
+  enquiryItemId: string | null;
+  productName: string;
+  productCode: string;
+  brandName: string;
+  modelName: string | null;
+  modelNumber: string | null;
+  description: string | null;
+  specifications: Specification[] | Record<string, string> | null;
+  quantity: number;
+  unit: string;
+  unitPrice: string;
+  discountType: DiscountType;
+  discountValue: string;
+  discountAmount: string;
+  taxLabel: string | null;
+  taxRate: string;
+  taxAmount: string;
+  lineTotal: string;
+  remarks: string | null;
+}
+
+export interface QuotationTaxGroup {
+  label: string;
+  rate: string;
+  taxable: string;
+  tax: string;
+}
+
+export interface QuotationRevision {
+  id: string;
+  quotationId: string;
+  revisionNumber: number;
+  status: QuotationStatus;
+  quotationDate: string;
+  validUntil: string | null;
+  customerSnapshot: QuotationCustomerSnapshot;
+  internalRemarks: string | null;
+  termsAndConditions: string | null;
+  paymentTerms: string | null;
+  deliveryTerms: string | null;
+  warrantyTerms: string | null;
+  notes: string | null;
+  subtotal: string;
+  itemDiscountTotal: string;
+  additionalDiscount: string;
+  taxableAmount: string;
+  taxTotal: string;
+  otherChargesLabel: string | null;
+  otherCharges: string;
+  grandTotal: string;
+  taxBreakdown: QuotationTaxGroup[] | null;
+  issuedAt: string | null;
+  pdfDocumentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: QuotationItem[];
+  createdBy: UserRef | null;
+  pdfDocument: { id: string; originalFilename: string; sizeBytes: number; createdAt: string } | null;
+}
+
+export interface QuotationStatusChange {
+  id: string;
+  previousStatus: QuotationStatus | null;
+  newStatus: QuotationStatus;
+  remarks: string | null;
+  changedAt: string;
+  changedBy: UserRef | null;
+  revision: { revisionNumber: number };
+}
+
+export interface QuotationCommunication {
+  id: string;
+  revisionNumber: number | null;
+  occurredAt: string;
+  channel: FollowUpMethod;
+  contactName: string | null;
+  summary: string;
+  createdAt: string;
+  createdBy: UserRef | null;
+}
+
+export interface QuotationDetail {
+  id: string;
+  quotationNumber: string;
+  customerId: string;
+  enquiryId: string | null;
+  contactId: string | null;
+  assignedToId: string | null;
+  subject: string | null;
+  referenceNumber: string | null;
+  currency: string;
+  status: QuotationStatus;
+  currentRevisionNumber: number;
+  currentTotal: string;
+  acceptedRevisionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  customer: { id: string; name: string; customerCode: string; customerType: CustomerType; status: CustomerStatus };
+  contact: { id: string; name: string; phone: string | null; email: string | null } | null;
+  enquiry: { id: string; enquiryNumber: string; status: EnquiryStatus } | null;
+  assignedTo: UserRef | null;
+  createdBy: UserRef | null;
+  updatedBy: UserRef | null;
+  /** Newest first; the first entry is the current revision. */
+  revisions: QuotationRevision[];
+  statusHistory: QuotationStatusChange[];
+  communications: QuotationCommunication[];
+  documents: Array<{
+    id: string;
+    kind: QuotationDocumentKind;
+    originalFilename: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: string;
+    replacesDocumentId: string | null;
+    uploadedBy: UserRef | null;
+  }>;
+  approvalRequired: boolean;
+}
+
+export interface QuotationCompareChange {
+  field: string;
+  from: string | null;
+  to: string | null;
+}
+
+export interface QuotationCompareResult {
+  from: { revisionNumber: number; status: QuotationStatus };
+  to: { revisionNumber: number; status: QuotationStatus };
+  items: Array<{ change: 'added' | 'removed' | 'modified'; item: string; fields: QuotationCompareChange[] }>;
+  header: QuotationCompareChange[];
+}
+
+export interface QuotationCompanyProfile {
+  name?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  gstin?: string;
+  pan?: string;
+}
+
+export interface QuotationSettings {
+  defaultTerms: string;
+  companyProfile: QuotationCompanyProfile;
+  approvalRequired: boolean;
+}
+
+/** GET /quotations/from-enquiry/:enquiryId - what a new quotation pre-fills from an enquiry. */
+export interface QuotationEnquiryHandoff extends EnquiryConversionCheck {
+  enquiry: {
+    id: string;
+    enquiryNumber: string;
+    description: string | null;
+    commercialNotes: string | null;
+    expectedDeliveryTimeline: string | null;
+    paymentPreference: string | null;
+    assignedTo: UserRef | null;
+    customer: { id: string; name: string; customerCode: string };
+    customerContact: { id: string; name: string } | null;
+    items: EnquiryItem[];
+  };
+  defaultTerms: string | null;
+}
+
+export interface CurrencyTotal {
+  currency: string;
+  total: string;
+}
+
+export interface QuotationReports {
+  byStatus: Array<{ status: QuotationStatus; count: number; totals: CurrencyTotal[] }>;
+  byCustomer: Array<{ customer: { id: string; name: string; customerCode: string } | null; count: number; totals: CurrencyTotal[] }>;
+  byEmployee: Array<{ employee: UserRef | null; count: number; totals: CurrencyTotal[] }>;
+  acceptedVsRejected: { accepted: number; rejected: number; acceptanceRate: number | null };
+  conversion: { enquiries: number; converted: number; rate: number | null };
+  revisions: { quotations: number; average: number | null; max: number | null };
+}

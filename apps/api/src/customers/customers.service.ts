@@ -502,8 +502,12 @@ export class CustomersService {
    * quotations, PIs, payments and deliveries add their counts here.
    */
   async getReferenceCounts(id: string): Promise<Record<string, number>> {
-    const documents = await this.prisma.document.count({ where: { customerId: id } });
-    return { documents };
+    const [documents, enquiries, quotations] = await this.prisma.$transaction([
+      this.prisma.document.count({ where: { customerId: id } }),
+      this.prisma.enquiry.count({ where: { customerId: id } }),
+      this.prisma.quotation.count({ where: { customerId: id } }),
+    ]);
+    return { documents, enquiries, quotations };
   }
 
   /** Permanent delete of a customer nothing refers to; contacts, addresses and interests go with it. */

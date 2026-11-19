@@ -1,5 +1,6 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { PrismaService } from '../database/prisma.service';
 import { Public } from '../common/decorators';
 
@@ -18,7 +19,7 @@ export class HealthController {
   @Public()
   @Get('ready')
   @ApiOperation({ summary: 'Readiness probe including database connectivity' })
-  async ready() {
+  async ready(@Res({ passthrough: true }) response: Response) {
     try {
       await this.prisma.$queryRaw`SELECT 1`;
       return {
@@ -27,6 +28,7 @@ export class HealthController {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
+      response.status(HttpStatus.SERVICE_UNAVAILABLE);
       return {
         status: 'degraded',
         database: 'unreachable',

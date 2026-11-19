@@ -48,18 +48,31 @@ model User {
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]     @relation("AuditActor")
 
-  createdVendors    Vendor[]                  @relation("VendorCreatedBy")
-  updatedVendors    Vendor[]                  @relation("VendorUpdatedBy")
-  uploadedDocs      Document[]                @relation("DocumentUploadedBy")
-  requestedOcr      OcrJob[]                  @relation("OcrRequestedBy")
-  stockMovements    StockMovement[]           @relation("StockMovementCreatedBy")
-  createdProducts   Product[]                 @relation("ProductCreatedBy")
-  updatedProducts   Product[]                 @relation("ProductUpdatedBy")
-  createdModels     ProductModel[]            @relation("ProductModelCreatedBy")
-  createdCustomers  Customer[]                @relation("CustomerCreatedBy")
-  updatedCustomers  Customer[]                @relation("CustomerUpdatedBy")
-  customerInterests CustomerProductInterest[] @relation("CustomerInterestCreatedBy")
-  updatedSettings   Setting[]                 @relation("SettingUpdatedBy")
+  createdVendors      Vendor[]                  @relation("VendorCreatedBy")
+  updatedVendors      Vendor[]                  @relation("VendorUpdatedBy")
+  uploadedDocs        Document[]                @relation("DocumentUploadedBy")
+  requestedOcr        OcrJob[]                  @relation("OcrRequestedBy")
+  stockMovements      StockMovement[]           @relation("StockMovementCreatedBy")
+  createdProducts     Product[]                 @relation("ProductCreatedBy")
+  updatedProducts     Product[]                 @relation("ProductUpdatedBy")
+  createdModels       ProductModel[]            @relation("ProductModelCreatedBy")
+  createdCustomers    Customer[]                @relation("CustomerCreatedBy")
+  updatedCustomers    Customer[]                @relation("CustomerUpdatedBy")
+  customerInterests   CustomerProductInterest[] @relation("CustomerInterestCreatedBy")
+  assignedEnquiries   Enquiry[]                 @relation("EnquiryAssignedTo")
+  createdEnquiries    Enquiry[]                 @relation("EnquiryCreatedBy")
+  updatedEnquiries    Enquiry[]                 @relation("EnquiryUpdatedBy")
+  convertedEnquiries  Enquiry[]                 @relation("EnquiryConvertedBy")
+  assignedFollowUps   EnquiryFollowUp[]         @relation("FollowUpAssignedTo")
+  createdFollowUps    EnquiryFollowUp[]         @relation("FollowUpCreatedBy")
+  enquiryStatusLogs   EnquiryStatusHistory[]    @relation("EnquiryStatusChangedBy")
+  assignedQuotations  Quotation[]               @relation("QuotationAssignedTo")
+  createdQuotations   Quotation[]               @relation("QuotationCreatedBy")
+  updatedQuotations   Quotation[]               @relation("QuotationUpdatedBy")
+  createdRevisions    QuotationRevision[]       @relation("RevisionCreatedBy")
+  quotationStatusLogs QuotationStatusHistory[]  @relation("QuotationStatusChangedBy")
+  quotationMessages   QuotationCommunication[]  @relation("QuotationCommunicationBy")
+  updatedSettings     Setting[]                 @relation("SettingUpdatedBy")
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -384,6 +397,8 @@ model Product {
   models            ProductModel[]
   vendors           VendorProduct[]
   customerInterests CustomerProductInterest[]
+  enquiryItems      EnquiryItem[]
+  quotationItems    QuotationItem[]
   documents         Document[]                @relation("ProductDocuments")
   movements         StockMovement[]
 
@@ -486,6 +501,8 @@ model ProductModel {
   product           Product                   @relation(fields: [productId], references: [id], onDelete: Cascade)
   vendors           VendorProductModel[]
   customerInterests CustomerProductInterest[]
+  enquiryItems      EnquiryItem[]
+  quotationItems    QuotationItem[]
 
   createdById String? @db.Uuid
   createdBy   User?   @relation("ProductModelCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
@@ -548,6 +565,14 @@ enum DocumentKind {
   CUSTOMER_AGREEMENT
   CUSTOMER_PURCHASE_AUTHORIZATION
   CUSTOMER_OTHER
+  ENQUIRY_REQUIREMENT
+  ENQUIRY_TECH_SPEC
+  ENQUIRY_REFERENCE_IMAGE
+  ENQUIRY_EXISTING_QUOTATION
+  ENQUIRY_OTHER
+  QUOTATION_PDF
+  QUOTATION_CUSTOMER_DOCUMENT
+  QUOTATION_ATTACHMENT
   // Application branding (login page background). Not owned by a record;
   // referenced from the "branding.loginBackgroundDocumentId" setting.
   BRANDING_IMAGE
@@ -575,6 +600,16 @@ model Document {
   customerId String?   @db.Uuid
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
 
+  // Restrict: an enquiry with attachments cannot be hard-deleted.
+  enquiryId String?  @db.Uuid
+  enquiry   Enquiry? @relation(fields: [enquiryId], references: [id], onDelete: Restrict)
+
+  // Restrict: a quotation with documents cannot be hard-deleted.
+  quotationId   String?            @db.Uuid
+  quotation     Quotation?         @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  // The issued PDF a revision is pinned to.
+  pdfOfRevision QuotationRevision? @relation("RevisionPdf")
+
   // Back-references for the product / model using this file as its image.
   primaryImageOf Product?      @relation("ProductPrimaryImage")
   modelImageOf   ProductModel? @relation("ProductModelImage")
@@ -596,6 +631,8 @@ model Document {
   @@index([vendorId])
   @@index([productId])
   @@index([customerId])
+  @@index([enquiryId])
+  @@index([quotationId])
   @@index([kind])
   @@map("documents")
 }
@@ -869,11 +906,13 @@ model Customer {
   annualTurnoverRange String?
   employeeCount       Int?
 
-  category  CustomerCategory?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  contacts  CustomerContact[]
-  addresses CustomerAddress[]
-  interests CustomerProductInterest[]
-  documents Document[]
+  category   CustomerCategory?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  contacts   CustomerContact[]
+  addresses  CustomerAddress[]
+  interests  CustomerProductInterest[]
+  documents  Document[]
+  enquiries  Enquiry[]
+  quotations Quotation[]
 
   createdById String? @db.Uuid
   updatedById String? @db.Uuid
@@ -906,6 +945,10 @@ model CustomerContact {
   isPrimary      Boolean @default(false)
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  enquiries  Enquiry[]
+  followUps  EnquiryFollowUp[]
+  quotations Quotation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -966,4 +1009,424 @@ model CustomerProductInterest {
   @@index([productId])
   @@index([productModelId])
   @@map("customer_product_interests")
+}
+
+// ===========================================================================
+// Enquiry management (Module 4)
+//
+// An enquiry always references an existing customer (Module 3) and existing
+// products / models (Module 2). Quotations (Module 5) will reference
+// enquiries.id; conversion is guarded so one enquiry converts once.
+// ===========================================================================
+
+enum EnquiryPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum EnquiryStatus {
+  NEW
+  ASSIGNED
+  IN_PROGRESS
+  FOLLOW_UP_PENDING
+  REQUIREMENT_CLARIFICATION
+  READY_FOR_QUOTATION
+  CONVERTED
+  ON_HOLD
+  LOST
+  CLOSED
+}
+
+enum FollowUpMethod {
+  PHONE
+  EMAIL
+  WHATSAPP
+  MEETING
+  OTHER
+}
+
+enum FollowUpOutcome {
+  INTERESTED
+  CLARIFICATION_NEEDED
+  AWAITING_RESPONSE
+  NEGOTIATION_REQUIRED
+  READY_FOR_QUOTATION
+  NOT_INTERESTED
+  OTHER
+}
+
+// Configurable (Website, Email, Phone Call, ...). Managed by administrators.
+model EnquirySource {
+  id             String  @id @default(uuid()) @db.Uuid
+  name           String
+  normalizedName String  @unique
+  description    String?
+  isActive       Boolean @default(true)
+  sortOrder      Int     @default(0)
+
+  enquiries Enquiry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("enquiry_sources")
+}
+
+model Enquiry {
+  id            String          @id @default(uuid()) @db.Uuid
+  // Human-facing id allocated by DocumentSequence (KI/ENQ/00001).
+  enquiryNumber String          @unique
+  enquiryDate   DateTime        @db.Date
+  status        EnquiryStatus   @default(NEW)
+  priority      EnquiryPriority @default(NORMAL)
+
+  customerId        String  @db.Uuid
+  customerContactId String? @db.Uuid
+  sourceId          String? @db.Uuid
+  assignedToId      String? @db.Uuid
+
+  description          String?
+  internalRemarks      String?
+  expectedDecisionDate DateTime? @db.Date
+
+  // Preliminary expectations only: never a price, tax or total.
+  expectedBudget           Decimal? @db.Decimal(14, 2)
+  currency                 String   @default("INR")
+  expectedDeliveryTimeline String?
+  paymentPreference        String?
+  commercialNotes          String?
+
+  // Date of the next planned follow-up, kept in step with the latest
+  // follow-up record so lists can sort and filter on it.
+  nextFollowUpDate DateTime? @db.Date
+
+  // Set exactly once, by Quotation Management, when a quotation is created
+  // from this enquiry (guarded update; repeated requests cannot convert twice).
+  convertedAt        DateTime?
+  convertedById      String?   @db.Uuid
+  // Opaque reference to the first quotation; Module 5 adds the real FK.
+  convertedReference String?
+
+  customer        Customer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  customerContact CustomerContact? @relation(fields: [customerContactId], references: [id], onDelete: SetNull)
+  source          EnquirySource?   @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  assignedTo      User?            @relation("EnquiryAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  convertedBy     User?            @relation("EnquiryConvertedBy", fields: [convertedById], references: [id], onDelete: SetNull)
+
+  items         EnquiryItem[]
+  followUps     EnquiryFollowUp[]
+  statusHistory EnquiryStatusHistory[]
+  documents     Document[]
+  // At most one quotation per enquiry (unique FK on quotations).
+  quotation     Quotation?
+
+  createdById String? @db.Uuid
+  updatedById String? @db.Uuid
+  createdBy   User?   @relation("EnquiryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?   @relation("EnquiryUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@index([priority])
+  @@index([sourceId])
+  @@index([assignedToId])
+  @@index([enquiryDate])
+  @@index([nextFollowUpDate])
+  @@map("enquiries")
+}
+
+// One requested product (optionally a specific model) on an enquiry.
+model EnquiryItem {
+  id                    String  @id @default(uuid()) @db.Uuid
+  enquiryId             String  @db.Uuid
+  productId             String  @db.Uuid
+  productModelId        String? @db.Uuid
+  quantity              Int
+  unit                  String  @default("Nos")
+  technicalRequirements String?
+  remarks               String?
+  sortOrder             Int     @default(0)
+
+  enquiry      Enquiry       @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productModel ProductModel? @relation(fields: [productModelId], references: [id], onDelete: Restrict)
+
+  quotationItems QuotationItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enquiryId])
+  @@index([productId])
+  @@index([productModelId])
+  @@map("enquiry_items")
+}
+
+// A recorded interaction with the customer. Edits and removals are audited
+// with full before-values, so history is never silently overwritten.
+model EnquiryFollowUp {
+  id                String          @id @default(uuid()) @db.Uuid
+  enquiryId         String          @db.Uuid
+  contactId         String?         @db.Uuid
+  followUpDate      DateTime
+  method            FollowUpMethod
+  discussionSummary String
+  customerResponse  String?
+  outcome           FollowUpOutcome
+  nextFollowUpDate  DateTime?       @db.Date
+  assignedToId      String?         @db.Uuid
+  internalNotes     String?
+
+  enquiry    Enquiry          @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  contact    CustomerContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  assignedTo User?            @relation("FollowUpAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("FollowUpCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enquiryId, followUpDate])
+  @@index([assignedToId])
+  @@index([followUpDate])
+  @@map("enquiry_follow_ups")
+}
+
+// Append-only record of every status change.
+model EnquiryStatusHistory {
+  id             String         @id @default(uuid()) @db.Uuid
+  enquiryId      String         @db.Uuid
+  previousStatus EnquiryStatus?
+  newStatus      EnquiryStatus
+  reason         String?
+
+  enquiry Enquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+
+  changedById String?  @db.Uuid
+  changedBy   User?    @relation("EnquiryStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt   DateTime @default(now())
+
+  @@index([enquiryId, changedAt])
+  @@map("enquiry_status_history")
+}
+
+// ===========================================================================
+// Quotation management (Module 5)
+//
+// A Quotation is the stable identity (one number); each QuotationRevision is
+// a complete, independent version (items, prices, terms, customer snapshot,
+// totals). Only a DRAFT revision can be edited; once issued it is frozen and
+// a change means a new revision. Money is Decimal(14,2), never floating
+// point. Tax and discount values are entered per item - no rate is assumed.
+// ===========================================================================
+
+enum QuotationStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SENT
+  UNDER_NEGOTIATION
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+  // An older revision replaced by a newer one; can never be accepted.
+  SUPERSEDED
+}
+
+enum DiscountType {
+  NONE
+  PERCENT
+  AMOUNT
+}
+
+model Quotation {
+  id              String  @id @default(uuid()) @db.Uuid
+  // Human-facing id allocated by DocumentSequence (KI/QT/00001).
+  quotationNumber String  @unique
+  customerId      String  @db.Uuid
+  // Unique: an enquiry converts into at most one quotation; later changes
+  // are revisions of that quotation.
+  enquiryId       String? @unique @db.Uuid
+  contactId       String? @db.Uuid
+  assignedToId    String? @db.Uuid
+  subject         String?
+  referenceNumber String?
+  currency        String  @default("INR")
+
+  // Mirrors of the current revision, for listing and filtering.
+  status                QuotationStatus @default(DRAFT)
+  currentRevisionNumber Int             @default(1)
+  currentTotal          Decimal         @default(0) @db.Decimal(14, 2)
+  // The revision the customer accepted (set once).
+  acceptedRevisionId    String?         @unique @db.Uuid
+
+  customer         Customer           @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  enquiry          Enquiry?           @relation(fields: [enquiryId], references: [id], onDelete: Restrict)
+  contact          CustomerContact?   @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  assignedTo       User?              @relation("QuotationAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  acceptedRevision QuotationRevision? @relation("AcceptedRevision", fields: [acceptedRevisionId], references: [id], onDelete: Restrict)
+
+  revisions      QuotationRevision[]      @relation("QuotationRevisions")
+  statusHistory  QuotationStatusHistory[]
+  communications QuotationCommunication[]
+  documents      Document[]
+
+  createdById String? @db.Uuid
+  updatedById String? @db.Uuid
+  createdBy   User?   @relation("QuotationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?   @relation("QuotationUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([createdAt])
+  @@map("quotations")
+}
+
+model QuotationRevision {
+  id             String          @id @default(uuid()) @db.Uuid
+  quotationId    String          @db.Uuid
+  revisionNumber Int
+  status         QuotationStatus @default(DRAFT)
+  quotationDate  DateTime        @db.Date
+  validUntil     DateTime?       @db.Date
+
+  // Customer details as they were for this revision (frozen once issued).
+  customerSnapshot Json
+
+  internalRemarks    String?
+  termsAndConditions String?
+  paymentTerms       String?
+  deliveryTerms      String?
+  warrantyTerms      String?
+  notes              String?
+
+  subtotal           Decimal @default(0) @db.Decimal(14, 2)
+  itemDiscountTotal  Decimal @default(0) @db.Decimal(14, 2)
+  additionalDiscount Decimal @default(0) @db.Decimal(14, 2)
+  taxableAmount      Decimal @default(0) @db.Decimal(14, 2)
+  taxTotal           Decimal @default(0) @db.Decimal(14, 2)
+  otherChargesLabel  String?
+  otherCharges       Decimal @default(0) @db.Decimal(14, 2)
+  grandTotal         Decimal @default(0) @db.Decimal(14, 2)
+  // [{ label, rate, taxable, tax }] grouped from the items.
+  taxBreakdown       Json?
+
+  // Set when the revision leaves DRAFT; from then on it is immutable.
+  issuedAt      DateTime?
+  pdfDocumentId String?   @unique @db.Uuid
+  pdfDocument   Document? @relation("RevisionPdf", fields: [pdfDocumentId], references: [id], onDelete: SetNull)
+
+  quotation     Quotation                @relation("QuotationRevisions", fields: [quotationId], references: [id], onDelete: Cascade)
+  acceptedOf    Quotation?               @relation("AcceptedRevision")
+  items         QuotationItem[]
+  statusHistory QuotationStatusHistory[]
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("RevisionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([quotationId, revisionNumber])
+  @@index([status])
+  @@index([quotationDate])
+  @@index([validUntil])
+  @@map("quotation_revisions")
+}
+
+model QuotationItem {
+  id             String  @id @default(uuid()) @db.Uuid
+  revisionId     String  @db.Uuid
+  sortOrder      Int     @default(0)
+  productId      String  @db.Uuid
+  productModelId String? @db.Uuid
+  // Traceability back to the enquiry requirement it answers, if any.
+  enquiryItemId  String? @db.Uuid
+
+  // Catalogue details as they were for this revision.
+  productName    String
+  productCode    String
+  brandName      String
+  modelName      String?
+  modelNumber    String?
+  description    String?
+  specifications Json?
+
+  quantity       Int
+  unit           String       @default("Nos")
+  unitPrice      Decimal      @db.Decimal(14, 2)
+  discountType   DiscountType @default(NONE)
+  discountValue  Decimal      @default(0) @db.Decimal(14, 2)
+  discountAmount Decimal      @default(0) @db.Decimal(14, 2)
+  taxLabel       String?
+  taxRate        Decimal      @default(0) @db.Decimal(5, 2)
+  taxAmount      Decimal      @default(0) @db.Decimal(14, 2)
+  lineTotal      Decimal      @default(0) @db.Decimal(14, 2)
+  remarks        String?
+
+  revision     QuotationRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  product      Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productModel ProductModel?     @relation(fields: [productModelId], references: [id], onDelete: Restrict)
+  enquiryItem  EnquiryItem?      @relation(fields: [enquiryItemId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([revisionId])
+  @@index([productId])
+  @@index([productModelId])
+  @@map("quotation_items")
+}
+
+// Every status change (including approvals) of every revision. Append-only.
+model QuotationStatusHistory {
+  id             String           @id @default(uuid()) @db.Uuid
+  quotationId    String           @db.Uuid
+  revisionId     String           @db.Uuid
+  previousStatus QuotationStatus?
+  newStatus      QuotationStatus
+  remarks        String?
+
+  quotation Quotation         @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  revision  QuotationRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+
+  changedById String?  @db.Uuid
+  changedBy   User?    @relation("QuotationStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt   DateTime @default(now())
+
+  @@index([quotationId, changedAt])
+  @@map("quotation_status_history")
+}
+
+// Manually logged customer communication. Recording "sent by email" here
+// does not send anything; the application has no outbound email.
+model QuotationCommunication {
+  id             String         @id @default(uuid()) @db.Uuid
+  quotationId    String         @db.Uuid
+  revisionNumber Int?
+  occurredAt     DateTime
+  channel        FollowUpMethod
+  contactName    String?
+  summary        String
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("QuotationCommunicationBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([quotationId, occurredAt])
+  @@map("quotation_communications")
 }

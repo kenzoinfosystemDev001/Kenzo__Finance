@@ -1,4 +1,6 @@
 import { CUSTOMER_DOCUMENT_KIND_LABELS } from './customer-labels';
+import { ENQUIRY_DOCUMENT_KIND_LABELS } from './enquiry-labels';
+import { QUOTATION_DOCUMENT_KIND_LABELS } from './quotation-labels';
 import type {
   VendorAddress,
   VendorAddressType,
@@ -63,6 +65,8 @@ export function documentKindLabel(kind: string): string {
     DOCUMENT_KIND_LABELS[kind as VendorDocumentKind] ??
     PRODUCT_DOCUMENT_KIND_LABELS[kind as ProductDocumentKind] ??
     (CUSTOMER_DOCUMENT_KIND_LABELS as Record<string, string>)[kind] ??
+    (ENQUIRY_DOCUMENT_KIND_LABELS as Record<string, string>)[kind] ??
+    (QUOTATION_DOCUMENT_KIND_LABELS as Record<string, string>)[kind] ??
     kind.replace(/_/g, ' ').toLowerCase()
   );
 }
@@ -137,6 +141,30 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   'customer.product.add': 'Product associated',
   'customer.product.update': 'Product interest updated',
   'customer.product.remove': 'Product association removed',
+  'enquiry.create': 'Enquiry created',
+  'enquiry.update': 'Enquiry updated',
+  'enquiry.update.priority': 'Enquiry priority changed',
+  'enquiry.assign': 'Enquiry assigned',
+  'enquiry.status': 'Enquiry status changed',
+  'enquiry.close': 'Enquiry closed',
+  'enquiry.delete': 'Enquiry deleted',
+  'enquiry.convert': 'Converted to quotation',
+  'enquiry.item.add': 'Product requirement added',
+  'enquiry.item.update': 'Product requirement updated',
+  'enquiry.item.remove': 'Product requirement removed',
+  'enquiry.followup.create': 'Follow-up recorded',
+  'enquiry.followup.update': 'Follow-up edited',
+  'enquiry.followup.delete': 'Follow-up removed',
+  'enquiry.conversion.revert': 'Conversion reverted (quotation deleted)',
+  'quotation.create': 'Quotation created',
+  'quotation.update': 'Draft revision edited',
+  'quotation.revise': 'New revision created',
+  'quotation.submit': 'Submitted for approval',
+  'quotation.approve': 'Quotation approved',
+  'quotation.approval.reject': 'Sent back for changes',
+  'quotation.status': 'Quotation status changed',
+  'quotation.delete': 'Quotation deleted',
+  'quotation.communication': 'Communication logged',
 };
 
 export function activityLabel(action: string): string {
