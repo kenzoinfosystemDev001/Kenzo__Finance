@@ -67,8 +67,8 @@ Set these in **Render → your service → Environment**.
 | `CLOUDINARY_FOLDER` | No | `kenzo-erp` | Folder prefix inside Cloudinary |
 | `STORAGE_LOCAL_ROOT` | If local | `/var/data/storage` | Only when `STORAGE_DRIVER=local` |
 | `UPLOAD_MAX_BYTES` | No | `10485760` | 10 MB default |
-| `OCR_PROVIDER` | No | `stub` | Only `stub` is implemented |
-| `OCR_API_KEY` | No | *(blank)* | For a future real provider |
+| `OCR_PROVIDER` | No | `stub` | `stub` or `google-vision`; the latter requires `OCR_API_KEY` |
+| `OCR_API_KEY` | If google-vision | Google Cloud Vision API key | Startup fails without it when `OCR_PROVIDER=google-vision` |
 | `SEED_SUPERADMIN_EMAIL` | First deploy | `admin@kenzoinfosystems.com` | Used once by the seed |
 | `SEED_SUPERADMIN_PASSWORD` | First deploy | strong, 12+ chars | **Remove after seeding** |
 | `SEED_SUPERADMIN_NAME` | No | `System Administrator` | |
