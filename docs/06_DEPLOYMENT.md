@@ -153,9 +153,18 @@ frontend. The frontend has no Prisma or database dependency.
 | Variable | Required | Value | Notes |
 | --- | --- | --- | --- |
 | `NEXT_PUBLIC_API_URL` | **Yes** | `https://your-api.onrender.com/api/v1` | Must include `/api/v1`. **No trailing slash** |
+| `API_TIMEOUT_MS` | No | `8000` | How long a page render waits for the API |
+| `API_LOGIN_TIMEOUT_MS` | No | `20000` | Longer: a sign-in may need to wake the backend |
+| `API_UPLOAD_TIMEOUT_MS` | No | `60000` | Uploads legitimately take longer |
 | `NODE_ENV` | No | set by Vercel | Do not set manually |
 
-That is the **only** variable the frontend needs.
+`NEXT_PUBLIC_API_URL` is the **only** variable the frontend requires; the
+three timeouts have working defaults and exist for hosts with unusual request
+limits. Raising a timeout above the platform's own limit achieves nothing —
+the platform kills the request first and serves its error instead of ours.
+
+> `NEXT_PUBLIC_` values are read when the app is **built**, not when it runs.
+> Saving one in the Vercel dashboard changes nothing until you redeploy.
 
 **It must not receive any secret.** No `DATABASE_URL`, no `AUTH_*` secret, no
 admin password. The frontend never talks to the database and never signs a
