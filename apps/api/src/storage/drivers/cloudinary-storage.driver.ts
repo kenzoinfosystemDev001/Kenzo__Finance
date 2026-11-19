@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
 import { createHash, randomUUID } from 'node:crypto';
@@ -28,10 +28,11 @@ import type {
  *    and outlive the user's access.
  */
 @Injectable()
-export class CloudinaryStorageDriver implements StorageDriver, OnModuleInit {
+export class CloudinaryStorageDriver implements StorageDriver {
   readonly name = 'cloudinary';
   private readonly logger = new Logger(CloudinaryStorageDriver.name);
   private readonly baseFolder: string;
+  private configured = false;
 
   constructor(private readonly configService: ConfigService) {
     this.baseFolder = this.configService.get<string>(
@@ -40,7 +41,21 @@ export class CloudinaryStorageDriver implements StorageDriver, OnModuleInit {
     );
   }
 
-  onModuleInit(): void {
+  /**
+   * Configures the SDK on first use rather than in a lifecycle hook.
+   *
+   * Nest instantiates every provider and runs its OnModuleInit, including
+   * drivers that were not selected. Validating credentials there made the
+   * whole application refuse to start with STORAGE_DRIVER=local and no
+   * Cloudinary configuration, which is a perfectly valid setup.
+   *
+   * Selecting this driver without credentials is still rejected, by the
+   * startup check in env.validation.ts - so a genuine misconfiguration is
+   * caught before any request, not on the first upload.
+   */
+  private ensureConfigured(): void {
+    if (this.configured) return;
+
     const url = this.configService.get<string>('CLOUDINARY_URL');
     const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
     const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY');
@@ -63,17 +78,21 @@ export class CloudinaryStorageDriver implements StorageDriver, OnModuleInit {
       );
     }
 
-    const configured = cloudinary.config().cloud_name;
-    if (!configured) {
+    // Read back what the SDK actually resolved, which also covers the
+    // CLOUDINARY_URL path where the values were never passed in explicitly.
+    const resolvedCloudName = cloudinary.config().cloud_name;
+    if (!resolvedCloudName) {
       throw new Error(
         'Cloudinary credentials are present but incomplete; no cloud name resolved.',
       );
     }
 
-    this.logger.log(`Document storage: Cloudinary cloud "${configured}"`);
+    this.configured = true;
+    this.logger.log(`Document storage: Cloudinary cloud "${resolvedCloudName}"`);
   }
 
   async save(buffer: Buffer, options: SaveOptions): Promise<StoredFile> {
+    this.ensureConfigured();
     const checksumSha256 = createHash('sha256').update(buffer).digest('hex');
     const folder = `${this.baseFolder}/${this.safeSegment(options.folder)}`;
     const publicId = randomUUID();
@@ -123,6 +142,7 @@ export class CloudinaryStorageDriver implements StorageDriver, OnModuleInit {
   }
 
   async createReadStream(storageKey: string): Promise<Readable> {
+    this.ensureConfigured();
     const { resourceType, publicId } = this.parseKey(storageKey);
 
     // Short-lived signed URL, used server-side only and never sent to a client.
@@ -146,6 +166,7 @@ export class CloudinaryStorageDriver implements StorageDriver, OnModuleInit {
   }
 
   async remove(storageKey: string): Promise<void> {
+    this.ensureConfigured();
     const { resourceType, publicId } = this.parseKey(storageKey);
 
     try {
