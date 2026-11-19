@@ -1,7 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { apiFetch, ApiError } from './api';
+import { apiFetch, ApiError, isApiUnavailable } from './api';
 import {
   clearSessionCookies,
   getRefreshToken,
@@ -79,12 +79,38 @@ export async function logoutAction(): Promise<void> {
   redirect('/login');
 }
 
-/** Current user, or null when there is no valid session. */
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+export type SessionResult =
+  | { status: 'authenticated'; user: CurrentUser }
+  | { status: 'anonymous' }
+  | { status: 'api-unavailable'; detail?: string };
+
+/**
+ * Resolves the session without throwing.
+ *
+ * Three outcomes are genuinely different and must not be collapsed: signed in,
+ * not signed in, and "the backend is down". Treating the third as "not signed
+ * in" would bounce the user to a login page that cannot work either.
+ */
+export async function getSession(): Promise<SessionResult> {
   try {
-    return await apiFetch<CurrentUser>('/auth/me', { noRetry: false });
+    return { status: 'authenticated', user: await apiFetch<CurrentUser>('/auth/me') };
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401) return null;
+    if (isApiUnavailable(error)) {
+      return {
+        status: 'api-unavailable',
+        detail:
+          error instanceof ApiError ? String(error.body.details ?? '') : undefined,
+      };
+    }
+    if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+      return { status: 'anonymous' };
+    }
     throw error;
   }
+}
+
+/** Current user, or null when there is no valid session. */
+export async function getCurrentUser(): Promise<CurrentUser | null> {
+  const session = await getSession();
+  return session.status === 'authenticated' ? session.user : null;
 }

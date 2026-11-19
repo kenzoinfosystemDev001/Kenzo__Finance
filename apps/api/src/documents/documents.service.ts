@@ -21,7 +21,9 @@ export interface UploadInput {
   buffer: Buffer;
   originalFilename: string;
   kind?: DocumentKind;
+  /** At most one owner is set; the column keeps referential integrity. */
   vendorId?: string;
+  productId?: string;
 }
 
 @Injectable()
@@ -62,8 +64,16 @@ export class DocumentsService {
       if (!vendor) throw new BadRequestException('The referenced vendor does not exist.');
     }
 
+    if (input.productId) {
+      const product = await this.prisma.product.findUnique({
+        where: { id: input.productId },
+        select: { id: true },
+      });
+      if (!product) throw new BadRequestException('The referenced product does not exist.');
+    }
+
     const stored = await this.storageService.save(input.buffer, {
-      folder: 'vendors',
+      folder: input.productId ? 'products' : 'vendors',
       originalFilename: `file.${detected.extension}`,
     });
 
@@ -76,6 +86,7 @@ export class DocumentsService {
         sizeBytes: stored.sizeBytes,
         checksumSha256: stored.checksumSha256,
         vendorId: input.vendorId ?? null,
+        productId: input.productId ?? null,
         uploadedById: actor.id,
       },
       select: {
@@ -85,6 +96,7 @@ export class DocumentsService {
         mimeType: true,
         sizeBytes: true,
         vendorId: true,
+        productId: true,
         createdAt: true,
       },
     });
@@ -99,6 +111,7 @@ export class DocumentsService {
         kind: document.kind,
         sizeBytes: document.sizeBytes,
         vendorId: document.vendorId,
+        productId: document.productId,
       },
     });
 

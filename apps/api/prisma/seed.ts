@@ -200,6 +200,67 @@ async function seedSuperAdmin(): Promise<void> {
   console.log('    Change this password after the first sign-in.');
 }
 
+/**
+ * Writes settings rows only where none exists, so re-running the seed never
+ * flips a switch an administrator deliberately changed.
+ */
+async function seedSettings(): Promise<void> {
+  const defaults = [
+    {
+      key: 'inventory.stockTrackingEnabled',
+      value: false,
+      description:
+        'Track physical stock quantities. When off, products are a catalogue only.',
+    },
+    {
+      key: 'inventory.allowNegativeStock',
+      value: false,
+      description: 'Allow stock movements that take on-hand quantity below zero.',
+    },
+  ];
+
+  for (const setting of defaults) {
+    const existing = await prisma.setting.findUnique({ where: { key: setting.key } });
+    if (existing) continue;
+
+    await prisma.setting.create({
+      data: {
+        key: setting.key,
+        value: setting.value,
+        description: setting.description,
+      },
+    });
+  }
+
+  console.log(`  settings: ${defaults.length} (stock tracking starts OFF)`);
+}
+
+/** Baseline product categories for a hardware business. Editable at runtime. */
+const PRODUCT_CATEGORIES = [
+  'Laptops',
+  'Desktops',
+  'Monitors',
+  'Printers',
+  'Servers',
+  'Networking',
+  'Storage',
+  'Peripherals',
+  'Components',
+  'Software & Licences',
+  'Accessories',
+];
+
+async function seedProductCategories(): Promise<void> {
+  for (const name of PRODUCT_CATEGORIES) {
+    await prisma.productCategory.upsert({
+      where: { normalizedName: normalizeName(name) },
+      create: { name, normalizedName: normalizeName(name) },
+      update: {},
+    });
+  }
+  console.log(`  product categories: ${PRODUCT_CATEGORIES.length}`);
+}
+
 async function main(): Promise<void> {
   console.log('Seeding Kenzo Infosystems ERP reference data...');
 
@@ -207,6 +268,8 @@ async function main(): Promise<void> {
   await seedRoles();
   await seedSequences();
   await seedVendorCategories();
+  await seedProductCategories();
+  await seedSettings();
   await seedSuperAdmin();
 
   console.log('Seed complete. No sample business data was created.');

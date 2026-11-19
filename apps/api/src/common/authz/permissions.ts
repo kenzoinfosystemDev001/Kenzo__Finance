@@ -25,6 +25,14 @@ export const PERMISSIONS = {
   PRODUCT_CREATE: 'product.create',
   PRODUCT_UPDATE: 'product.update',
   PRODUCT_ARCHIVE: 'product.archive',
+  PRODUCT_EXPORT: 'product.export',
+
+  // Stock / inventory
+  STOCK_READ: 'stock.read',
+  // Posting a movement changes recorded inventory, so it is separate from
+  // simply viewing balances.
+  STOCK_POST: 'stock.post',
+  STOCK_MANAGE_LOCATIONS: 'stock.manage_locations',
 
   // Documents
   DOCUMENT_READ: 'document.read',
@@ -73,7 +81,12 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   { code: PERMISSIONS.PRODUCT_READ, module: 'product', action: 'read', description: 'View products' },
   { code: PERMISSIONS.PRODUCT_CREATE, module: 'product', action: 'create', description: 'Create products' },
   { code: PERMISSIONS.PRODUCT_UPDATE, module: 'product', action: 'update', description: 'Edit products' },
-  { code: PERMISSIONS.PRODUCT_ARCHIVE, module: 'product', action: 'archive', description: 'Archive products' },
+  { code: PERMISSIONS.PRODUCT_ARCHIVE, module: 'product', action: 'archive', description: 'Archive and restore products' },
+  { code: PERMISSIONS.PRODUCT_EXPORT, module: 'product', action: 'export', description: 'Export the product catalogue' },
+
+  { code: PERMISSIONS.STOCK_READ, module: 'stock', action: 'read', description: 'View stock balances and the movement ledger' },
+  { code: PERMISSIONS.STOCK_POST, module: 'stock', action: 'post', description: 'Post stock movements (opening balance, receipt, issue, adjustment, return)' },
+  { code: PERMISSIONS.STOCK_MANAGE_LOCATIONS, module: 'stock', action: 'manage_locations', description: 'Create and edit stock locations' },
 
   { code: PERMISSIONS.DOCUMENT_READ, module: 'document', action: 'read', description: 'View document metadata' },
   { code: PERMISSIONS.DOCUMENT_UPLOAD, module: 'document', action: 'upload', description: 'Upload documents' },
@@ -121,7 +134,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERMISSIONS.VENDOR_READ, PERMISSIONS.VENDOR_CREATE, PERMISSIONS.VENDOR_UPDATE,
     PERMISSIONS.VENDOR_ARCHIVE, PERMISSIONS.VENDOR_EXPORT, PERMISSIONS.VENDOR_MAP_PRODUCTS,
     PERMISSIONS.COMPANY_READ, PERMISSIONS.COMPANY_CREATE, PERMISSIONS.COMPANY_UPDATE, PERMISSIONS.COMPANY_ARCHIVE,
-    PERMISSIONS.PRODUCT_READ, PERMISSIONS.PRODUCT_CREATE, PERMISSIONS.PRODUCT_UPDATE, PERMISSIONS.PRODUCT_ARCHIVE,
+    PERMISSIONS.PRODUCT_READ, PERMISSIONS.PRODUCT_CREATE, PERMISSIONS.PRODUCT_UPDATE, PERMISSIONS.PRODUCT_ARCHIVE, PERMISSIONS.PRODUCT_EXPORT,
+    PERMISSIONS.STOCK_READ, PERMISSIONS.STOCK_POST, PERMISSIONS.STOCK_MANAGE_LOCATIONS,
     PERMISSIONS.DOCUMENT_READ, PERMISSIONS.DOCUMENT_UPLOAD, PERMISSIONS.DOCUMENT_DOWNLOAD, PERMISSIONS.DOCUMENT_ARCHIVE,
     PERMISSIONS.OCR_SUBMIT, PERMISSIONS.OCR_READ,
     PERMISSIONS.USER_READ, PERMISSIONS.USER_CREATE, PERMISSIONS.USER_UPDATE, PERMISSIONS.USER_ARCHIVE,
@@ -137,26 +151,34 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERMISSIONS.OCR_SUBMIT, PERMISSIONS.OCR_READ,
   ],
 
+  // Owns the catalogue and the stock ledger end to end.
   [ROLE_CODES.INVENTORY_MANAGER]: [
     PERMISSIONS.VENDOR_READ,
     PERMISSIONS.COMPANY_READ, PERMISSIONS.COMPANY_CREATE, PERMISSIONS.COMPANY_UPDATE,
-    PERMISSIONS.PRODUCT_READ, PERMISSIONS.PRODUCT_CREATE, PERMISSIONS.PRODUCT_UPDATE, PERMISSIONS.PRODUCT_ARCHIVE,
+    PERMISSIONS.PRODUCT_READ, PERMISSIONS.PRODUCT_CREATE, PERMISSIONS.PRODUCT_UPDATE,
+    PERMISSIONS.PRODUCT_ARCHIVE, PERMISSIONS.PRODUCT_EXPORT,
+    PERMISSIONS.STOCK_READ, PERMISSIONS.STOCK_POST, PERMISSIONS.STOCK_MANAGE_LOCATIONS,
     PERMISSIONS.DOCUMENT_READ, PERMISSIONS.DOCUMENT_UPLOAD, PERMISSIONS.DOCUMENT_DOWNLOAD,
   ],
 
-  // Sales/accounts/delivery roles only need to look vendors and products up
-  // while quoting. Their own modules arrive in later phases.
+  // Sales/accounts/delivery roles look vendors and products up while quoting
+  // and can see stock, but cannot change it. Their own modules arrive later.
   [ROLE_CODES.SALES_MANAGER]: [
-    PERMISSIONS.VENDOR_READ, PERMISSIONS.COMPANY_READ, PERMISSIONS.PRODUCT_READ, PERMISSIONS.DOCUMENT_READ,
+    PERMISSIONS.VENDOR_READ, PERMISSIONS.COMPANY_READ, PERMISSIONS.PRODUCT_READ,
+    PERMISSIONS.PRODUCT_EXPORT, PERMISSIONS.STOCK_READ, PERMISSIONS.DOCUMENT_READ,
   ],
   [ROLE_CODES.SALES_EXECUTIVE]: [
     PERMISSIONS.VENDOR_READ, PERMISSIONS.COMPANY_READ, PERMISSIONS.PRODUCT_READ,
+    PERMISSIONS.STOCK_READ,
   ],
   [ROLE_CODES.ACCOUNTS_MANAGER]: [
-    PERMISSIONS.VENDOR_READ, PERMISSIONS.COMPANY_READ, PERMISSIONS.PRODUCT_READ, PERMISSIONS.DOCUMENT_READ,
+    PERMISSIONS.VENDOR_READ, PERMISSIONS.COMPANY_READ, PERMISSIONS.PRODUCT_READ,
+    PERMISSIONS.STOCK_READ, PERMISSIONS.DOCUMENT_READ,
   ],
+  // Dispatch reduces stock, so this role may post movements.
   [ROLE_CODES.DELIVERY_MANAGER]: [
     PERMISSIONS.VENDOR_READ, PERMISSIONS.PRODUCT_READ,
+    PERMISSIONS.STOCK_READ, PERMISSIONS.STOCK_POST,
   ],
 };
 

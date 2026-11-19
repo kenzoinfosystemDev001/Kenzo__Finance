@@ -1,7 +1,8 @@
 # Kenzo Infosystems ERP & Business Management System
 
-Monorepo for the Kenzo Infosystems ERP. **Module 1 (Vendor Management) is
-implemented.** Later modules follow the roadmap in [`docs/`](./docs).
+Monorepo for the Kenzo Infosystems ERP. **Module 1 (Vendor Management) and
+Module 2 (Inventory Management) are implemented.** Later modules follow the
+roadmap in [`docs/`](./docs).
 
 | Layer | Technology |
 | --- | --- |
@@ -85,12 +86,42 @@ Sign in with the seeded administrator and change the password immediately
 ## 5. Tests
 
 ```bash
-npm run api:test         # 63 unit tests
+npm run api:test         # 84 unit tests
 ```
 
 Covered: GSTIN checksum validation, duplicate-vendor rules, OCR draft
 single-use enforcement, RBAC fail-closed behaviour, upload signature
-validation, CSV injection escaping and value normalisation.
+validation, CSV injection escaping, value normalisation, and the stock ledger
+(movement direction, negative-stock prevention, mandatory adjustment reasons,
+single opening balance, derived balances).
+
+## 6. Inventory and the stock ledger
+
+Stock is an **append-only ledger**. There is no editable quantity column: the
+on-hand figure is always `SUM(quantityDelta)` over recorded movements, so a
+balance cannot drift from the history that produced it. A mistake is corrected
+by posting a reversing movement, never by rewriting a row.
+
+**Stock tracking is off by default**, because catalogue-only vs physical stock
+is still an open business decision (see [`docs/01_PRD.md`](./docs/01_PRD.md)
+section 10). With it off, products are a catalogue and no quantity exists;
+stock endpoints return `409` rather than a misleading zero.
+
+A Super Admin turns it on at **Settings → Inventory → Track stock quantities**.
+Then, per product, record an opening balance to establish the starting count.
+
+| Movement | Direction | Notes |
+| --- | --- | --- |
+| `OPENING_BALANCE` | + | Allowed once per product per location |
+| `RECEIPT` | + | Goods in |
+| `ISSUE` | − | Goods out |
+| `ADJUSTMENT_IN` / `ADJUSTMENT_OUT` | ± | **Reason required** |
+| `RETURN_IN` / `RETURN_OUT` | ± | Customer / vendor returns |
+
+Quantity is always submitted as a positive number; the type decides the sign.
+Stock cannot go negative unless `inventory.allowNegativeStock` is enabled.
+Later modules (goods receipt, delivery) will post into this same ledger with a
+`referenceType`/`referenceId` rather than maintaining quantities of their own.
 
 ---
 

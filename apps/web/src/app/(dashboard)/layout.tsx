@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
-import { getCurrentUser, logoutAction } from '@/lib/auth-actions';
+import { getSession, logoutAction } from '@/lib/auth-actions';
+import { ApiUnavailable } from '@/components/api-unavailable';
 import { Sidebar } from '@/components/sidebar';
 
 export default async function DashboardLayout({
@@ -7,11 +8,19 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
+  const session = await getSession();
+
+  // A down backend is not an expired session; bouncing to /login would hide
+  // the real problem behind a sign-in screen that cannot work either.
+  if (session.status === 'api-unavailable') {
+    return <ApiUnavailable detail={session.detail} />;
+  }
 
   // Server-side gate. The backend independently rejects unauthorised calls:
   // this only avoids rendering a shell the user cannot use.
-  if (!user) redirect('/login');
+  if (session.status === 'anonymous') redirect('/login');
+
+  const user = session.user;
 
   return (
     <div className="flex min-h-screen">

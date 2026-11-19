@@ -21,9 +21,10 @@ blueprint for the Kenzo Infosystems ERP and Business Management System.
 | --- | --- |
 | Authentication, users, roles, permissions (RBAC) | Implemented |
 | **Module 1 - Vendor Management** | **Implemented** |
+| **Module 2 - Inventory Management** | **Implemented** (stock ledger, off by default) |
 | Brands/companies, product catalogue (minimum for vendor mapping) | Implemented |
 | Documents, OCR extraction + review, audit log, document numbering | Implemented |
-| Module 2 - Inventory (stock) | Blocked on the stock decision |
+| Settings (runtime business switches) | Implemented |
 | Modules 3-7 - Customers, enquiries, quotations, PI, payments, delivery | Not started |
 
 Setup and run instructions are in the repository [README](../README.md).

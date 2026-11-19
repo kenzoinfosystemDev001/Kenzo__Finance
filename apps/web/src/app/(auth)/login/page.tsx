@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth-actions';
+import { getSession } from '@/lib/auth-actions';
+import { ApiUnavailable } from '@/components/api-unavailable';
 import { LoginForm } from './login-form';
 
 export const metadata: Metadata = { title: 'Sign in' };
@@ -11,8 +12,15 @@ export default async function LoginPage({
   searchParams: Promise<{ reason?: string }>;
 }) {
   const { reason } = await searchParams;
+  const session = await getSession();
 
-  if (await getCurrentUser()) {
+  // Showing the sign-in form while the backend is down would just produce a
+  // confusing failure on submit.
+  if (session.status === 'api-unavailable') {
+    return <ApiUnavailable detail={session.detail} />;
+  }
+
+  if (session.status === 'authenticated') {
     redirect('/dashboard');
   }
 

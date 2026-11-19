@@ -48,10 +48,12 @@ model User {
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]     @relation("AuditActor")
 
-  createdVendors Vendor[]   @relation("VendorCreatedBy")
-  updatedVendors Vendor[]   @relation("VendorUpdatedBy")
-  uploadedDocs   Document[] @relation("DocumentUploadedBy")
-  requestedOcr   OcrJob[]   @relation("OcrRequestedBy")
+  createdVendors  Vendor[]        @relation("VendorCreatedBy")
+  updatedVendors  Vendor[]        @relation("VendorUpdatedBy")
+  uploadedDocs    Document[]      @relation("DocumentUploadedBy")
+  requestedOcr    OcrJob[]        @relation("OcrRequestedBy")
+  stockMovements  StockMovement[] @relation("StockMovementCreatedBy")
+  updatedSettings Setting[]       @relation("SettingUpdatedBy")
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -166,8 +168,8 @@ model Vendor {
   // Human-facing identifier, allocated by DocumentSequence (KI/VEN/0001).
   vendorCode String @unique
 
-  businessName String
-  legalName    String?
+  businessName   String
+  legalName      String?
   // Lowercased, punctuation-stripped businessName. Used for duplicate
   // detection and case-insensitive search without a trigram index.
   normalizedName String
@@ -206,8 +208,8 @@ model Vendor {
   createdBy   User?   @relation("VendorCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   updatedBy   User?   @relation("VendorUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   // Soft delete. Historical transactions must survive vendor deactivation.
   archivedAt DateTime?
 
@@ -273,8 +275,6 @@ model ProductCategory {
   @@map("product_categories")
 }
 
-// Minimal catalogue entry: only what vendor-product mapping and search need.
-// Full inventory fields arrive with Module 2 once the stock decision is made.
 model Product {
   id             String  @id @default(uuid()) @db.Uuid
   productCode    String  @unique
@@ -286,12 +286,27 @@ model Product {
   modelNumber    String
   designNumber   String?
   description    String?
+  // Free-form key/value technical specifications, e.g.
+  // { "Processor": "Intel i5-1335U", "RAM": "16GB" }. Kept as JSON because
+  // the attribute set differs per category and is not known in advance.
   specifications Json?
   isActive       Boolean @default(true)
 
-  company  Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  category ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  vendors  VendorProduct[]
+  // Quantity at or below which the product is reported as low stock.
+  // Null means "not tracked for reordering". Only meaningful when stock
+  // tracking is enabled.
+  reorderLevel Int?
+
+  // Primary catalogue image. Separate from `documents` so the product has one
+  // definite image rather than "whichever upload happens to be first".
+  imageDocumentId String?   @unique @db.Uuid
+  imageDocument   Document? @relation("ProductPrimaryImage", fields: [imageDocumentId], references: [id], onDelete: SetNull)
+
+  company   Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  category  ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  vendors   VendorProduct[]
+  documents Document[]       @relation("ProductDocuments")
+  movements StockMovement[]
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -358,6 +373,9 @@ enum DocumentKind {
   VENDOR_PAN
   VENDOR_AGREEMENT
   VENDOR_OTHER
+  PRODUCT_IMAGE
+  PRODUCT_DATASHEET
+  PRODUCT_OTHER
 }
 
 model Document {
@@ -375,6 +393,12 @@ model Document {
   vendorId String? @db.Uuid
   vendor   Vendor? @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
+  productId String?  @db.Uuid
+  product   Product? @relation("ProductDocuments", fields: [productId], references: [id], onDelete: Cascade)
+
+  // Back-reference for the product that uses this file as its primary image.
+  primaryImageOf Product? @relation("ProductPrimaryImage")
+
   uploadedById String? @db.Uuid
   uploadedBy   User?   @relation("DocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
 
@@ -384,6 +408,7 @@ model Document {
   archivedAt DateTime?
 
   @@index([vendorId])
+  @@index([productId])
   @@index([kind])
   @@map("documents")
 }
@@ -455,11 +480,118 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+// ===========================================================================
+// Inventory / stock (Module 2)
+//
+// Stock is an APPEND-ONLY LEDGER. There is no editable "quantity" column
+// anywhere: on-hand is always SUM(quantityDelta) over movements. A mistake is
+// corrected by posting a reversing movement, never by rewriting history, so
+// the ledger always explains how the current number was reached.
+//
+// Whether stock is tracked at all is a runtime setting
+// ("inventory.stockTrackingEnabled", default false) because the client has not
+// confirmed catalogue-only vs physical tracking. With it off the catalogue
+// works exactly as before and no movement can be posted.
+//
+// Still open, and deliberately absent: reserved/committed quantity (depends on
+// quotation and PI rules), purchase-order and goods-receipt linkage, and
+// multi-warehouse transfers. Each is additive - a new movement type or a new
+// location row - never a rewrite of what is here.
+// ===========================================================================
+
+model StockLocation {
+  id        String  @id @default(uuid()) @db.Uuid
+  name      String
+  code      String  @unique
+  address   String?
+  // Exactly one location is the default; movements use it unless told
+  // otherwise. Multi-warehouse support is adding rows, not changing the model.
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  movements StockMovement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("stock_locations")
+}
+
+enum StockMovementType {
+  // Initial count when a product starts being tracked.
+  OPENING_BALANCE
+  // Goods in. Posted manually today; a future GRN posts the same type with a
+  // reference once the procurement process is confirmed.
+  RECEIPT
+  // Goods out. A future delivery note posts this with a reference.
+  ISSUE
+  // Correction after a physical count. Requires a reason.
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  // Customer returns goods / goods returned to vendor.
+  RETURN_IN
+  RETURN_OUT
+}
+
+model StockMovement {
+  id         String            @id @default(uuid()) @db.Uuid
+  productId  String            @db.Uuid
+  locationId String            @db.Uuid
+  type       StockMovementType
+
+  // Signed: positive adds to stock, negative removes. Integer because hardware
+  // is counted in whole units, and integers cannot drift the way floats do.
+  quantityDelta Int
+  // Running total after this movement, captured at post time. Purely a
+  // convenience for displaying the ledger; the authoritative figure is always
+  // the SUM, which is what every balance query computes.
+  balanceAfter  Int
+
+  reason        String?
+  // Forward hooks for later modules: the document that caused this movement,
+  // e.g. ("DeliveryOrder", <id>). Unused while stock is posted manually.
+  referenceType String?
+  referenceId   String?
+
+  occurredAt DateTime @default(now())
+
+  product  Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  location StockLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("StockMovementCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  // No updatedAt and no archivedAt: the ledger is append-only by design.
+  createdAt DateTime @default(now())
+
+  @@index([productId, locationId])
+  @@index([occurredAt])
+  @@index([type])
+  @@index([referenceType, referenceId])
+  @@map("stock_movements")
+}
+
+// Runtime configuration, so business switches are not redeployments.
+model Setting {
+  id          String  @id @default(uuid()) @db.Uuid
+  key         String  @unique
+  value       Json
+  description String?
+
+  updatedById String? @db.Uuid
+  updatedBy   User?   @relation("SettingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
 // Concurrency-safe human-readable document numbers.
 // Allocation uses an atomic UPDATE inside the caller's transaction, so two
 // parallel requests can never receive the same number.
 model DocumentSequence {
-  id String @id @default(uuid()) @db.Uuid
+  id        String @id @default(uuid()) @db.Uuid
   // "VENDOR", "PRODUCT", and later "QUOTATION:2025-26" etc.
   key       String @unique
   prefix    String

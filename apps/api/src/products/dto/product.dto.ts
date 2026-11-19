@@ -3,12 +3,15 @@ import { Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsIn,
+  IsInt,
   IsNotEmpty,
   IsObject,
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
+  Min,
 } from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 
@@ -62,11 +65,23 @@ export class CreateProductDto {
 
   @ApiPropertyOptional({
     description: 'Free-form technical specifications as key/value pairs',
-    example: { processor: 'Intel i5-1335U', ram: '16GB', storage: '512GB SSD' },
+    example: { Processor: 'Intel i5-1335U', RAM: '16GB', Storage: '512GB SSD' },
   })
   @IsOptional()
   @IsObject()
   specifications?: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    minimum: 0,
+    description:
+      'Quantity at or below which this product is reported as low stock. ' +
+      'Only meaningful when stock tracking is enabled.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10_000_000)
+  reorderLevel?: number;
 }
 
 export class UpdateProductDto {
@@ -107,6 +122,13 @@ export class UpdateProductDto {
   @IsOptional()
   @IsObject()
   specifications?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ minimum: 0, description: 'Null clears the reorder level' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10_000_000)
+  reorderLevel?: number | null;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -181,6 +203,20 @@ export class QueryProductsDto extends PaginationQueryDto {
   @IsBoolean()
   includeArchived?: boolean = false;
 
+  @ApiPropertyOptional({
+    description: 'Only products with a reorder level set and on-hand at or below it',
+  })
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  lowStockOnly?: boolean;
+
+  @ApiPropertyOptional({ description: 'Only products with zero on-hand' })
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  outOfStockOnly?: boolean;
+
   @ApiPropertyOptional({ enum: PRODUCT_SORT_FIELDS, default: 'name' })
   @IsOptional()
   @IsIn(PRODUCT_SORT_FIELDS)
@@ -206,4 +242,25 @@ export class CreateProductCategoryDto {
   @MaxLength(300)
   @Transform(trim)
   description?: string;
+}
+
+export class UpdateProductCategoryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Transform(trim)
+  name?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  @Transform(trim)
+  description?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

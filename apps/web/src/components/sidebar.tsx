@@ -29,6 +29,7 @@ const SECTIONS: NavSection[] = [
       { label: 'Vendors', href: '/vendors', permission: 'vendor.read' },
       { label: 'Brands', href: '/companies', permission: 'company.read' },
       { label: 'Products', href: '/products', permission: 'product.read' },
+      { label: 'Inventory', href: '/inventory', permission: 'stock.read' },
     ],
   },
   {
@@ -47,6 +48,10 @@ const SECTIONS: NavSection[] = [
       { label: 'Deliveries', href: '/deliveries', comingSoon: true },
       { label: 'Reports', href: '/reports', comingSoon: true },
     ],
+  },
+  {
+    title: 'Administration',
+    items: [{ label: 'Settings', href: '/settings' }],
   },
 ];
 
