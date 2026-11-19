@@ -43,6 +43,20 @@ export const PERMISSIONS = {
   /** Select an inactive product/model in a new business document (later modules). */
   PRODUCT_USE_INACTIVE: 'product.use_inactive',
 
+  // Customer management. customer.read is "view".
+  CUSTOMER_READ: 'customer.read',
+  CUSTOMER_CREATE: 'customer.create',
+  CUSTOMER_UPDATE: 'customer.update',
+  CUSTOMER_DELETE: 'customer.delete',
+  CUSTOMER_EXPORT: 'customer.export',
+  CUSTOMER_MANAGE_CONTACTS: 'customer.manage_contacts',
+  CUSTOMER_MANAGE_ADDRESSES: 'customer.manage_addresses',
+  CUSTOMER_MANAGE_PRODUCTS: 'customer.manage_products',
+  CUSTOMER_UPLOAD_DOCUMENTS: 'customer.upload_documents',
+  CUSTOMER_DELETE_DOCUMENTS: 'customer.delete_documents',
+  /** Select an inactive customer in a new business document (later modules). */
+  CUSTOMER_USE_INACTIVE: 'customer.use_inactive',
+
   // Stock / inventory
   STOCK_READ: 'stock.read',
   // Posting a movement changes recorded inventory, so it is separate from
@@ -113,6 +127,18 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   { code: PERMISSIONS.PRODUCT_DELETE_DOCUMENTS, module: 'product', action: 'delete_documents', description: 'Remove product documents and images' },
   { code: PERMISSIONS.PRODUCT_USE_INACTIVE, module: 'product', action: 'use_inactive', description: 'Select inactive products/models in new business documents' },
 
+  { code: PERMISSIONS.CUSTOMER_READ, module: 'customer', action: 'read', description: 'View customers, contacts, addresses, documents and activity' },
+  { code: PERMISSIONS.CUSTOMER_CREATE, module: 'customer', action: 'create', description: 'Create customers' },
+  { code: PERMISSIONS.CUSTOMER_UPDATE, module: 'customer', action: 'update', description: 'Edit customers and change their status' },
+  { code: PERMISSIONS.CUSTOMER_DELETE, module: 'customer', action: 'delete', description: 'Permanently delete an unreferenced customer' },
+  { code: PERMISSIONS.CUSTOMER_EXPORT, module: 'customer', action: 'export', description: 'Export customer data' },
+  { code: PERMISSIONS.CUSTOMER_MANAGE_CONTACTS, module: 'customer', action: 'manage_contacts', description: 'Add, edit and remove customer contact persons' },
+  { code: PERMISSIONS.CUSTOMER_MANAGE_ADDRESSES, module: 'customer', action: 'manage_addresses', description: 'Add, edit and remove customer addresses' },
+  { code: PERMISSIONS.CUSTOMER_MANAGE_PRODUCTS, module: 'customer', action: 'manage_products', description: 'Manage customer products of interest' },
+  { code: PERMISSIONS.CUSTOMER_UPLOAD_DOCUMENTS, module: 'customer', action: 'upload_documents', description: 'Upload and replace customer documents' },
+  { code: PERMISSIONS.CUSTOMER_DELETE_DOCUMENTS, module: 'customer', action: 'delete_documents', description: 'Remove customer documents' },
+  { code: PERMISSIONS.CUSTOMER_USE_INACTIVE, module: 'customer', action: 'use_inactive', description: 'Select inactive customers in new business documents' },
+
   { code: PERMISSIONS.STOCK_READ, module: 'stock', action: 'read', description: 'View stock balances and the movement ledger' },
   { code: PERMISSIONS.STOCK_POST, module: 'stock', action: 'post', description: 'Post stock movements (opening balance, receipt, issue, adjustment, return)' },
   { code: PERMISSIONS.STOCK_MANAGE_LOCATIONS, module: 'stock', action: 'manage_locations', description: 'Create and edit stock locations' },
@@ -170,6 +196,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERMISSIONS.PRODUCT_READ, PERMISSIONS.PRODUCT_CREATE, PERMISSIONS.PRODUCT_UPDATE, PERMISSIONS.PRODUCT_ARCHIVE, PERMISSIONS.PRODUCT_EXPORT,
     PERMISSIONS.PRODUCT_DELETE, PERMISSIONS.PRODUCT_MANAGE_MODELS, PERMISSIONS.PRODUCT_MANAGE_VENDORS,
     PERMISSIONS.PRODUCT_UPLOAD_DOCUMENTS, PERMISSIONS.PRODUCT_DELETE_DOCUMENTS, PERMISSIONS.PRODUCT_USE_INACTIVE,
+    PERMISSIONS.CUSTOMER_READ, PERMISSIONS.CUSTOMER_CREATE, PERMISSIONS.CUSTOMER_UPDATE,
+    PERMISSIONS.CUSTOMER_EXPORT, PERMISSIONS.CUSTOMER_MANAGE_CONTACTS, PERMISSIONS.CUSTOMER_MANAGE_ADDRESSES,
+    PERMISSIONS.CUSTOMER_MANAGE_PRODUCTS, PERMISSIONS.CUSTOMER_UPLOAD_DOCUMENTS,
+    PERMISSIONS.CUSTOMER_DELETE, PERMISSIONS.CUSTOMER_DELETE_DOCUMENTS, PERMISSIONS.CUSTOMER_USE_INACTIVE,
     PERMISSIONS.STOCK_READ, PERMISSIONS.STOCK_POST, PERMISSIONS.STOCK_MANAGE_LOCATIONS,
     PERMISSIONS.DOCUMENT_READ, PERMISSIONS.DOCUMENT_UPLOAD, PERMISSIONS.DOCUMENT_DOWNLOAD, PERMISSIONS.DOCUMENT_ARCHIVE,
     PERMISSIONS.OCR_SUBMIT, PERMISSIONS.OCR_READ,
@@ -206,18 +236,28 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
   // and can see stock, but cannot change it. Their own modules arrive later.
   [ROLE_CODES.SALES_MANAGER]: [
     PERMISSIONS.VENDOR_READ, PERMISSIONS.COMPANY_READ, PERMISSIONS.PRODUCT_READ,
+    PERMISSIONS.CUSTOMER_READ, PERMISSIONS.CUSTOMER_CREATE, PERMISSIONS.CUSTOMER_UPDATE,
+    PERMISSIONS.CUSTOMER_EXPORT, PERMISSIONS.CUSTOMER_MANAGE_CONTACTS, PERMISSIONS.CUSTOMER_MANAGE_ADDRESSES,
+    PERMISSIONS.CUSTOMER_MANAGE_PRODUCTS, PERMISSIONS.CUSTOMER_UPLOAD_DOCUMENTS,
+    PERMISSIONS.CUSTOMER_DELETE_DOCUMENTS, PERMISSIONS.DOCUMENT_UPLOAD, PERMISSIONS.DOCUMENT_DOWNLOAD,
     PERMISSIONS.PRODUCT_EXPORT, PERMISSIONS.STOCK_READ, PERMISSIONS.DOCUMENT_READ,
   ],
   [ROLE_CODES.SALES_EXECUTIVE]: [
     PERMISSIONS.VENDOR_READ, PERMISSIONS.COMPANY_READ, PERMISSIONS.PRODUCT_READ,
+    PERMISSIONS.CUSTOMER_READ, PERMISSIONS.CUSTOMER_CREATE, PERMISSIONS.CUSTOMER_UPDATE,
+    PERMISSIONS.CUSTOMER_MANAGE_CONTACTS, PERMISSIONS.CUSTOMER_MANAGE_ADDRESSES,
+    PERMISSIONS.CUSTOMER_MANAGE_PRODUCTS, PERMISSIONS.CUSTOMER_UPLOAD_DOCUMENTS,
+    PERMISSIONS.DOCUMENT_READ, PERMISSIONS.DOCUMENT_UPLOAD, PERMISSIONS.DOCUMENT_DOWNLOAD,
     PERMISSIONS.STOCK_READ,
   ],
   [ROLE_CODES.ACCOUNTS_MANAGER]: [
+    PERMISSIONS.CUSTOMER_READ, PERMISSIONS.CUSTOMER_EXPORT, PERMISSIONS.DOCUMENT_DOWNLOAD,
     PERMISSIONS.VENDOR_READ, PERMISSIONS.COMPANY_READ, PERMISSIONS.PRODUCT_READ,
     PERMISSIONS.STOCK_READ, PERMISSIONS.DOCUMENT_READ,
   ],
   // Dispatch reduces stock, so this role may post movements.
   [ROLE_CODES.DELIVERY_MANAGER]: [
+    PERMISSIONS.CUSTOMER_READ,
     PERMISSIONS.VENDOR_READ, PERMISSIONS.PRODUCT_READ,
     PERMISSIONS.STOCK_READ, PERMISSIONS.STOCK_POST,
   ],

@@ -41,6 +41,7 @@ const DOCUMENT_SEQUENCES = [
   { key: 'VENDOR', prefix: 'KI/VEN/', padding: 4 },
   { key: 'PRODUCT', prefix: 'KI/PRD/', padding: 5 },
   { key: 'PRODUCT_MODEL', prefix: 'KI/MDL/', padding: 5 },
+  { key: 'CUSTOMER', prefix: 'KI/CUS/', padding: 4 },
 ];
 
 function normalizeName(value: string): string {
@@ -50,6 +51,30 @@ function normalizeName(value: string): string {
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/** Starting customer categories. Editable (and deactivatable) at runtime. */
+const CUSTOMER_CATEGORIES = [
+  { name: 'Corporate', sortOrder: 10, description: 'Large companies and enterprises' },
+  { name: 'SME', sortOrder: 20, description: 'Small and medium businesses' },
+  { name: 'Government', sortOrder: 30, description: 'Government departments and PSUs' },
+  { name: 'Education', sortOrder: 40, description: 'Schools, colleges and universities' },
+  { name: 'Healthcare', sortOrder: 50, description: 'Hospitals and clinics' },
+  { name: 'Reseller', sortOrder: 60, description: 'Dealers and resellers buying for resale' },
+  { name: 'Retail', sortOrder: 70, description: 'Individual / walk-in buyers' },
+  { name: 'Other', sortOrder: 99, description: 'Uncategorised customer' },
+];
+
+async function seedCustomerCategories(): Promise<void> {
+  for (const category of CUSTOMER_CATEGORIES) {
+    await prisma.customerCategory.upsert({
+      where: { normalizedName: normalizeName(category.name) },
+      create: { ...category, normalizedName: normalizeName(category.name) },
+      // Never re-activate or rename a category an administrator changed.
+      update: {},
+    });
+  }
+  console.log(`  customer categories: ${CUSTOMER_CATEGORIES.length}`);
 }
 
 async function seedPermissions(): Promise<void> {
@@ -284,6 +309,7 @@ async function main(): Promise<void> {
   await seedRoles();
   await seedSequences();
   await seedVendorCategories();
+  await seedCustomerCategories();
   await seedProductCategories();
   await seedSettings();
   await seedSuperAdmin();
