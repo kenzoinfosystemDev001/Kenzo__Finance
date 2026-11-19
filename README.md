@@ -1,0 +1,153 @@
+# Kenzo Infosystems ERP & Business Management System
+
+Monorepo for the Kenzo Infosystems ERP. **Module 1 (Vendor Management) is
+implemented.** Later modules follow the roadmap in [`docs/`](./docs).
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | Next.js 15 (App Router) + TypeScript + Tailwind |
+| Backend | NestJS 11 + TypeScript |
+| Database | PostgreSQL (Neon) |
+| ORM | Prisma 6 |
+| Auth | JWT access/refresh, Argon2id hashing, backend RBAC |
+| API docs | Swagger at `/api/docs` (non-production only) |
+
+> The repository uses **npm workspaces**, not pnpm. `corepack`/`pnpm` is broken
+> on the current machine (signature verification error), and npm workspaces
+> cover the same need.
+
+---
+
+## 1. Prerequisites
+
+- Node.js 20.9 or newer (tested on 20.18)
+- A Neon PostgreSQL database
+
+## 2. Configure the environment
+
+```bash
+cp .env.example .env
+```
+
+Then fill in `.env`. The application refuses to start if anything required is
+missing or malformed, rather than failing later on a request.
+
+### Required values
+
+| Variable | Notes |
+| --- | --- |
+| `DATABASE_URL` | Neon **pooled** connection string, used by the running app |
+| `DIRECT_URL` | Neon **direct** (non-pooled) string, used by `prisma migrate` |
+| `AUTH_ACCESS_SECRET` | 32+ characters |
+| `AUTH_REFRESH_SECRET` | 32+ characters, **must differ** from the access secret |
+| `SEED_SUPERADMIN_EMAIL` | First administrator account |
+| `SEED_SUPERADMIN_PASSWORD` | 12+ characters. No default exists by design |
+
+Generate the secrets:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+Neon gives you both connection strings in its dashboard. The pooled host
+contains `-pooler`; the direct one does not. Prisma migrations must use the
+direct connection — migrations do not work reliably through a pooler.
+
+## 3. Install, migrate, seed
+
+```bash
+npm install
+npm run db:generate      # generate the Prisma client
+npm run db:migrate       # create the schema in Neon
+npm run db:seed          # reference data + the first administrator
+```
+
+The seed creates **only** permissions, roles, document number sequences,
+vendor categories and one administrator. It never creates sample vendors,
+brands, products or transactions.
+
+## 4. Run
+
+```bash
+npm run dev              # API on :4000, web on :3000
+```
+
+| URL | What |
+| --- | --- |
+| http://localhost:3000 | Web application |
+| http://localhost:4000/api/v1 | API |
+| http://localhost:4000/api/docs | Swagger (development only) |
+| http://localhost:4000/api/v1/health/ready | Readiness + database check |
+
+Sign in with the seeded administrator and change the password immediately
+(**Sign out menu → change password** endpoint, or `POST /auth/change-password`).
+
+## 5. Tests
+
+```bash
+npm run api:test         # 63 unit tests
+```
+
+Covered: GSTIN checksum validation, duplicate-vendor rules, OCR draft
+single-use enforcement, RBAC fail-closed behaviour, upload signature
+validation, CSV injection escaping and value normalisation.
+
+---
+
+## Repository layout
+
+```
+kenzo_finance/
+├── apps/
+│   ├── api/                      NestJS backend
+│   │   ├── prisma/
+│   │   │   ├── schema.prisma     Identity/RBAC + Module 1 models
+│   │   │   └── seed.ts           Reference data only
+│   │   └── src/
+│   │       ├── auth/             Login, refresh rotation, password change
+│   │       ├── vendors/          Module 1 core
+│   │       ├── companies/        Brands
+│   │       ├── products/         Catalogue (minimal; Module 2 extends it)
+│   │       ├── documents/        Private upload/download
+│   │       ├── ocr/              Pluggable extraction + review flow
+│   │       ├── audit/            Audit log writer
+│   │       ├── numbering/        Concurrency-safe document numbers
+│   │       ├── storage/          Private file storage adapter
+│   │       └── common/           Guards, filters, DTOs, validators
+│   └── web/                      Next.js frontend
+│       └── src/
+│           ├── app/(auth)/       Login
+│           ├── app/(dashboard)/  Application shell and modules
+│           ├── components/       Shared UI and the vendor form
+│           └── lib/              Server-side API client, session, actions
+└── docs/                         PRD, workflows, architecture, DFDs
+```
+
+## Security notes
+
+- Tokens are stored in **httpOnly cookies** set by the Next server, never in
+  `localStorage`. The access token never reaches browser JavaScript.
+- Authorisation is enforced by NestJS guards. The `PermissionsGuard` **fails
+  closed**: a route with no declared permission is refused, so forgetting a
+  decorator cannot expose an endpoint.
+- Uploads are validated by **file signature**, not by the client's declared
+  MIME type or extension. Storage keys are generated server-side.
+- Documents are served only through a permission-checked endpoint; nothing
+  under the storage root is statically served.
+- Refresh tokens are stored as SHA-256 hashes and rotate on every use; reuse of
+  a rotated token revokes the whole session family.
+- Passwords use Argon2id at OWASP-recommended parameters.
+- The seed never creates a default password.
+
+## What is deliberately not built yet
+
+These depend on business decisions that are still open (see
+[`docs/01_PRD.md`](./docs/01_PRD.md) section 10). Adding them later is an
+additive migration; guessing them now would force a destructive one.
+
+- Physical stock quantities, warehouses and the stock ledger
+- Purchase orders, goods receipt and vendor bills
+- Branch / multi-company columns
+- Vendor supply prices on vendor-product mappings
+- A real OCR provider (the built-in one reads text files and stores the
+  original; it never invents values for scanned documents)

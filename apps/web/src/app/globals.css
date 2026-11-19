@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tokens are raw RGB channels so Tailwind can apply opacity modifiers.
+   Use rgb(var(--token)) when referencing one directly in plain CSS. */
+:root {
+  --canvas: 246 247 249;
+  --surface: 255 255 255;
+  --surface-muted: 249 250 251;
+  --border: 228 231 236;
+  --border-strong: 208 213 221;
+  --ink: 16 24 40;
+  --ink-muted: 71 84 103;
+  --ink-subtle: 102 112 133;
+  --accent: 31 95 170;
+  --accent-hover: 24 75 136;
+  --accent-subtle: 239 245 252;
+  --danger: 180 35 24;
+  --danger-subtle: 254 243 242;
+  --warning: 181 71 8;
+  --warning-subtle: 255 250 235;
+  --success: 2 122 72;
+  --success-subtle: 236 253 243;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --canvas: 15 18 24;
+    --surface: 22 27 36;
+    --surface-muted: 27 33 44;
+    --border: 39 46 59;
+    --border-strong: 57 65 79;
+    --ink: 233 237 244;
+    --ink-muted: 164 173 189;
+    --ink-subtle: 127 136 153;
+    --accent: 90 155 234;
+    --accent-hover: 123 176 240;
+    --accent-subtle: 23 38 58;
+    --danger: 242 123 114;
+    --danger-subtle: 42 23 21;
+    --warning: 232 163 61;
+    --warning-subtle: 42 33 19;
+    --success: 74 192 138;
+    --success-subtle: 18 37 32;
+  }
+}
+
+:root[data-theme='dark'] {
+  --canvas: 15 18 24;
+  --surface: 22 27 36;
+  --surface-muted: 27 33 44;
+  --border: 39 46 59;
+  --border-strong: 57 65 79;
+  --ink: 233 237 244;
+  --ink-muted: 164 173 189;
+  --ink-subtle: 127 136 153;
+  --accent: 90 155 234;
+  --accent-hover: 123 176 240;
+  --accent-subtle: 23 38 58;
+  --danger: 242 123 114;
+  --danger-subtle: 42 23 21;
+  --warning: 232 163 61;
+  --warning-subtle: 42 33 19;
+  --success: 74 192 138;
+  --success-subtle: 18 37 32;
+}
+
+html,
+body {
+  background: rgb(var(--canvas));
+  color: rgb(var(--ink));
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Visible keyboard focus everywhere; never removed without a replacement. */
+:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+}
+
+@layer components {
+  .field-label {
+    @apply mb-1.5 block text-sm font-medium text-ink;
+  }
+
+  .field-input {
+    @apply w-full rounded-md border border-border bg-surface px-3 py-2 text-base
+           text-ink placeholder:text-ink-subtle
+           focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20
+           disabled:cursor-not-allowed disabled:bg-surface-muted;
+  }
+
+  .field-hint {
+    @apply mt-1 text-xs text-ink-subtle;
+  }
+
+  .field-error {
+    @apply mt-1 text-xs text-danger;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border px-3.5 py-2
+           text-sm font-medium transition-colors
+           disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-primary {
+    @apply btn border-transparent bg-accent text-white hover:bg-accent-hover;
+  }
+
+  .btn-secondary {
+    @apply btn border-border-strong bg-surface text-ink hover:bg-surface-muted;
+  }
+
+  .btn-danger {
+    @apply btn border-transparent bg-danger text-white hover:opacity-90;
+  }
+
+  .card {
+    @apply rounded-lg border border-border bg-surface shadow-card;
+  }
+
+  .data-table {
+    @apply w-full border-collapse text-left text-base;
+  }
+
+  .data-table thead th {
+    @apply whitespace-nowrap border-b border-border bg-surface-muted px-4 py-2.5
+           text-xs font-semibold uppercase tracking-wide text-ink-muted;
+  }
+
+  .data-table tbody td {
+    @apply border-b border-border px-4 py-3 align-middle text-ink;
+  }
+
+  .data-table tbody tr:hover {
+    @apply bg-surface-muted;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium;
+  }
+}

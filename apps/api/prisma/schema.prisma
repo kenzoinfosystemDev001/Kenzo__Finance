@@ -1,0 +1,472 @@
+// ---------------------------------------------------------------------------
+// Kenzo Infosystems ERP - Prisma schema
+// Scope: identity/RBAC foundation + Module 1 (Vendor Management).
+//
+// Deliberately NOT modelled yet (pending client confirmation - see
+// docs/01_PRD.md section 10):
+//   * stock ledger / warehouses          -> inventory decision open
+//   * purchase orders, GRN, vendor bills -> procurement decision open
+//   * branch / multi-company columns     -> org structure decision open
+//   * vendor supply price on mappings    -> commercial rules not approved
+// Adding any of these later is an additive migration; guessing them now
+// would mean a destructive one.
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ===========================================================================
+// Identity, roles and permissions
+// ===========================================================================
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String     @unique
+  passwordHash String
+  fullName     String
+  phone        String?
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+
+  roles         UserRole[]
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]     @relation("AuditActor")
+
+  createdVendors Vendor[]   @relation("VendorCreatedBy")
+  updatedVendors Vendor[]   @relation("VendorUpdatedBy")
+  uploadedDocs   Document[] @relation("DocumentUploadedBy")
+  requestedOcr   OcrJob[]   @relation("OcrRequestedBy")
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  @@index([status])
+  @@map("users")
+}
+
+model Role {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @unique // SUPER_ADMIN, VENDOR_MANAGER, ...
+  name        String
+  description String?
+  // System roles cannot be deleted or renamed through the API.
+  isSystem    Boolean @default(false)
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @unique // "vendor.create", "vendor.read", ...
+  module      String // "vendor", "product", "company", "user", ...
+  action      String // "create", "read", "update", "archive", "export", ...
+  description String?
+
+  roles RolePermission[]
+
+  createdAt DateTime @default(now())
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model UserRole {
+  userId     String   @db.Uuid
+  roleId     String   @db.Uuid
+  assignedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  // Only the hash is stored; a database leak must not yield usable tokens.
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// ===========================================================================
+// Vendor management (Module 1)
+// ===========================================================================
+
+enum VendorStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model VendorCategory {
+  id             String  @id @default(uuid()) @db.Uuid
+  name           String
+  normalizedName String  @unique
+  description    String?
+  isActive       Boolean @default(true)
+  sortOrder      Int     @default(0)
+
+  vendors Vendor[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("vendor_categories")
+}
+
+model Vendor {
+  id         String @id @default(uuid()) @db.Uuid
+  // Human-facing identifier, allocated by DocumentSequence (KI/VEN/0001).
+  vendorCode String @unique
+
+  businessName String
+  legalName    String?
+  // Lowercased, punctuation-stripped businessName. Used for duplicate
+  // detection and case-insensitive search without a trigram index.
+  normalizedName String
+
+  contactPerson  String?
+  email          String?
+  phone          String?
+  alternatePhone String?
+  website        String?
+
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String  @default("India")
+
+  // Stored uppercase+trimmed. Unique when present; NULLs do not collide in
+  // PostgreSQL, so vendors without a GSTIN are still allowed.
+  gstin String? @unique
+  pan   String?
+
+  categoryId String?      @db.Uuid
+  status     VendorStatus @default(ACTIVE)
+  notes      String?
+
+  category  VendorCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  contacts  VendorContact[]
+  companies VendorCompany[]
+  products  VendorProduct[]
+  documents Document[]
+  ocrJobs   OcrJob[]
+
+  createdById String? @db.Uuid
+  updatedById String? @db.Uuid
+  createdBy   User?   @relation("VendorCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?   @relation("VendorUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // Soft delete. Historical transactions must survive vendor deactivation.
+  archivedAt DateTime?
+
+  @@index([normalizedName])
+  @@index([status])
+  @@index([categoryId])
+  @@index([archivedAt])
+  @@map("vendors")
+}
+
+model VendorContact {
+  id          String  @id @default(uuid()) @db.Uuid
+  vendorId    String  @db.Uuid
+  name        String
+  designation String?
+  email       String?
+  phone       String?
+  isPrimary   Boolean @default(false)
+  notes       String?
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendorId])
+  @@map("vendor_contacts")
+}
+
+// Company == brand (Dell, HP, Lenovo). Normalized so brand names are not
+// repeated as free text on every product and mapping row.
+model Company {
+  id             String  @id @default(uuid()) @db.Uuid
+  name           String
+  normalizedName String  @unique
+  code           String? @unique
+  website        String?
+  isActive       Boolean @default(true)
+
+  products Product[]
+  vendors  VendorCompany[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  @@index([normalizedName])
+  @@map("companies")
+}
+
+model ProductCategory {
+  id             String  @id @default(uuid()) @db.Uuid
+  name           String
+  normalizedName String  @unique
+  description    String?
+  isActive       Boolean @default(true)
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("product_categories")
+}
+
+// Minimal catalogue entry: only what vendor-product mapping and search need.
+// Full inventory fields arrive with Module 2 once the stock decision is made.
+model Product {
+  id             String  @id @default(uuid()) @db.Uuid
+  productCode    String  @unique
+  name           String
+  normalizedName String
+  companyId      String  @db.Uuid
+  categoryId     String? @db.Uuid
+
+  modelNumber    String
+  designNumber   String?
+  description    String?
+  specifications Json?
+  isActive       Boolean @default(true)
+
+  company  Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  category ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  vendors  VendorProduct[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  // One brand cannot have two products with the same model number.
+  @@unique([companyId, modelNumber])
+  @@index([normalizedName])
+  @@index([modelNumber])
+  @@index([designNumber])
+  @@index([categoryId])
+  @@map("products")
+}
+
+// Vendor <-> brand. "This vendor supplies Dell."
+model VendorCompany {
+  id           String  @id @default(uuid()) @db.Uuid
+  vendorId     String  @db.Uuid
+  companyId    String  @db.Uuid
+  isAuthorized Boolean @default(false) // authorised partner / distributor
+  remarks      String?
+
+  vendor  Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([vendorId, companyId])
+  @@index([companyId])
+  @@map("vendor_companies")
+}
+
+// Vendor <-> product. Many-to-many in both directions.
+// NOTE: no supply price column. Vendor pricing rules are not confirmed
+// (docs/01_PRD.md 5.2) and money columns must not be guessed.
+model VendorProduct {
+  id           String  @id @default(uuid()) @db.Uuid
+  vendorId     String  @db.Uuid
+  productId    String  @db.Uuid
+  vendorSku    String?
+  leadTimeDays Int?
+  isPreferred  Boolean @default(false)
+  remarks      String?
+
+  vendor  Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([vendorId, productId])
+  @@index([productId])
+  @@map("vendor_products")
+}
+
+// ===========================================================================
+// Documents, OCR, audit, numbering
+// ===========================================================================
+
+enum DocumentKind {
+  VENDOR_ONBOARDING
+  VENDOR_GST_CERTIFICATE
+  VENDOR_PAN
+  VENDOR_AGREEMENT
+  VENDOR_OTHER
+}
+
+model Document {
+  id               String       @id @default(uuid()) @db.Uuid
+  kind             DocumentKind @default(VENDOR_OTHER)
+  originalFilename String
+  // Opaque key into private storage. Never a public URL, never a client path.
+  storageKey       String       @unique
+  mimeType         String
+  sizeBytes        Int
+  checksumSha256   String
+
+  // Explicit FK per owner type rather than a polymorphic ownerId pair, so the
+  // database keeps referential integrity. Later modules add their own column.
+  vendorId String? @db.Uuid
+  vendor   Vendor? @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  uploadedById String? @db.Uuid
+  uploadedBy   User?   @relation("DocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  ocrJobs OcrJob[]
+
+  createdAt  DateTime  @default(now())
+  archivedAt DateTime?
+
+  @@index([vendorId])
+  @@index([kind])
+  @@map("documents")
+}
+
+enum OcrStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum OcrTargetType {
+  VENDOR
+}
+
+model OcrJob {
+  id         String        @id @default(uuid()) @db.Uuid
+  documentId String        @db.Uuid
+  targetType OcrTargetType @default(VENDOR)
+  provider   String
+  status     OcrStatus     @default(PENDING)
+
+  // Provider payload, kept for audit and re-mapping without re-billing OCR.
+  rawResult         Json?
+  // Provider-independent field map shown on the review screen.
+  normalizedResult  Json?
+  overallConfidence Float?
+  errorMessage      String?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  // Set when a user confirms the review and a vendor is actually created.
+  // Enforces "one OCR draft creates at most one vendor".
+  consumedAt        DateTime?
+  resultingVendorId String?   @unique @db.Uuid
+  resultingVendor   Vendor?   @relation(fields: [resultingVendorId], references: [id], onDelete: SetNull)
+
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  requestedById String?  @db.Uuid
+  requestedBy   User?    @relation("OcrRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([documentId])
+  @@index([status])
+  @@map("ocr_jobs")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String?  @db.Uuid
+  action      String // "vendor.create", "vendor.archive", "auth.login.failed"
+  entityType  String // "Vendor", "VendorProduct", "User"
+  entityId    String?
+  summary     String?
+  before      Json?
+  after       Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// Concurrency-safe human-readable document numbers.
+// Allocation uses an atomic UPDATE inside the caller's transaction, so two
+// parallel requests can never receive the same number.
+model DocumentSequence {
+  id String @id @default(uuid()) @db.Uuid
+  // "VENDOR", "PRODUCT", and later "QUOTATION:2025-26" etc.
+  key       String @unique
+  prefix    String
+  padding   Int    @default(4)
+  nextValue Int    @default(1)
+
+  updatedAt DateTime @updatedAt
+
+  @@map("document_sequences")
+}
