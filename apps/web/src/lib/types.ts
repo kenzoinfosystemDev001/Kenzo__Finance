@@ -1264,7 +1264,11 @@ export interface FinalInvoiceListItem {
   proformaInvoice: { id: string; piNumber: string };
   quotation: { id: string; quotationNumber: string };
   assignedTo: UserRef | null;
-  /** Issued / sent and the due date has passed (payment is not tracked yet). */
+  /** Verified payments received (Payment Management is the source of truth). */
+  amountReceived: string;
+  paymentState: InvoicePaymentState;
+  outstanding: string;
+  /** Overdue: issued / sent, due date passed and not fully paid. */
   pastDue: boolean;
 }
 
@@ -1277,7 +1281,10 @@ export interface FinalInvoiceSummary {
   sent: number;
   cancelled: number;
   pastDue: number;
-  invoicedValue: Array<{ currency: string; count: number; total: string }>;
+  unpaid: number;
+  partiallyPaid: number;
+  fullyPaid: number;
+  invoicedValue: Array<{ currency: string; count: number; total: string; received: string; outstanding: string }>;
   approvalRequired: boolean;
   paymentTrackingAvailable: boolean;
   generatedAt: string;
@@ -1402,8 +1409,28 @@ export interface FinalInvoiceDetail extends ProformaTotals {
   }>;
   approvalRequired: boolean;
   deletable: boolean;
-  /** Payment Management is not available yet: no figures exist. */
-  payments: { available: boolean; received: string | null; outstanding: string | null; transactions: unknown[] };
+  amountReceived: string;
+  paymentState: InvoicePaymentState;
+  outstanding: string;
+  /** Derived from verified payments by Payment Management. */
+  payments: {
+    available: boolean;
+    received: string;
+    outstanding: string;
+    pendingVerification: string;
+    state: InvoicePaymentState;
+    transactions: Array<{
+      id: string;
+      receiptNumber: string;
+      paymentDate: string;
+      amount: string;
+      method: string;
+      transactionReference: string | null;
+      status: PaymentStatus;
+      verifiedAt: string | null;
+      allocated: string;
+    }>;
+  };
 }
 
 export interface InvoiceNumbering {
@@ -1431,4 +1458,206 @@ export interface FinalInvoiceReports {
   pastDue: FinalInvoiceListItem[];
   paymentTrackingAvailable: boolean;
   generatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Module 8 - Payment Management
+// ---------------------------------------------------------------------------
+
+export type PaymentStatus = 'PENDING_VERIFICATION' | 'VERIFIED' | 'REJECTED' | 'REVERSED';
+
+export interface PaymentMethodOption {
+  code: string;
+  label: string;
+  active: boolean;
+}
+
+export interface PaymentListItem {
+  id: string;
+  receiptNumber: string;
+  paymentDate: string;
+  amount: string;
+  currency: string;
+  method: string;
+  transactionReference: string | null;
+  status: PaymentStatus;
+  duplicateReferenceConfirmed: boolean;
+  createdAt: string;
+  verifiedAt: string | null;
+  customer: { id: string; name: string; customerCode: string };
+  receivedBy: UserRef | null;
+  allocations: Array<{
+    amount: string;
+    finalInvoice: { id: string; invoiceNumber: string | null; grandTotal: string; paymentState: InvoicePaymentState };
+  }>;
+}
+
+export type InvoicePaymentState = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
+
+export interface EligiblePaymentInvoice {
+  id: string;
+  invoiceNumber: string | null;
+  invoiceDate: string;
+  dueDate: string | null;
+  currency: string;
+  grandTotal: string;
+  amountReceived: string;
+  paymentState: InvoicePaymentState;
+  outstanding: string;
+  pendingVerification: string;
+  available: string;
+  overdue: boolean;
+}
+
+export interface PaymentSettings {
+  methods: PaymentMethodOption[];
+  autoVerifyMethods: string[];
+  /** False while the methods are still the untouched defaults. */
+  methodsConfirmed: boolean;
+}
+
+export interface PaymentDuplicate {
+  id: string;
+  receiptNumber: string;
+  amount: string;
+  status: PaymentStatus;
+  customer: string;
+}
+
+type PaymentReportRow = { key: string; currency: string; count: number; total: string };
+
+export interface PaymentOpenInvoice {
+  id: string;
+  invoiceNumber: string | null;
+  invoiceDate: string;
+  dueDate: string | null;
+  currency: string;
+  grandTotal: string;
+  amountReceived: string;
+  paymentState: InvoicePaymentState;
+  customer: { id: string; name: string };
+  outstanding: string;
+  overdue: boolean;
+}
+
+export interface PaymentReports {
+  filters: { dateFrom: string | null; dateTo: string | null; customerId: string | null; method: string | null };
+  daily: PaymentReportRow[];
+  monthly: PaymentReportRow[];
+  byCustomer: Array<PaymentReportRow & { customer: { id: string; name: string; customerCode: string } }>;
+  byMethod: Array<PaymentReportRow & { label: string }>;
+  byInvoice: Array<PaymentReportRow & { invoiceNumber: string | null }>;
+  pendingVerification: PaymentListItem[];
+  rejectedOrReversed: Array<PaymentListItem & { rejectionReason: string | null; reversalReason: string | null }>;
+  outstandingInvoices: PaymentOpenInvoice[];
+  overdueInvoices: PaymentOpenInvoice[];
+  generatedAt: string;
+}
+
+export interface PaymentSummary {
+  totalReceived: Array<{ currency: string; count: number; total: string }>;
+  receivedToday: Array<{ currency: string; count: number; total: string }>;
+  receivedThisMonth: Array<{ currency: string; count: number; total: string }>;
+  pendingVerification: Array<{ currency: string; count: number; total: string }>;
+  outstanding: Array<{ currency: string; invoices: number; total: string }>;
+  partiallyPaidInvoices: number;
+  fullyPaidInvoices: number;
+  overdueInvoices: number;
+  generatedAt: string;
+}
+
+export interface PaymentDetail extends PaymentListItem {
+  bankReference: string | null;
+  notes: string | null;
+  receivedBy: UserRef | null;
+  verifiedBy: UserRef | null;
+  rejectedBy: UserRef | null;
+  reversedBy: UserRef | null;
+  createdBy: UserRef | null;
+  updatedBy: UserRef | null;
+  methodLabel: string;
+  allocations: Array<{
+    amount: string;
+    finalInvoice: {
+      id: string;
+      invoiceNumber: string | null;
+      invoiceDate: string;
+      dueDate: string | null;
+      currency: string;
+      grandTotal: string;
+      amountReceived: string;
+      paymentState: InvoicePaymentState;
+      status: FinalInvoiceStatus;
+      proformaInvoice: { id: string; piNumber: string } | null;
+    };
+  }>;
+  statusHistory: Array<{
+    id: string;
+    previousStatus: PaymentStatus | null;
+    newStatus: PaymentStatus;
+    remarks: string | null;
+    changedAt: string;
+    changedBy: UserRef | null;
+  }>;
+  receiptDocument: { id: string; originalFilename: string; sizeBytes: number; createdAt: string } | null;
+  receivedById: string | null;
+  rejectionReason: string | null;
+  reversalReason: string | null;
+  rejectedAt: string | null;
+  reversedAt: string | null;
+  updatedAt: string;
+  documents: Array<{
+    id: string;
+    kind: 'PAYMENT_RECEIPT' | 'PAYMENT_PROOF';
+    originalFilename: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: string;
+    replacesDocumentId: string | null;
+    uploadedBy: UserRef | null;
+  }>;
+  invoiceSummary: {
+    invoiceTotal: string;
+    otherVerifiedPayments: string;
+    thisPayment: string;
+    totalVerified: string;
+    pendingVerification: string;
+    outstanding: string;
+    paymentState: InvoicePaymentState;
+  };
+}
+
+export interface InvoicePaymentHistory {
+  invoice: {
+    id: string;
+    invoiceNumber: string | null;
+    currency: string;
+    grandTotal: string;
+    amountReceived: string;
+    paymentState: InvoicePaymentState;
+    dueDate: string | null;
+    outstanding: string;
+    pendingVerification: string;
+  };
+  payments: PaymentListItem[];
+}
+
+export interface CustomerPaymentHistory {
+  customer: { id: string; name: string; customerCode: string };
+  totals: Array<{ currency: string; invoiced: string; verifiedPayments: string; outstanding: string }>;
+  paymentCount: number;
+  lastPaymentDate: string | null;
+  invoices: Array<{
+    id: string;
+    invoiceNumber: string | null;
+    invoiceDate: string;
+    dueDate: string | null;
+    currency: string;
+    grandTotal: string;
+    amountReceived: string;
+    paymentState: InvoicePaymentState;
+    outstanding: string;
+    overdue: boolean;
+  }>;
+  payments: PaymentListItem[];
 }

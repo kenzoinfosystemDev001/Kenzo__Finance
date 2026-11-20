@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiFetch, ApiError, queryString } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth-actions';
-import type { ActivityEntry, CustomerAddress, CustomerDetail, EnquiryListItem, FinalInvoiceListItem, PaginatedResponse, QuotationListItem } from '@/lib/types';
+import type { ActivityEntry, CustomerAddress, CustomerDetail, CustomerPaymentHistory, EnquiryListItem, FinalInvoiceListItem, PaginatedResponse, QuotationListItem } from '@/lib/types';
 import { CUSTOMER_ADDRESS_TYPE_LABELS, CUSTOMER_TYPE_LABELS } from '@/lib/customer-labels';
 import { activityLabel, formatAddress, formatDate, formatDateTime, formatPhone } from '@/lib/vendor-labels';
 import { DefinitionList, ErrorState, Pagination, Tabs, VendorStatusBadge } from '@/components/ui';
@@ -192,6 +192,8 @@ export default async function CustomerProfilePage({
           canReadQuotations={can('quotation.read')}
           canCreateQuotation={can('quotation.create_manual') && customer.status === 'ACTIVE'}
           canReadInvoices={can('invoice.read')}
+          canReadPayments={can('payment.read')}
+          canCreatePayment={can('payment.create')}
         />
       )}
     </div>
@@ -246,6 +248,8 @@ async function TransactionsTab({
   canReadQuotations,
   canCreateQuotation,
   canReadInvoices,
+  canReadPayments,
+  canCreatePayment,
 }: {
   customerId: string;
   customerCode: string;
@@ -254,6 +258,8 @@ async function TransactionsTab({
   canReadQuotations: boolean;
   canCreateQuotation: boolean;
   canReadInvoices: boolean;
+  canReadPayments: boolean;
+  canCreatePayment: boolean;
 }) {
   let enquiries: PaginatedResponse<EnquiryListItem> | null = null;
   let enquiryError: string | null = null;
@@ -280,6 +286,15 @@ async function TransactionsTab({
       invoices = await apiFetch<PaginatedResponse<FinalInvoiceListItem>>(`/final-invoices${queryString({ customerId, pageSize: 50, sortBy: 'createdAt', sortDir: 'desc' })}`);
     } catch (error) {
       invoiceError = error instanceof ApiError ? error.messages[0] : 'The server could not be reached.';
+    }
+  }
+  let payments: CustomerPaymentHistory | null = null;
+  let paymentError: string | null = null;
+  if (canReadPayments) {
+    try {
+      payments = await apiFetch<CustomerPaymentHistory>(`/payments/customers/${customerId}/history`);
+    } catch (error) {
+      paymentError = error instanceof ApiError ? error.messages[0] : 'The server could not be reached.';
     }
   }
 
@@ -461,22 +476,39 @@ async function TransactionsTab({
         </section>
       )}
 
-      {/* Later modules: shown as unavailable until they exist. */}
-      <section className="card p-6">
-        <h2 className="text-lg font-semibold text-ink">Other business transactions</h2>
-        <p className="mt-1 max-w-2xl text-sm text-ink-muted">
-          Proforma invoices, payments and deliveries for this customer will appear here, linked by customer ID {customerCode}.
-          Those modules are not available yet, so there is nothing to show.
-        </p>
-        <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {['Proforma Invoices', 'Payments', 'Deliveries'].map((label) => (
-            <li key={label} className="rounded-xl border border-dashed border-border-strong px-4 py-3">
-              <p className="text-sm font-semibold text-ink">{label}</p>
-              <p className="text-xs text-ink-subtle">Module not yet available</p>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {canReadPayments && (
+        <section className="card">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+            <div>
+              <h2 className="text-lg font-semibold text-ink">Payment History</h2>
+              <p className="text-sm text-ink-muted">{payments ? `${payments.paymentCount} verified payment transaction${payments.paymentCount === 1 ? '' : 's'}` : 'Customer payment positions and transactions.'}</p>
+            </div>
+            {canCreatePayment && <Link href={`/payments/new?customerId=${customerId}`} className="btn-primary"><IconPlus size={16} /> Record Payment</Link>}
+          </div>
+          {paymentError ? (
+            <div className="p-5"><ErrorState title="Could not load payments" message={paymentError} /></div>
+          ) : payments ? (
+            <div className="space-y-4 p-5">
+              {payments.totals.map((total) => (
+                <div key={total.currency} className="grid grid-cols-3 gap-3 rounded-lg border border-border p-4 text-sm">
+                  <div><p className="text-ink-subtle">Invoiced</p><p className="font-semibold text-ink">{formatMoney(total.invoiced, total.currency)}</p></div>
+                  <div><p className="text-ink-subtle">Verified Payments</p><p className="font-semibold text-success">{formatMoney(total.verifiedPayments, total.currency)}</p></div>
+                  <div><p className="text-ink-subtle">Outstanding</p><p className="font-semibold text-ink">{formatMoney(total.outstanding, total.currency)}</p></div>
+                </div>
+              ))}
+              {payments.payments.length === 0 ? (
+                <EmptyStateClient title="No payments yet" description="Payments recorded for this customer will appear here." />
+              ) : (
+                <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Receipt</th><th>Date</th><th>Amount</th><th>Method</th><th>Status</th></tr></thead><tbody>{payments.payments.slice(0, 50).map((payment) => (
+                  <tr key={payment.id}><td><Link href={`/payments/${payment.id}`} className="font-mono font-semibold text-accent hover:underline">{payment.receiptNumber}</Link></td><td>{formatDate(payment.paymentDate)}</td><td className="text-right font-semibold tabular-nums">{formatMoney(payment.amount, payment.currency)}</td><td>{payment.method.replace(/_/g, ' ')}</td><td>{payment.status.replace(/_/g, ' ')}</td></tr>
+                ))}</tbody></table></div>
+              )}
+            </div>
+          ) : (
+            <EmptyStateClient title="No payment history" description="Payment history could not be loaded." />
+          )}
+        </section>
+      )}
     </div>
   );
 }
