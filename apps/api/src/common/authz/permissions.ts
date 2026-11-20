@@ -123,6 +123,20 @@ export const PERMISSIONS = {
   PAYMENT_EXPORT: 'payment.export',
   PAYMENT_REPORTS: 'payment.reports',
 
+  // Deliveries (Module 9)
+  DELIVERY_READ: 'delivery.read',
+  DELIVERY_CREATE: 'delivery.create',
+  DELIVERY_UPDATE: 'delivery.update',
+  DELIVERY_SCHEDULE: 'delivery.schedule',
+  DELIVERY_DISPATCH: 'delivery.dispatch',
+  DELIVERY_TRACK: 'delivery.track',
+  DELIVERY_CONFIRM: 'delivery.confirm',
+  DELIVERY_CANCEL: 'delivery.cancel',
+  DELIVERY_UPLOAD_POD: 'delivery.upload_pod',
+  DELIVERY_DOWNLOAD: 'delivery.download',
+  DELIVERY_EXPORT: 'delivery.export',
+  DELIVERY_REPORTS: 'delivery.reports',
+
   // Stock / inventory
   STOCK_READ: 'stock.read',
   // Posting a movement changes recorded inventory, so it is separate from
@@ -263,6 +277,18 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   { code: PERMISSIONS.PAYMENT_DOWNLOAD, module: 'payment', action: 'download', description: 'Download payment receipts' },
   { code: PERMISSIONS.PAYMENT_EXPORT, module: 'payment', action: 'export', description: 'Export the payment register' },
   { code: PERMISSIONS.PAYMENT_REPORTS, module: 'payment', action: 'reports', description: 'View payment reports' },
+  { code: PERMISSIONS.DELIVERY_READ, module: 'delivery', action: 'read', description: 'View deliveries, items and tracking history' },
+  { code: PERMISSIONS.DELIVERY_CREATE, module: 'delivery', action: 'create', description: 'Create delivery drafts from final invoices' },
+  { code: PERMISSIONS.DELIVERY_UPDATE, module: 'delivery', action: 'update', description: 'Edit delivery drafts' },
+  { code: PERMISSIONS.DELIVERY_SCHEDULE, module: 'delivery', action: 'schedule', description: 'Schedule deliveries' },
+  { code: PERMISSIONS.DELIVERY_DISPATCH, module: 'delivery', action: 'dispatch', description: 'Dispatch deliveries' },
+  { code: PERMISSIONS.DELIVERY_TRACK, module: 'delivery', action: 'track', description: 'Update shipment tracking' },
+  { code: PERMISSIONS.DELIVERY_CONFIRM, module: 'delivery', action: 'confirm', description: 'Confirm customer delivery' },
+  { code: PERMISSIONS.DELIVERY_CANCEL, module: 'delivery', action: 'cancel', description: 'Cancel deliveries' },
+  { code: PERMISSIONS.DELIVERY_UPLOAD_POD, module: 'delivery', action: 'upload_pod', description: 'Upload proof of delivery documents' },
+  { code: PERMISSIONS.DELIVERY_DOWNLOAD, module: 'delivery', action: 'download', description: 'Download delivery documents' },
+  { code: PERMISSIONS.DELIVERY_EXPORT, module: 'delivery', action: 'export', description: 'Export delivery registers and reports' },
+  { code: PERMISSIONS.DELIVERY_REPORTS, module: 'delivery', action: 'reports', description: 'View delivery reports' },
 
   { code: PERMISSIONS.STOCK_READ, module: 'stock', action: 'read', description: 'View stock balances and the movement ledger' },
   { code: PERMISSIONS.STOCK_POST, module: 'stock', action: 'post', description: 'Post stock movements (opening balance, receipt, issue, adjustment, return)' },
@@ -432,6 +458,11 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERMISSIONS.CUSTOMER_READ,
     PERMISSIONS.VENDOR_READ, PERMISSIONS.PRODUCT_READ,
     PERMISSIONS.STOCK_READ, PERMISSIONS.STOCK_POST,
+    PERMISSIONS.INVOICE_READ,
+    PERMISSIONS.DELIVERY_READ, PERMISSIONS.DELIVERY_CREATE, PERMISSIONS.DELIVERY_UPDATE,
+    PERMISSIONS.DELIVERY_SCHEDULE, PERMISSIONS.DELIVERY_DISPATCH, PERMISSIONS.DELIVERY_TRACK,
+    PERMISSIONS.DELIVERY_CONFIRM, PERMISSIONS.DELIVERY_CANCEL, PERMISSIONS.DELIVERY_UPLOAD_POD,
+    PERMISSIONS.DELIVERY_DOWNLOAD, PERMISSIONS.DELIVERY_EXPORT, PERMISSIONS.DELIVERY_REPORTS,
   ],
 };
 

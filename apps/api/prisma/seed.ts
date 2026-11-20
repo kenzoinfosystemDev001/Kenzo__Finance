@@ -47,6 +47,7 @@ const DOCUMENT_SEQUENCES = [
   { key: 'PROFORMA_INVOICE', prefix: 'KI/PI/', padding: 5 },
   { key: 'FINAL_INVOICE', prefix: 'KI/INV/', padding: 5 },
   { key: 'PAYMENT_RECEIPT', prefix: 'KI/RCT/', padding: 5 },
+  { key: 'DELIVERY', prefix: 'KI/DLV/', padding: 5 },
 ];
 
 function normalizeName(value: string): string {
