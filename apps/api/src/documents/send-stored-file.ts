@@ -1,6 +1,6 @@
 // Readable rather than fs.ReadStream: a remote storage driver (Cloudinary,
 // S3) streams over the network and never opens a file descriptor.
-import { pipeline, type Readable } from 'node:stream';
+import type { Readable } from 'node:stream';
 import { Logger } from '@nestjs/common';
 import type { Response } from 'express';
 
@@ -36,21 +36,35 @@ export function sendStoredFile(
   response.setHeader('X-Content-Type-Options', 'nosniff');
   response.setHeader('Cache-Control', 'private, no-store');
 
-  pipeStoredFile(file.stream, response);
+  pipeStoredFile(file.stream, response, file.filename);
 }
-
-const logger = new Logger('StoredFile');
 
 /**
- * `stream.pipe()` attaches no error listener to the source, so a read error
- * (file removed, remote storage dropping the connection) became an unhandled
- * 'error' event and took the whole API process down. `pipeline` routes it
- * here instead, and the half-sent response is aborted.
+ * Pipes a stored file to the response with error handling. Also used by the
+ * public sign-in background endpoint, which sets its own headers.
  */
-export function pipeStoredFile(source: Readable, response: Response): void {
-  pipeline(source, response, (error) => {
-    if (!error) return;
-    logger.warn(`Streaming a stored file failed: ${error.message}`);
-    response.destroy(error);
+export function pipeStoredFile(stream: Readable, response: Response, label: string): void {
+  // Without an 'error' listener a read failure (file removed, remote storage
+  // dropping the connection) was an uncaught exception that terminated the
+  // whole API process.
+  stream.once('error', (error) => {
+    logger.error(`Streaming ${label} failed: ${error.message}`);
+    if (!response.headersSent) {
+      response.removeHeader('Content-Disposition');
+      response.removeHeader('Content-Length');
+      response.removeHeader('Content-Type');
+      response.status(502).json({
+        statusCode: 502,
+        error: 'STORAGE_READ_FAILED',
+        message: 'The file could not be read from storage. Try again later.',
+      });
+    } else {
+      response.destroy(error);
+    }
   });
+  // A client that disconnects mid-download must not leave the source open.
+  response.once('close', () => stream.destroy());
+  stream.pipe(response);
 }
+
+const logger = new Logger('sendStoredFile');

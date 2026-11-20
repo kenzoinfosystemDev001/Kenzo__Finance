@@ -58,7 +58,7 @@ export class BrandingController {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     // Callers version the URL with the document id, so it can be cached.
     response.setHeader('Cache-Control', 'public, max-age=86400');
-    pipeStoredFile(file.stream, response);
+    pipeStoredFile(file.stream, response, 'sign-in background');
   }
 
   @Post('login/background')

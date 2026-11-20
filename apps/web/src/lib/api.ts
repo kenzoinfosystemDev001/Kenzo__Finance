@@ -1,10 +1,5 @@
 import 'server-only';
-import {
-  canWriteSessionCookies,
-  getAccessToken,
-  getRefreshToken,
-  setSessionCookies,
-} from './session';
+import { canWriteCookies, getAccessToken, getRefreshToken, setSessionCookies } from './session';
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
@@ -205,9 +200,11 @@ async function handleResponse<T>(response: Response): Promise<T> {
 async function tryRefresh(): Promise<boolean> {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) return false;
-  // During a page render the middleware has already renewed the session; a
-  // second rotation here could not be saved (see canWriteSessionCookies).
-  if (!(await canWriteSessionCookies())) return false;
+  // Refresh tokens are single-use. Rotating one where the new pair cannot be
+  // stored (a Server Component render) would leave the browser holding a
+  // revoked token. src/middleware.ts renews sessions before rendering, so
+  // here a refresh only happens where the cookies can actually be updated.
+  if (!(await canWriteCookies())) return false;
 
   try {
     const response = await fetch(`${API_URL}/auth/refresh`, {

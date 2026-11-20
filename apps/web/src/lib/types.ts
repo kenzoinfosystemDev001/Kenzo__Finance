@@ -976,6 +976,8 @@ export interface QuotationDetail {
     uploadedBy: UserRef | null;
   }>;
   approvalRequired: boolean;
+  /** Proforma invoices raised from this quotation (newest first). activeRevisionId is null once cancelled. */
+  proformaInvoices: Array<{ id: string; piNumber: string; status: ProformaStatus; piDate: string; grandTotal: string; activeRevisionId: string | null }>;
 }
 
 export interface QuotationCompareChange {
@@ -1036,4 +1038,397 @@ export interface QuotationReports {
   acceptedVsRejected: { accepted: number; rejected: number; acceptanceRate: number | null };
   conversion: { enquiries: number; converted: number; rate: number | null };
   revisions: { quotations: number; average: number | null; max: number | null };
+}
+
+// ---------------------------------------------------------------------------
+// Module 6 - Proforma Invoice
+// ---------------------------------------------------------------------------
+
+export type ProformaStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'ISSUED' | 'SENT' | 'CANCELLED';
+export type ProformaDocumentKind = 'PROFORMA_PDF' | 'PROFORMA_ATTACHMENT';
+
+export interface ProformaBankDetails {
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+  ifsc?: string;
+  swift?: string;
+  branch?: string;
+}
+
+export interface ProformaListItem {
+  id: string;
+  piNumber: string;
+  piDate: string;
+  dueDate: string | null;
+  status: ProformaStatus;
+  currency: string;
+  grandTotal: string;
+  advanceAmount: string | null;
+  issuedAt: string | null;
+  createdAt: string;
+  customer: { id: string; name: string; customerCode: string };
+  quotation: { id: string; quotationNumber: string };
+  quotationRevision: { id: string; revisionNumber: number };
+  assignedTo: UserRef | null;
+}
+
+export interface ProformaSummary {
+  total: number;
+  draft: number;
+  pendingApproval: number;
+  approved: number;
+  issued: number;
+  sent: number;
+  cancelled: number;
+  issuedValue: Array<{ currency: string; total: string }>;
+  approvalRequired: boolean;
+  paymentTrackingAvailable: boolean;
+  generatedAt: string;
+}
+
+/** A line copied from the accepted quotation revision. */
+export interface ProformaItem {
+  id?: string;
+  quotationItemId: string | null;
+  productId: string;
+  productModelId: string | null;
+  productName: string;
+  productCode: string;
+  brandName: string;
+  modelName: string | null;
+  modelNumber: string | null;
+  description: string | null;
+  specifications: Specification[] | Record<string, string> | null;
+  quantity: number;
+  unit: string;
+  unitPrice: string;
+  discountType: DiscountType;
+  discountValue: string;
+  discountAmount: string;
+  taxLabel: string | null;
+  taxRate: string;
+  taxAmount: string;
+  lineTotal: string;
+  remarks: string | null;
+}
+
+export interface ProformaTotals {
+  subtotal: string;
+  itemDiscountTotal: string;
+  additionalDiscount: string;
+  taxableAmount: string;
+  taxTotal: string;
+  otherChargesLabel: string | null;
+  otherCharges: string;
+  grandTotal: string;
+  taxBreakdown: QuotationTaxGroup[] | null;
+}
+
+export interface EligibleQuotation {
+  id: string;
+  quotationNumber: string;
+  currency: string;
+  customer: { id: string; name: string; customerCode: string };
+  assignedTo: UserRef | null;
+  revisionId: string;
+  revisionNumber: number;
+  quotationDate: string;
+  grandTotal: string;
+  acceptedAt: string | null;
+  cancelledProforma: { id: string; piNumber: string } | null;
+}
+
+/** GET /proforma-invoices/from-quotation/:id - pre-fill for a new PI (creates nothing). */
+export interface ProformaFromQuotation {
+  ready: boolean;
+  problems: string[];
+  existingProforma: { id: string; piNumber: string; status: ProformaStatus } | null;
+  replaces: { id: string; piNumber: string } | null;
+  quotation: {
+    id: string;
+    quotationNumber: string;
+    revisionId: string;
+    revisionNumber: number;
+    quotationDate: string;
+    acceptedAt: string | null;
+    subject: string | null;
+    referenceNumber: string | null;
+    enquiry: { id: string; enquiryNumber: string } | null;
+  };
+  customer: { id: string; name: string; customerCode: string };
+  customerSnapshot: QuotationCustomerSnapshot;
+  contacts: Array<{ id: string; name: string; designation: string | null; isPrimary: boolean }>;
+  contactId: string | null;
+  assignedToId: string | null;
+  currency: string;
+  items: ProformaItem[];
+  totals: ProformaTotals;
+  terms: { paymentTerms: string | null; deliveryTerms: string | null; warrantyTerms: string | null; termsAndConditions: string | null; notes: string | null };
+  defaults: { piDate: string; bankDetails: ProformaBankDetails | null; paymentInstructions: string | null };
+  approvalRequired: boolean;
+}
+
+export interface ProformaStatusChange {
+  id: string;
+  previousStatus: ProformaStatus | null;
+  newStatus: ProformaStatus;
+  remarks: string | null;
+  changedAt: string;
+  changedBy: UserRef | null;
+}
+
+export interface ProformaDetail extends ProformaTotals {
+  id: string;
+  piNumber: string;
+  status: ProformaStatus;
+  piDate: string;
+  dueDate: string | null;
+  currency: string;
+  subject: string | null;
+  referenceNumber: string | null;
+  internalRemarks: string | null;
+  customerId: string;
+  contactId: string | null;
+  assignedToId: string | null;
+  customerSnapshot: QuotationCustomerSnapshot;
+  advanceAmount: string | null;
+  paymentTerms: string | null;
+  deliveryTerms: string | null;
+  warrantyTerms: string | null;
+  termsAndConditions: string | null;
+  notes: string | null;
+  paymentInstructions: string | null;
+  bankDetails: ProformaBankDetails | null;
+  issuedAt: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: ProformaItem[];
+  customer: { id: string; name: string; customerCode: string; customerType: CustomerType; status: CustomerStatus };
+  contact: { id: string; name: string; phone: string | null; email: string | null } | null;
+  quotation: { id: string; quotationNumber: string; status: QuotationStatus; enquiry: { id: string; enquiryNumber: string } | null; acceptedAt: string | null };
+  quotationRevision: { id: string; revisionNumber: number; quotationDate: string; grandTotal: string; validUntil: string | null };
+  replaces: { id: string; piNumber: string; status: ProformaStatus } | null;
+  replacedBy: { id: string; piNumber: string; status: ProformaStatus } | null;
+  assignedTo: UserRef | null;
+  issuedBy: UserRef | null;
+  createdBy: UserRef | null;
+  updatedBy: UserRef | null;
+  statusHistory: ProformaStatusChange[];
+  pdfDocument: { id: string; originalFilename: string; sizeBytes: number; createdAt: string } | null;
+  documents: Array<{
+    id: string;
+    kind: ProformaDocumentKind;
+    originalFilename: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: string;
+    replacesDocumentId: string | null;
+    uploadedBy: UserRef | null;
+  }>;
+  approvalRequired: boolean;
+  deletable: boolean;
+  /** Final invoices raised from this PI (activeProformaId is null once cancelled). */
+  finalInvoices: Array<{ id: string; invoiceNumber: string | null; status: FinalInvoiceStatus; invoiceDate: string; grandTotal: string; activeProformaId: string | null }>;
+}
+
+export interface ProformaSettings {
+  bankDetails: ProformaBankDetails | null;
+  paymentInstructions: string;
+  approvalRequired: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Module 7 - Final Invoice
+// ---------------------------------------------------------------------------
+
+export type FinalInvoiceStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'ISSUED' | 'SENT' | 'CANCELLED';
+export type FinalInvoiceDocumentKind = 'FINAL_INVOICE_PDF' | 'FINAL_INVOICE_ATTACHMENT';
+
+export interface FinalInvoiceListItem {
+  id: string;
+  /** Null until the invoice is issued (allocated at issue). */
+  invoiceNumber: string | null;
+  invoiceDate: string;
+  dueDate: string | null;
+  status: FinalInvoiceStatus;
+  currency: string;
+  grandTotal: string;
+  taxTotal: string;
+  purchaseOrderNumber: string | null;
+  issuedAt: string | null;
+  createdAt: string;
+  customer: { id: string; name: string; customerCode: string };
+  proformaInvoice: { id: string; piNumber: string };
+  quotation: { id: string; quotationNumber: string };
+  assignedTo: UserRef | null;
+  /** Issued / sent and the due date has passed (payment is not tracked yet). */
+  pastDue: boolean;
+}
+
+export interface FinalInvoiceSummary {
+  total: number;
+  draft: number;
+  pendingApproval: number;
+  approved: number;
+  issued: number;
+  sent: number;
+  cancelled: number;
+  pastDue: number;
+  invoicedValue: Array<{ currency: string; count: number; total: string }>;
+  approvalRequired: boolean;
+  paymentTrackingAvailable: boolean;
+  generatedAt: string;
+}
+
+/** A line copied from the proforma invoice. */
+export interface FinalInvoiceItem extends Omit<ProformaItem, 'quotationItemId'> {
+  proformaInvoiceItemId: string | null;
+}
+
+export interface EligibleProforma {
+  id: string;
+  piNumber: string;
+  piDate: string;
+  status: ProformaStatus;
+  currency: string;
+  grandTotal: string;
+  customer: { id: string; name: string; customerCode: string };
+  contact: { id: string; name: string } | null;
+  quotation: { id: string; quotationNumber: string };
+  cancelledInvoice: { id: string; invoiceNumber: string | null } | null;
+}
+
+/** GET /final-invoices/from-proforma/:id - pre-fill for a new invoice (creates nothing). */
+export interface FinalInvoiceFromProforma {
+  ready: boolean;
+  problems: string[];
+  existingInvoice: { id: string; invoiceNumber: string | null; status: FinalInvoiceStatus } | null;
+  replaces: { id: string; invoiceNumber: string | null } | null;
+  proforma: {
+    id: string;
+    piNumber: string;
+    piDate: string;
+    status: ProformaStatus;
+    issuedAt: string | null;
+    dueDate: string | null;
+    advanceAmount: string | null;
+    quotation: { id: string; quotationNumber: string; enquiry: { id: string; enquiryNumber: string } | null };
+    quotationRevision: { id: string; revisionNumber: number };
+  };
+  customer: { id: string; name: string; customerCode: string };
+  customerSnapshot: QuotationCustomerSnapshot;
+  contacts: Array<{ id: string; name: string; designation: string | null; isPrimary: boolean }>;
+  contactId: string | null;
+  assignedToId: string | null;
+  currency: string;
+  items: FinalInvoiceItem[];
+  totals: ProformaTotals;
+  terms: {
+    paymentTerms: string | null;
+    deliveryTerms: string | null;
+    warrantyTerms: string | null;
+    termsAndConditions: string | null;
+    notes: string | null;
+    paymentInstructions: string | null;
+  };
+  defaults: { invoiceDate: string; bankDetails: ProformaBankDetails | null; purchaseOrderNumber: string | null; subject: string | null };
+  approvalRequired: boolean;
+}
+
+export interface FinalInvoiceStatusChange {
+  id: string;
+  previousStatus: FinalInvoiceStatus | null;
+  newStatus: FinalInvoiceStatus;
+  remarks: string | null;
+  changedAt: string;
+  changedBy: UserRef | null;
+}
+
+export interface FinalInvoiceDetail extends ProformaTotals {
+  id: string;
+  invoiceNumber: string | null;
+  status: FinalInvoiceStatus;
+  invoiceDate: string;
+  dueDate: string | null;
+  currency: string;
+  subject: string | null;
+  purchaseOrderNumber: string | null;
+  internalRemarks: string | null;
+  proformaInvoiceId: string;
+  activeProformaId: string | null;
+  customerId: string;
+  contactId: string | null;
+  assignedToId: string | null;
+  customerSnapshot: QuotationCustomerSnapshot;
+  paymentTerms: string | null;
+  deliveryTerms: string | null;
+  warrantyTerms: string | null;
+  termsAndConditions: string | null;
+  notes: string | null;
+  paymentInstructions: string | null;
+  bankDetails: ProformaBankDetails | null;
+  issuedAt: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  pastDue: boolean;
+  items: Array<FinalInvoiceItem & { id: string }>;
+  customer: { id: string; name: string; customerCode: string; customerType: CustomerType; status: CustomerStatus };
+  contact: { id: string; name: string; phone: string | null; email: string | null } | null;
+  proformaInvoice: { id: string; piNumber: string; piDate: string; status: ProformaStatus; grandTotal: string; issuedAt: string | null; advanceAmount: string | null };
+  quotation: { id: string; quotationNumber: string; enquiry: { id: string; enquiryNumber: string } | null };
+  quotationRevision: { id: string; revisionNumber: number; quotationDate: string; grandTotal: string };
+  replaces: { id: string; invoiceNumber: string | null; status: FinalInvoiceStatus } | null;
+  replacedBy: { id: string; invoiceNumber: string | null; status: FinalInvoiceStatus } | null;
+  assignedTo: UserRef | null;
+  issuedBy: UserRef | null;
+  createdBy: UserRef | null;
+  updatedBy: UserRef | null;
+  statusHistory: FinalInvoiceStatusChange[];
+  pdfDocument: { id: string; originalFilename: string; sizeBytes: number; createdAt: string } | null;
+  documents: Array<{
+    id: string;
+    kind: FinalInvoiceDocumentKind;
+    originalFilename: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: string;
+    replacesDocumentId: string | null;
+    uploadedBy: UserRef | null;
+  }>;
+  approvalRequired: boolean;
+  deletable: boolean;
+  /** Payment Management is not available yet: no figures exist. */
+  payments: { available: boolean; received: string | null; outstanding: string | null; transactions: unknown[] };
+}
+
+export interface InvoiceNumbering {
+  prefix: string;
+  padding: number;
+  financialYear: boolean;
+  /** 1-12; 4 = April. */
+  fyStartMonth: number;
+}
+
+export interface FinalInvoiceSettings {
+  approvalRequired: boolean;
+  numbering: InvoiceNumbering;
+  nextNumber: string;
+  /** False while the numbering is still the untouched default. */
+  numberingConfirmed: boolean;
+  warnings: string[];
+}
+
+export interface FinalInvoiceReports {
+  range: { dateFrom: string | null; dateTo: string | null; customerId: string | null };
+  byMonth: Array<{ month: string; currency: string; count: number; taxable: string; tax: string; total: string }>;
+  byCustomer: Array<{ customer: { id: string; name: string; customerCode: string }; currency: string; count: number; total: string }>;
+  taxSummary: Array<{ label: string; rate: string; currency: string; taxable: string; tax: string }>;
+  pastDue: FinalInvoiceListItem[];
+  paymentTrackingAvailable: boolean;
+  generatedAt: string;
 }

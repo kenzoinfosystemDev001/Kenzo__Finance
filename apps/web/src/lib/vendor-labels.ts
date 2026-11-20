@@ -165,6 +165,24 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   'quotation.status': 'Quotation status changed',
   'quotation.delete': 'Quotation deleted',
   'quotation.communication': 'Communication logged',
+  'proforma.create': 'Proforma invoice created',
+  'proforma.update': 'Draft edited',
+  'proforma.submit': 'Submitted for approval',
+  'proforma.approve': 'Proforma invoice approved',
+  'proforma.approval.reject': 'Sent back for changes',
+  'proforma.issue': 'Proforma invoice issued',
+  'proforma.cancel': 'Proforma invoice cancelled',
+  'proforma.status': 'Status changed',
+  'proforma.delete': 'Proforma invoice deleted',
+  'invoice.create': 'Invoice created',
+  'invoice.update': 'Draft edited',
+  'invoice.submit': 'Submitted for approval',
+  'invoice.approve': 'Invoice approved',
+  'invoice.approval.reject': 'Sent back for changes',
+  'invoice.issue': 'Invoice issued',
+  'invoice.cancel': 'Invoice cancelled',
+  'invoice.status': 'Status changed',
+  'invoice.delete': 'Invoice deleted',
 };
 
 export function activityLabel(action: string): string {
@@ -176,7 +194,8 @@ export function activityLabel(action: string): string {
  * and the browser in the user's zone, so without it timestamps were 5h30
  * off in server-rendered pages and hydration text differed between the two.
  */
-export const BUSINESS_TIME_ZONE = process.env.NEXT_PUBLIC_BUSINESS_TIME_ZONE || 'Asia/Kolkata';
+// Same variable as enquiry-labels and the API's BUSINESS_TIMEZONE.
+export const BUSINESS_TIME_ZONE = process.env.NEXT_PUBLIC_BUSINESS_TIMEZONE || 'Asia/Kolkata';
 
 const dateFormatter = new Intl.DateTimeFormat('en-IN', {
   timeZone: BUSINESS_TIME_ZONE,

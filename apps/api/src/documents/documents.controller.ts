@@ -4,6 +4,7 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
@@ -98,6 +99,7 @@ export class DocumentsController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
+    await this.assertGenericAccess(id);
     await this.documentsService.assertGenericAccess(id, user, 'read');
     return this.documentsService.findOne(id);
   }
@@ -117,6 +119,7 @@ export class DocumentsController {
     @CurrentUser() user: AuthenticatedUser,
     @Res() response: Response,
   ): Promise<void> {
+    await this.assertGenericAccess(id);
     await this.documentsService.assertGenericAccess(id, user, 'read');
     const file = await this.documentsService.openForDownload(id, user, {
       preview: preview === 'true',
@@ -131,7 +134,24 @@ export class DocumentsController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
+    const document = await this.assertGenericAccess(id);
+    if (GENERATED_KINDS.includes(document.kind)) throw new BadRequestException('A generated document cannot be archived.');
     await this.documentsService.assertGenericAccess(id, user, 'archive');
     return this.documentsService.archive(id, user);
   }
+
+  /**
+   * Documents of customers, enquiries, quotations, proforma invoices,
+   * invoices, payments and deliveries are served only by their module routes, which check that
+   * module's permissions; the generic routes must not bypass them.
+   */
+  private async assertGenericAccess(id: string) {
+    const document = await this.documentsService.findActive(id);
+    if (document.customerId || document.enquiryId || document.quotationId || document.proformaInvoiceId || document.finalInvoiceId || document.paymentId || document.deliveryId) {
+      throw new NotFoundException(`Document ${id} was not found`);
+    }
+    return document;
+  }
 }
+
+const GENERATED_KINDS: DocumentKind[] = [DocumentKind.QUOTATION_PDF, DocumentKind.PROFORMA_PDF, DocumentKind.FINAL_INVOICE_PDF, DocumentKind.PAYMENT_RECEIPT];

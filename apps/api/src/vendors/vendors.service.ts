@@ -397,7 +397,8 @@ export class VendorsService {
 
         // Attach the source document to the new vendor so the original stays
         // retrievable from the vendor record.
-        // Guarded: never move a document that already belongs to a record.
+        // Only an unattached document may be filed under the new vendor;
+        // never re-home a file that already belongs to another record.
         const attached = await tx.document.updateMany({
           where: {
             id: ocrJob.documentId,
@@ -411,7 +412,7 @@ export class VendorsService {
         });
         if (attached.count === 0) {
           throw new ConflictException(
-            'The document behind this OCR draft is already attached to another record.',
+            'The OCR source document is already attached to another record. Upload it again to create a new draft.',
           );
         }
 
@@ -1072,7 +1073,8 @@ export class VendorsService {
   async getReferenceCounts(id: string): Promise<Record<string, number>> {
     const [productMappings, documents, ocrDrafts] = await this.prisma.$transaction([
       this.prisma.vendorProduct.count({ where: { vendorId: id } }),
-      this.prisma.document.count({ where: { vendorId: id } }),
+      // Removed (archived) files do not block: remove() detaches them.
+      this.prisma.document.count({ where: { vendorId: id, archivedAt: null } }),
       this.prisma.ocrJob.count({ where: { resultingVendorId: id } }),
     ]);
     return { productMappings, documents, ocrDrafts };
@@ -1100,6 +1102,9 @@ export class VendorsService {
     }
 
     await this.prisma.$transaction(async (tx) => {
+      // Document.vendor cascades: detach removed files first so their audit
+      // rows survive the vendor instead of being deleted with it.
+      await tx.document.updateMany({ where: { vendorId: id, archivedAt: { not: null } }, data: { vendorId: null } });
       await tx.vendor.delete({ where: { id } });
       await this.auditService.record(
         {

@@ -31,6 +31,10 @@ export interface UploadInput {
   customerId?: string;
   enquiryId?: string;
   quotationId?: string;
+  proformaInvoiceId?: string;
+  finalInvoiceId?: string;
+  paymentId?: string;
+  deliveryId?: string;
   /** The current document this upload supersedes (replacement flow). */
   replacesDocumentId?: string;
 }
@@ -58,13 +62,21 @@ const documentSummarySelect = {
   customerId: true,
   enquiryId: true,
   quotationId: true,
+  proformaInvoiceId: true,
+  finalInvoiceId: true,
+  paymentId: true,
+  deliveryId: true,
   replacesDocumentId: true,
   createdAt: true,
   uploadedBy: { select: { id: true, fullName: true } },
 } satisfies Prisma.DocumentSelect;
 
 /** Audit parent for a document: the record it is attached to, if any. */
-function parentOf(document: { vendorId: string | null; productId: string | null; customerId?: string | null; enquiryId?: string | null; quotationId?: string | null }) {
+function parentOf(document: { vendorId: string | null; productId: string | null; customerId?: string | null; enquiryId?: string | null; quotationId?: string | null; proformaInvoiceId?: string | null; finalInvoiceId?: string | null; paymentId?: string | null; deliveryId?: string | null }) {
+  if (document.deliveryId) return { parentEntityType: 'Delivery', parentEntityId: document.deliveryId };
+  if (document.paymentId) return { parentEntityType: 'Payment', parentEntityId: document.paymentId };
+  if (document.finalInvoiceId) return { parentEntityType: 'FinalInvoice', parentEntityId: document.finalInvoiceId };
+  if (document.proformaInvoiceId) return { parentEntityType: 'ProformaInvoice', parentEntityId: document.proformaInvoiceId };
   if (document.quotationId) return { parentEntityType: 'Quotation', parentEntityId: document.quotationId };
   if (document.enquiryId) return { parentEntityType: 'Enquiry', parentEntityId: document.enquiryId };
   if (document.customerId) return { parentEntityType: 'Customer', parentEntityId: document.customerId };
@@ -137,8 +149,36 @@ export class DocumentsService {
       if (!quotation) throw new BadRequestException('The referenced quotation does not exist.');
     }
 
+    if (input.proformaInvoiceId) {
+      const pi = await this.prisma.proformaInvoice.findUnique({ where: { id: input.proformaInvoiceId }, select: { id: true } });
+      if (!pi) throw new BadRequestException('The referenced proforma invoice does not exist.');
+    }
+
+    if (input.finalInvoiceId) {
+      const inv = await this.prisma.finalInvoice.findUnique({ where: { id: input.finalInvoiceId }, select: { id: true } });
+      if (!inv) throw new BadRequestException('The referenced invoice does not exist.');
+    }
+
+    if (input.paymentId) {
+      const payment = await this.prisma.payment.findUnique({ where: { id: input.paymentId }, select: { id: true } });
+      if (!payment) throw new BadRequestException('The referenced payment does not exist.');
+    }
+
+    if (input.deliveryId) {
+      const delivery = await this.prisma.delivery.findUnique({ where: { id: input.deliveryId }, select: { id: true } });
+      if (!delivery) throw new BadRequestException('The referenced delivery does not exist.');
+    }
+
     const stored = await this.storageService.save(input.buffer, {
-      folder: input.quotationId
+      folder: input.deliveryId
+        ? 'deliveries'
+        : input.paymentId
+        ? 'payments'
+        : input.finalInvoiceId
+        ? 'final-invoices'
+        : input.proformaInvoiceId
+        ? 'proforma-invoices'
+        : input.quotationId
         ? 'quotations'
         : input.enquiryId
         ? 'enquiries'
@@ -169,6 +209,10 @@ export class DocumentsService {
           customerId: input.customerId ?? null,
           enquiryId: input.enquiryId ?? null,
           quotationId: input.quotationId ?? null,
+          proformaInvoiceId: input.proformaInvoiceId ?? null,
+          finalInvoiceId: input.finalInvoiceId ?? null,
+          paymentId: input.paymentId ?? null,
+          deliveryId: input.deliveryId ?? null,
           replacesDocumentId: input.replacesDocumentId ?? null,
           uploadedById: actor.id,
         },
@@ -225,6 +269,7 @@ export class DocumentsService {
         sizeBytes: true,
         checksumSha256: true,
         vendorId: true,
+        deliveryId: true,
         archivedAt: true,
         createdAt: true,
         uploadedBy: { select: { id: true, fullName: true } },

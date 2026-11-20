@@ -2,11 +2,13 @@ import type { Metadata } from 'next';
 import { apiFetch } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth-actions';
 import { setStockTrackingAction } from '@/lib/inventory-actions';
-import type { AppSetting, QuotationSettings } from '@/lib/types';
+import type { AppSetting, FinalInvoiceSettings, ProformaSettings, QuotationSettings } from '@/lib/types';
 import { PageHeader, SectionCard } from '@/components/ui';
 import { getLoginBranding, loginBackgroundUrl } from '@/lib/branding';
 import { LoginBrandingSettings } from './login-branding-settings';
 import { QuotationSettingsPanel } from './quotation-settings';
+import { ProformaSettingsPanel } from './proforma-settings';
+import { FinalInvoiceSettingsPanel } from './final-invoice-settings';
 
 export const metadata: Metadata = { title: 'Settings' };
 
@@ -29,6 +31,20 @@ export default async function SettingsPage() {
     settings.find((s) => s.key === 'inventory.stockTrackingEnabled')?.value === true;
   const quotationApproval =
     settings.find((s) => s.key === 'quotation.approvalRequired')?.value === true;
+  const proformaApproval =
+    settings.find((s) => s.key === 'proforma.approvalRequired')?.value === true;
+  const canReadProformas = user?.permissions.includes('proforma.read') ?? false;
+  const proformaSettings =
+    canManage || canReadProformas
+      ? await apiFetch<ProformaSettings>('/proforma-invoices/settings').catch(() => null)
+      : null;
+  const canReadInvoices = user?.permissions.includes('invoice.read') ?? false;
+  const invoiceSettings =
+    canManage || canReadInvoices
+      ? await apiFetch<FinalInvoiceSettings>('/final-invoices/settings').catch(() => null)
+      : null;
+  const invoiceApproval =
+    invoiceSettings?.approvalRequired ?? settings.find((s) => s.key === 'invoice.approvalRequired')?.value === true;
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
@@ -111,6 +127,24 @@ export default async function SettingsPage() {
             companyProfile={quotationSettings ? quotationSettings.companyProfile : null}
             canManage={canManage}
           />
+        </SectionCard>
+      )}
+
+      {(canManage || canReadProformas) && (
+        <SectionCard
+          title="Proforma Invoices"
+          description="Approval before issuing, and the bank account and payment instructions printed on proforma invoices."
+        >
+          <ProformaSettingsPanel approvalRequired={proformaApproval} settings={proformaSettings} canManage={canManage} />
+        </SectionCard>
+      )}
+
+      {(canManage || canReadInvoices) && (
+        <SectionCard
+          title="Final Invoices"
+          description="Approval before issuing, and the invoice number format allocated when an invoice is issued."
+        >
+          <FinalInvoiceSettingsPanel approvalRequired={invoiceApproval} settings={invoiceSettings} canManage={canManage} />
         </SectionCard>
       )}
 

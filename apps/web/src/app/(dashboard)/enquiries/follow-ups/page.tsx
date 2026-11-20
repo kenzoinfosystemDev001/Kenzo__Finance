@@ -52,7 +52,7 @@ export default async function FollowUpsPage({ searchParams }: { searchParams: Pr
   try {
     [board, counts, assignees, customer] = await Promise.all([
       apiFetch<Board>(`/enquiries/follow-ups${queryString({ ...filters, view, page: params.page ?? '1', pageSize })}`),
-      apiFetch<FollowUpCounts>(`/enquiries/follow-ups/counts${queryString({ assignedToId: filters.assignedToId })}`).catch(() => null),
+      apiFetch<FollowUpCounts>(`/enquiries/follow-ups/counts${queryString({ assignedToId: filters.assignedToId, customerId: filters.customerId, dateFrom: filters.dateFrom, dateTo: filters.dateTo })}`).catch(() => null),
       apiFetch<EnquiryAssignee[]>('/enquiries/assignees').catch(() => [] as EnquiryAssignee[]),
       filters.customerId ? apiFetch<CustomerDetail>(`/customers/${filters.customerId}`).catch(() => null) : Promise.resolve(null),
     ]);

@@ -48,31 +48,52 @@ model User {
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]     @relation("AuditActor")
 
-  createdVendors      Vendor[]                  @relation("VendorCreatedBy")
-  updatedVendors      Vendor[]                  @relation("VendorUpdatedBy")
-  uploadedDocs        Document[]                @relation("DocumentUploadedBy")
-  requestedOcr        OcrJob[]                  @relation("OcrRequestedBy")
-  stockMovements      StockMovement[]           @relation("StockMovementCreatedBy")
-  createdProducts     Product[]                 @relation("ProductCreatedBy")
-  updatedProducts     Product[]                 @relation("ProductUpdatedBy")
-  createdModels       ProductModel[]            @relation("ProductModelCreatedBy")
-  createdCustomers    Customer[]                @relation("CustomerCreatedBy")
-  updatedCustomers    Customer[]                @relation("CustomerUpdatedBy")
-  customerInterests   CustomerProductInterest[] @relation("CustomerInterestCreatedBy")
-  assignedEnquiries   Enquiry[]                 @relation("EnquiryAssignedTo")
-  createdEnquiries    Enquiry[]                 @relation("EnquiryCreatedBy")
-  updatedEnquiries    Enquiry[]                 @relation("EnquiryUpdatedBy")
-  convertedEnquiries  Enquiry[]                 @relation("EnquiryConvertedBy")
-  assignedFollowUps   EnquiryFollowUp[]         @relation("FollowUpAssignedTo")
-  createdFollowUps    EnquiryFollowUp[]         @relation("FollowUpCreatedBy")
-  enquiryStatusLogs   EnquiryStatusHistory[]    @relation("EnquiryStatusChangedBy")
-  assignedQuotations  Quotation[]               @relation("QuotationAssignedTo")
-  createdQuotations   Quotation[]               @relation("QuotationCreatedBy")
-  updatedQuotations   Quotation[]               @relation("QuotationUpdatedBy")
-  createdRevisions    QuotationRevision[]       @relation("RevisionCreatedBy")
-  quotationStatusLogs QuotationStatusHistory[]  @relation("QuotationStatusChangedBy")
-  quotationMessages   QuotationCommunication[]  @relation("QuotationCommunicationBy")
-  updatedSettings     Setting[]                 @relation("SettingUpdatedBy")
+  createdVendors         Vendor[]                       @relation("VendorCreatedBy")
+  updatedVendors         Vendor[]                       @relation("VendorUpdatedBy")
+  uploadedDocs           Document[]                     @relation("DocumentUploadedBy")
+  requestedOcr           OcrJob[]                       @relation("OcrRequestedBy")
+  stockMovements         StockMovement[]                @relation("StockMovementCreatedBy")
+  createdProducts        Product[]                      @relation("ProductCreatedBy")
+  updatedProducts        Product[]                      @relation("ProductUpdatedBy")
+  createdModels          ProductModel[]                 @relation("ProductModelCreatedBy")
+  createdCustomers       Customer[]                     @relation("CustomerCreatedBy")
+  updatedCustomers       Customer[]                     @relation("CustomerUpdatedBy")
+  customerInterests      CustomerProductInterest[]      @relation("CustomerInterestCreatedBy")
+  assignedEnquiries      Enquiry[]                      @relation("EnquiryAssignedTo")
+  createdEnquiries       Enquiry[]                      @relation("EnquiryCreatedBy")
+  updatedEnquiries       Enquiry[]                      @relation("EnquiryUpdatedBy")
+  convertedEnquiries     Enquiry[]                      @relation("EnquiryConvertedBy")
+  assignedFollowUps      EnquiryFollowUp[]              @relation("FollowUpAssignedTo")
+  createdFollowUps       EnquiryFollowUp[]              @relation("FollowUpCreatedBy")
+  enquiryStatusLogs      EnquiryStatusHistory[]         @relation("EnquiryStatusChangedBy")
+  assignedQuotations     Quotation[]                    @relation("QuotationAssignedTo")
+  createdQuotations      Quotation[]                    @relation("QuotationCreatedBy")
+  updatedQuotations      Quotation[]                    @relation("QuotationUpdatedBy")
+  createdRevisions       QuotationRevision[]            @relation("RevisionCreatedBy")
+  quotationStatusLogs    QuotationStatusHistory[]       @relation("QuotationStatusChangedBy")
+  quotationMessages      QuotationCommunication[]       @relation("QuotationCommunicationBy")
+  updatedSettings        Setting[]                      @relation("SettingUpdatedBy")
+  assignedProformas      ProformaInvoice[]              @relation("ProformaAssignedTo")
+  issuedProformas        ProformaInvoice[]              @relation("ProformaIssuedBy")
+  createdProformas       ProformaInvoice[]              @relation("ProformaCreatedBy")
+  updatedProformas       ProformaInvoice[]              @relation("ProformaUpdatedBy")
+  proformaStatusLogs     ProformaInvoiceStatusHistory[] @relation("ProformaStatusChangedBy")
+  assignedFinalInvoices  FinalInvoice[]                 @relation("FinalInvoiceAssignedTo")
+  issuedFinalInvoices    FinalInvoice[]                 @relation("FinalInvoiceIssuedBy")
+  createdFinalInvoices   FinalInvoice[]                 @relation("FinalInvoiceCreatedBy")
+  updatedFinalInvoices   FinalInvoice[]                 @relation("FinalInvoiceUpdatedBy")
+  finalInvoiceStatusLogs FinalInvoiceStatusHistory[]    @relation("FinalInvoiceStatusChangedBy")
+  receivedPayments       Payment[]                      @relation("PaymentReceivedBy")
+  verifiedPayments       Payment[]                      @relation("PaymentVerifiedBy")
+  rejectedPayments       Payment[]                      @relation("PaymentRejectedBy")
+  reversedPayments       Payment[]                      @relation("PaymentReversedBy")
+  createdPayments        Payment[]                      @relation("PaymentCreatedBy")
+  updatedPayments        Payment[]                      @relation("PaymentUpdatedBy")
+  paymentStatusLogs      PaymentStatusHistory[]         @relation("PaymentStatusChangedBy")
+  createdDeliveries      Delivery[]                     @relation("DeliveryCreatedBy")
+  updatedDeliveries      Delivery[]                     @relation("DeliveryUpdatedBy")
+  deliveryStatusLogs     DeliveryStatusHistory[]         @relation("DeliveryStatusChangedBy")
+  deliveryConfirmations  ProofOfDelivery[]              @relation("DeliveryConfirmedBy")
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -400,6 +421,8 @@ model Product {
   enquiryItems      EnquiryItem[]
   quotationItems    QuotationItem[]
   documents         Document[]                @relation("ProductDocuments")
+  proformaItems     ProformaInvoiceItem[]
+  finalInvoiceItems FinalInvoiceItem[]
   movements         StockMovement[]
 
   createdById String? @db.Uuid
@@ -503,9 +526,11 @@ model ProductModel {
   customerInterests CustomerProductInterest[]
   enquiryItems      EnquiryItem[]
   quotationItems    QuotationItem[]
+  proformaItems     ProformaInvoiceItem[]
 
-  createdById String? @db.Uuid
-  createdBy   User?   @relation("ProductModelCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  finalInvoiceItems FinalInvoiceItem[]
+  createdById       String?            @db.Uuid
+  createdBy         User?              @relation("ProductModelCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -573,6 +598,18 @@ enum DocumentKind {
   QUOTATION_PDF
   QUOTATION_CUSTOMER_DOCUMENT
   QUOTATION_ATTACHMENT
+  PROFORMA_PDF
+  PROFORMA_ATTACHMENT
+  FINAL_INVOICE_PDF
+  FINAL_INVOICE_ATTACHMENT
+  PAYMENT_RECEIPT
+  PAYMENT_PROOF
+  DELIVERY_CHALLAN
+  PACKING_LIST
+  DELIVERY_POD
+  DELIVERY_SIGNATURE
+  DELIVERY_PHOTO
+  DELIVERY_ATTACHMENT
   // Application branding (login page background). Not owned by a record;
   // referenced from the "branding.loginBackgroundDocumentId" setting.
   BRANDING_IMAGE
@@ -610,6 +647,24 @@ model Document {
   // The issued PDF a revision is pinned to.
   pdfOfRevision QuotationRevision? @relation("RevisionPdf")
 
+  // Restrict: a proforma invoice with documents cannot be hard-deleted.
+  proformaInvoiceId String?          @db.Uuid
+  proformaInvoice   ProformaInvoice? @relation("ProformaDocuments", fields: [proformaInvoiceId], references: [id], onDelete: Restrict)
+  // The issued PDF a proforma invoice is pinned to.
+  pdfOfProforma     ProformaInvoice? @relation("ProformaPdf")
+  // Restrict: a final invoice with documents cannot be hard-deleted.
+  finalInvoiceId    String?          @db.Uuid
+  finalInvoice      FinalInvoice?    @relation("FinalInvoiceDocuments", fields: [finalInvoiceId], references: [id], onDelete: Restrict)
+  pdfOfFinalInvoice FinalInvoice?    @relation("FinalInvoicePdf")
+  // Restrict: a payment with documents cannot be hard-deleted (payments never are).
+  paymentId         String?          @db.Uuid
+  payment           Payment?         @relation("PaymentDocuments", fields: [paymentId], references: [id], onDelete: Restrict)
+  receiptOf         Payment?         @relation("PaymentReceipt")
+  deliveryId        String?        @db.Uuid
+  delivery          Delivery?      @relation("DeliveryDocuments", fields: [deliveryId], references: [id], onDelete: Restrict)
+  challanOf         Delivery?      @relation("DeliveryChallan")
+  packingListOf     Delivery?      @relation("DeliveryPackingList")
+
   // Back-references for the product / model using this file as its image.
   primaryImageOf Product?      @relation("ProductPrimaryImage")
   modelImageOf   ProductModel? @relation("ProductModelImage")
@@ -634,6 +689,10 @@ model Document {
   @@index([enquiryId])
   @@index([quotationId])
   @@index([kind])
+  @@index([proformaInvoiceId])
+  @@index([finalInvoiceId])
+  @@index([paymentId])
+  @@index([deliveryId])
   @@map("documents")
 }
 
@@ -906,18 +965,22 @@ model Customer {
   annualTurnoverRange String?
   employeeCount       Int?
 
-  category   CustomerCategory?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  contacts   CustomerContact[]
-  addresses  CustomerAddress[]
-  interests  CustomerProductInterest[]
-  documents  Document[]
-  enquiries  Enquiry[]
-  quotations Quotation[]
+  category         CustomerCategory?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  contacts         CustomerContact[]
+  addresses        CustomerAddress[]
+  interests        CustomerProductInterest[]
+  documents        Document[]
+  enquiries        Enquiry[]
+  quotations       Quotation[]
+  proformaInvoices ProformaInvoice[]
 
-  createdById String? @db.Uuid
-  updatedById String? @db.Uuid
-  createdBy   User?   @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  updatedBy   User?   @relation("CustomerUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  finalInvoices FinalInvoice[]
+  payments      Payment[]
+  deliveries    Delivery[]
+  createdById   String?        @db.Uuid
+  updatedById   String?        @db.Uuid
+  createdBy     User?          @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy     User?          @relation("CustomerUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -946,12 +1009,14 @@ model CustomerContact {
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
-  enquiries  Enquiry[]
-  followUps  EnquiryFollowUp[]
-  quotations Quotation[]
+  enquiries        Enquiry[]
+  followUps        EnquiryFollowUp[]
+  quotations       Quotation[]
+  proformaInvoices ProformaInvoice[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  finalInvoices FinalInvoice[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([customerId])
   @@index([email])
@@ -1273,15 +1338,17 @@ model Quotation {
   assignedTo       User?              @relation("QuotationAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
   acceptedRevision QuotationRevision? @relation("AcceptedRevision", fields: [acceptedRevisionId], references: [id], onDelete: Restrict)
 
-  revisions      QuotationRevision[]      @relation("QuotationRevisions")
-  statusHistory  QuotationStatusHistory[]
-  communications QuotationCommunication[]
-  documents      Document[]
+  revisions        QuotationRevision[]      @relation("QuotationRevisions")
+  statusHistory    QuotationStatusHistory[]
+  communications   QuotationCommunication[]
+  documents        Document[]
+  proformaInvoices ProformaInvoice[]
 
-  createdById String? @db.Uuid
-  updatedById String? @db.Uuid
-  createdBy   User?   @relation("QuotationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  updatedBy   User?   @relation("QuotationUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  finalInvoices FinalInvoice[]
+  createdById   String?        @db.Uuid
+  updatedById   String?        @db.Uuid
+  createdBy     User?          @relation("QuotationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy     User?          @relation("QuotationUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1327,10 +1394,12 @@ model QuotationRevision {
   pdfDocumentId String?   @unique @db.Uuid
   pdfDocument   Document? @relation("RevisionPdf", fields: [pdfDocumentId], references: [id], onDelete: SetNull)
 
-  quotation     Quotation                @relation("QuotationRevisions", fields: [quotationId], references: [id], onDelete: Cascade)
-  acceptedOf    Quotation?               @relation("AcceptedRevision")
-  items         QuotationItem[]
-  statusHistory QuotationStatusHistory[]
+  quotation        Quotation                @relation("QuotationRevisions", fields: [quotationId], references: [id], onDelete: Cascade)
+  acceptedOf       Quotation?               @relation("AcceptedRevision")
+  proformaInvoices ProformaInvoice[]        @relation("ProformaSourceRevision")
+  finalInvoices    FinalInvoice[]           @relation("FinalInvoiceSourceRevision")
+  items            QuotationItem[]
+  statusHistory    QuotationStatusHistory[]
 
   createdById String? @db.Uuid
   createdBy   User?   @relation("RevisionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
@@ -1375,13 +1444,13 @@ model QuotationItem {
   lineTotal      Decimal      @default(0) @db.Decimal(14, 2)
   remarks        String?
 
-  revision     QuotationRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
-  product      Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
-  productModel ProductModel?     @relation(fields: [productModelId], references: [id], onDelete: Restrict)
-  enquiryItem  EnquiryItem?      @relation(fields: [enquiryItemId], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  revision      QuotationRevision     @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  product       Product               @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productModel  ProductModel?         @relation(fields: [productModelId], references: [id], onDelete: Restrict)
+  enquiryItem   EnquiryItem?          @relation(fields: [enquiryItemId], references: [id], onDelete: SetNull)
+  proformaItems ProformaInvoiceItem[]
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
 
   @@index([revisionId])
   @@index([productId])
@@ -1429,4 +1498,666 @@ model QuotationCommunication {
 
   @@index([quotationId, occurredAt])
   @@map("quotation_communications")
+}
+
+// ---------------------------------------------------------------------------
+// Module 6 - Proforma Invoice
+// ---------------------------------------------------------------------------
+
+// Proforma invoice lifecycle. Payment states (partially / fully paid) are
+// deliberately absent: they will be derived from Payment records (Module 7),
+// never set by hand. A PI is not a tax invoice and not proof of payment.
+enum ProformaStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  ISSUED
+  SENT
+  CANCELLED
+}
+
+// A proforma invoice raised from the revision of a quotation the customer
+// accepted. Customer details, line items and totals are copied (snapshotted)
+// from that revision; issued documents never change afterwards.
+model ProformaInvoice {
+  id       String @id @default(uuid()) @db.Uuid
+  // Human-facing id allocated by DocumentSequence (KI/PI/00001).
+  piNumber String @unique
+
+  quotationId         String  @db.Uuid
+  quotationRevisionId String  @db.Uuid
+  // Equals quotationRevisionId while the PI is not cancelled, NULL after.
+  // Unique: one live PI per accepted revision; repeated or concurrent
+  // conversions fail on this constraint. A cancelled PI frees the slot for
+  // a replacement, which records the PI it replaces.
+  activeRevisionId    String? @unique @db.Uuid
+  replacesId          String? @unique @db.Uuid
+
+  customerId   String  @db.Uuid
+  contactId    String? @db.Uuid
+  assignedToId String? @db.Uuid
+
+  status          ProformaStatus @default(DRAFT)
+  piDate          DateTime       @db.Date
+  dueDate         DateTime?      @db.Date
+  currency        String
+  subject         String?
+  referenceNumber String?
+  internalRemarks String?
+
+  // Customer details as of creation; refreshed while a draft, frozen at issue.
+  customerSnapshot Json
+
+  // Commercial values copied from the accepted revision; never edited here.
+  subtotal           Decimal  @default(0) @db.Decimal(14, 2)
+  itemDiscountTotal  Decimal  @default(0) @db.Decimal(14, 2)
+  additionalDiscount Decimal  @default(0) @db.Decimal(14, 2)
+  taxableAmount      Decimal  @default(0) @db.Decimal(14, 2)
+  taxTotal           Decimal  @default(0) @db.Decimal(14, 2)
+  otherChargesLabel  String?
+  otherCharges       Decimal  @default(0) @db.Decimal(14, 2)
+  grandTotal         Decimal  @default(0) @db.Decimal(14, 2)
+  taxBreakdown       Json?
+  // Optional amount requested in advance; entered per PI, never assumed.
+  advanceAmount      Decimal? @db.Decimal(14, 2)
+
+  paymentTerms        String?
+  deliveryTerms       String?
+  warrantyTerms       String?
+  termsAndConditions  String?
+  notes               String?
+  paymentInstructions String?
+  // { bankName, accountName, accountNumber, ifsc, swift, branch } as printed.
+  bankDetails         Json?
+
+  issuedAt           DateTime?
+  issuedById         String?   @db.Uuid
+  cancelledAt        DateTime?
+  cancellationReason String?
+  pdfDocumentId      String?   @unique @db.Uuid
+
+  quotation         Quotation         @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  quotationRevision QuotationRevision @relation("ProformaSourceRevision", fields: [quotationRevisionId], references: [id], onDelete: Restrict)
+  replaces          ProformaInvoice?  @relation("ProformaReplacement", fields: [replacesId], references: [id], onDelete: Restrict)
+  replacedBy        ProformaInvoice?  @relation("ProformaReplacement")
+  customer          Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  contact           CustomerContact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  assignedTo        User?             @relation("ProformaAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  issuedBy          User?             @relation("ProformaIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  pdfDocument       Document?         @relation("ProformaPdf", fields: [pdfDocumentId], references: [id], onDelete: SetNull)
+
+  items         ProformaInvoiceItem[]
+  statusHistory ProformaInvoiceStatusHistory[]
+  documents     Document[]                     @relation("ProformaDocuments")
+  finalInvoices FinalInvoice[]
+
+  createdById String? @db.Uuid
+  updatedById String? @db.Uuid
+  createdBy   User?   @relation("ProformaCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?   @relation("ProformaUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([quotationId])
+  @@index([quotationRevisionId])
+  @@index([customerId])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([piDate])
+  @@index([createdAt])
+  @@map("proforma_invoices")
+}
+
+// A line copied from the accepted quotation revision (catalogue details,
+// quantity and prices exactly as accepted).
+model ProformaInvoiceItem {
+  id                String  @id @default(uuid()) @db.Uuid
+  proformaInvoiceId String  @db.Uuid
+  sortOrder         Int     @default(0)
+  quotationItemId   String? @db.Uuid
+  productId         String  @db.Uuid
+  productModelId    String? @db.Uuid
+
+  productName    String
+  productCode    String
+  brandName      String
+  modelName      String?
+  modelNumber    String?
+  description    String?
+  specifications Json?
+
+  quantity       Int
+  unit           String       @default("Nos")
+  unitPrice      Decimal      @db.Decimal(14, 2)
+  discountType   DiscountType @default(NONE)
+  discountValue  Decimal      @default(0) @db.Decimal(14, 2)
+  discountAmount Decimal      @default(0) @db.Decimal(14, 2)
+  taxLabel       String?
+  taxRate        Decimal      @default(0) @db.Decimal(5, 2)
+  taxAmount      Decimal      @default(0) @db.Decimal(14, 2)
+  lineTotal      Decimal      @default(0) @db.Decimal(14, 2)
+  remarks        String?
+
+  proformaInvoice   ProformaInvoice    @relation(fields: [proformaInvoiceId], references: [id], onDelete: Cascade)
+  quotationItem     QuotationItem?     @relation(fields: [quotationItemId], references: [id], onDelete: SetNull)
+  finalInvoiceItems FinalInvoiceItem[]
+  product           Product            @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productModel      ProductModel?      @relation(fields: [productModelId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([proformaInvoiceId])
+  @@index([productId])
+  @@index([productModelId])
+  @@map("proforma_invoice_items")
+}
+
+// Every status change of a proforma invoice. Append-only.
+model ProformaInvoiceStatusHistory {
+  id                String          @id @default(uuid()) @db.Uuid
+  proformaInvoiceId String          @db.Uuid
+  previousStatus    ProformaStatus?
+  newStatus         ProformaStatus
+  remarks           String?
+
+  proformaInvoice ProformaInvoice @relation(fields: [proformaInvoiceId], references: [id], onDelete: Cascade)
+
+  changedById String?  @db.Uuid
+  changedBy   User?    @relation("ProformaStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt   DateTime @default(now())
+
+  @@index([proformaInvoiceId, changedAt])
+  @@map("proforma_invoice_status_history")
+}
+
+// ---------------------------------------------------------------------------
+// Module 7 - Final Invoice (the actual customer invoice)
+// ---------------------------------------------------------------------------
+
+// Final invoice lifecycle. Payment states (partially / fully paid, overdue
+// by balance) are NOT statuses: they will be derived from Payment records
+// (Payment Management). Nobody can mark an invoice paid by hand.
+// Payment position of an invoice, derived from VERIFIED payments only.
+enum InvoicePaymentState {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+}
+
+enum FinalInvoiceStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  ISSUED
+  SENT
+  CANCELLED
+}
+
+// The customer invoice raised from an issued proforma invoice. Lines and
+// amounts are copied from the PI (which equals the accepted quotation
+// revision). The invoice number is allocated when the invoice is issued, so
+// deleted drafts never leave gaps and an issued number never changes.
+model FinalInvoice {
+  id            String  @id @default(uuid()) @db.Uuid
+  // Allocated at issue (KI/INV/00001 or a financial-year series). Null while unissued.
+  invoiceNumber String? @unique
+
+  proformaInvoiceId   String  @db.Uuid
+  // Equals proformaInvoiceId while the invoice is not cancelled, NULL after.
+  // Unique: one live invoice per PI; repeated or concurrent conversions fail
+  // on this constraint. A cancelled invoice frees the PI for a replacement.
+  activeProformaId    String? @unique @db.Uuid
+  replacesId          String? @unique @db.Uuid
+  // Traceability shortcuts (Enquiry -> Quotation -> Revision -> PI -> Invoice).
+  quotationId         String  @db.Uuid
+  quotationRevisionId String  @db.Uuid
+
+  customerId   String  @db.Uuid
+  contactId    String? @db.Uuid
+  assignedToId String? @db.Uuid
+
+  status              FinalInvoiceStatus @default(DRAFT)
+  invoiceDate         DateTime           @db.Date
+  dueDate             DateTime?          @db.Date
+  currency            String
+  subject             String?
+  purchaseOrderNumber String?
+  internalRemarks     String?
+
+  // Customer details; refreshed while a draft, frozen at issue.
+  customerSnapshot Json
+
+  // Commercial values copied from the proforma invoice; never edited here.
+  subtotal           Decimal @default(0) @db.Decimal(14, 2)
+  itemDiscountTotal  Decimal @default(0) @db.Decimal(14, 2)
+  additionalDiscount Decimal @default(0) @db.Decimal(14, 2)
+  taxableAmount      Decimal @default(0) @db.Decimal(14, 2)
+  taxTotal           Decimal @default(0) @db.Decimal(14, 2)
+  otherChargesLabel  String?
+  otherCharges       Decimal @default(0) @db.Decimal(14, 2)
+  grandTotal         Decimal @default(0) @db.Decimal(14, 2)
+  taxBreakdown       Json?
+
+  // Derived from VERIFIED payment allocations (Payment Management) and
+  // recomputed inside the same transaction as every payment status change.
+  // Never edited by hand.
+  amountReceived Decimal             @default(0) @db.Decimal(14, 2)
+  paymentState   InvoicePaymentState @default(UNPAID)
+
+  paymentTerms        String?
+  deliveryTerms       String?
+  warrantyTerms       String?
+  termsAndConditions  String?
+  notes               String?
+  paymentInstructions String?
+  bankDetails         Json?
+
+  issuedAt           DateTime?
+  issuedById         String?   @db.Uuid
+  cancelledAt        DateTime?
+  cancellationReason String?
+  pdfDocumentId      String?   @unique @db.Uuid
+
+  proformaInvoice   ProformaInvoice   @relation(fields: [proformaInvoiceId], references: [id], onDelete: Restrict)
+  quotation         Quotation         @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  quotationRevision QuotationRevision @relation("FinalInvoiceSourceRevision", fields: [quotationRevisionId], references: [id], onDelete: Restrict)
+  replaces          FinalInvoice?     @relation("FinalInvoiceReplacement", fields: [replacesId], references: [id], onDelete: Restrict)
+  replacedBy        FinalInvoice?     @relation("FinalInvoiceReplacement")
+  customer          Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  contact           CustomerContact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  assignedTo        User?             @relation("FinalInvoiceAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  issuedBy          User?             @relation("FinalInvoiceIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  pdfDocument       Document?         @relation("FinalInvoicePdf", fields: [pdfDocumentId], references: [id], onDelete: SetNull)
+
+  items              FinalInvoiceItem[]
+  statusHistory      FinalInvoiceStatusHistory[]
+  paymentAllocations PaymentAllocation[]
+  documents          Document[]                  @relation("FinalInvoiceDocuments")
+  deliveries         Delivery[]
+
+  createdById String? @db.Uuid
+  updatedById String? @db.Uuid
+  createdBy   User?   @relation("FinalInvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?   @relation("FinalInvoiceUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([proformaInvoiceId])
+  @@index([quotationId])
+  @@index([customerId])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([invoiceDate])
+  @@index([dueDate])
+  @@index([paymentState])
+  @@index([createdAt])
+  @@map("final_invoices")
+}
+
+// A line copied from the proforma invoice.
+model FinalInvoiceItem {
+  id                    String  @id @default(uuid()) @db.Uuid
+  finalInvoiceId        String  @db.Uuid
+  sortOrder             Int     @default(0)
+  proformaInvoiceItemId String? @db.Uuid
+  productId             String  @db.Uuid
+  productModelId        String? @db.Uuid
+
+  productName    String
+  productCode    String
+  brandName      String
+  modelName      String?
+  modelNumber    String?
+  description    String?
+  specifications Json?
+
+  quantity       Int
+  unit           String       @default("Nos")
+  unitPrice      Decimal      @db.Decimal(14, 2)
+  discountType   DiscountType @default(NONE)
+  discountValue  Decimal      @default(0) @db.Decimal(14, 2)
+  discountAmount Decimal      @default(0) @db.Decimal(14, 2)
+  taxLabel       String?
+  taxRate        Decimal      @default(0) @db.Decimal(5, 2)
+  taxAmount      Decimal      @default(0) @db.Decimal(14, 2)
+  lineTotal      Decimal      @default(0) @db.Decimal(14, 2)
+  remarks        String?
+
+  finalInvoice        FinalInvoice         @relation(fields: [finalInvoiceId], references: [id], onDelete: Cascade)
+  proformaInvoiceItem ProformaInvoiceItem? @relation(fields: [proformaInvoiceItemId], references: [id], onDelete: SetNull)
+  product             Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productModel        ProductModel?        @relation(fields: [productModelId], references: [id], onDelete: Restrict)
+  deliveryItems       DeliveryItem[]
+
+  createdAt DateTime @default(now())
+
+  @@index([finalInvoiceId])
+  @@index([productId])
+  @@index([productModelId])
+  @@map("final_invoice_items")
+}
+
+// Every status change of a final invoice. Append-only.
+model FinalInvoiceStatusHistory {
+  id             String              @id @default(uuid()) @db.Uuid
+  finalInvoiceId String              @db.Uuid
+  previousStatus FinalInvoiceStatus?
+  newStatus      FinalInvoiceStatus
+  remarks        String?
+
+  finalInvoice FinalInvoice @relation(fields: [finalInvoiceId], references: [id], onDelete: Cascade)
+
+  changedById String?  @db.Uuid
+  changedBy   User?    @relation("FinalInvoiceStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt   DateTime @default(now())
+
+  @@index([finalInvoiceId, changedAt])
+  @@map("final_invoice_status_history")
+}
+
+// ---------------------------------------------------------------------------
+// Module 8 - Payment Management
+// ---------------------------------------------------------------------------
+
+// A recorded payment is only "money received" once VERIFIED. Rejected and
+// reversed payments stay on record (never deleted) and do not count.
+enum PaymentStatus {
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
+  REVERSED
+}
+
+// Money received from a customer. What it settles is recorded in
+// PaymentAllocation (one allocation today; the table allows several later
+// without changing existing records).
+model Payment {
+  id            String @id @default(uuid()) @db.Uuid
+  // KI/RCT/00001, allocated when the payment is recorded (inside the same transaction).
+  receiptNumber String @unique
+  customerId    String @db.Uuid
+
+  paymentDate                 DateTime      @db.Date
+  amount                      Decimal       @db.Decimal(14, 2)
+  currency                    String
+  // Code from the configurable payment-method list (Settings).
+  method                      String
+  transactionReference        String?
+  // Lower-cased, trimmed reference for duplicate detection.
+  normalizedReference         String?
+  bankReference               String?
+  receivedById                String?       @db.Uuid
+  notes                       String?
+  status                      PaymentStatus @default(PENDING_VERIFICATION)
+  // Set when the user confirmed a possible duplicate reference.
+  duplicateReferenceConfirmed Boolean       @default(false)
+
+  verifiedAt        DateTime?
+  verifiedById      String?   @db.Uuid
+  rejectedAt        DateTime?
+  rejectedById      String?   @db.Uuid
+  rejectionReason   String?
+  reversedAt        DateTime?
+  reversedById      String?   @db.Uuid
+  reversalReason    String?
+  // Receipt PDF rendered and stored once, when the payment was verified.
+  receiptDocumentId String?   @unique @db.Uuid
+
+  customer        Customer  @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  receivedBy      User?     @relation("PaymentReceivedBy", fields: [receivedById], references: [id], onDelete: SetNull)
+  verifiedBy      User?     @relation("PaymentVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  rejectedBy      User?     @relation("PaymentRejectedBy", fields: [rejectedById], references: [id], onDelete: SetNull)
+  reversedBy      User?     @relation("PaymentReversedBy", fields: [reversedById], references: [id], onDelete: SetNull)
+  receiptDocument Document? @relation("PaymentReceipt", fields: [receiptDocumentId], references: [id], onDelete: SetNull)
+
+  allocations   PaymentAllocation[]
+  statusHistory PaymentStatusHistory[]
+  documents     Document[]             @relation("PaymentDocuments")
+
+  createdById String? @db.Uuid
+  updatedById String? @db.Uuid
+  createdBy   User?   @relation("PaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?   @relation("PaymentUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentDate])
+  @@index([method])
+  @@index([normalizedReference])
+  @@index([createdAt])
+  @@map("payments")
+}
+
+// The part of a payment applied to one final invoice.
+model PaymentAllocation {
+  id             String  @id @default(uuid()) @db.Uuid
+  paymentId      String  @db.Uuid
+  finalInvoiceId String  @db.Uuid
+  amount         Decimal @db.Decimal(14, 2)
+
+  payment      Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  finalInvoice FinalInvoice @relation(fields: [finalInvoiceId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@unique([paymentId, finalInvoiceId])
+  @@index([finalInvoiceId])
+  @@map("payment_allocations")
+}
+
+// Every status change of a payment. Append-only.
+model PaymentStatusHistory {
+  id             String         @id @default(uuid()) @db.Uuid
+  paymentId      String         @db.Uuid
+  previousStatus PaymentStatus?
+  newStatus      PaymentStatus
+  remarks        String?
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  changedById String?  @db.Uuid
+  changedBy   User?    @relation("PaymentStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt   DateTime @default(now())
+
+  @@index([paymentId, changedAt])
+  @@map("payment_status_history")
+}
+
+// ===========================================================================
+// Module 9 - Delivery Management
+// ===========================================================================
+
+enum DeliveryStatus {
+  DRAFT
+  SCHEDULED
+  READY_FOR_DISPATCH
+  DISPATCHED
+  IN_TRANSIT
+  PARTIALLY_DELIVERED
+  DELIVERED
+  DELIVERY_FAILED
+  RETURNED
+  CANCELLED
+}
+
+enum TransportMode {
+  DIRECT
+  OWN_VEHICLE
+  TRANSPORT
+  COURIER
+}
+
+enum DeliveryTrackingSource {
+  MANUAL
+  EXTERNAL
+}
+
+model Delivery {
+  id             String         @id @default(uuid()) @db.Uuid
+  deliveryNumber String         @unique
+  customerId     String         @db.Uuid
+  finalInvoiceId String         @db.Uuid
+  status         DeliveryStatus @default(DRAFT)
+
+  deliveryDate       DateTime  @db.Date
+  expectedDate       DateTime? @db.Date
+  actualDeliveryDate DateTime? @db.Date
+  deliveryAddress    String
+  contactPerson      String?
+  contactNumber      String?
+  internalRemarks    String?
+
+  dispatchDate   DateTime? @db.Date
+  dispatchTime   String?
+  transporterName String?
+  transportMode  TransportMode?
+  vehicleNumber  String?
+  driverName     String?
+  driverContact  String?
+  courierCompany String?
+  trackingNumber String?
+  lrGrNumber     String?
+  dispatchRemarks String?
+
+  failureDate  DateTime? @db.Date
+  failureReason String?
+  nextAttemptDate DateTime? @db.Date
+
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  finalInvoice FinalInvoice @relation(fields: [finalInvoiceId], references: [id], onDelete: Restrict)
+
+  items          DeliveryItem[]
+  statusHistory  DeliveryStatusHistory[]
+  trackingEvents ShipmentTrackingEvent[]
+  packingLists   PackingList[]
+  proofOfDelivery ProofOfDelivery?
+
+  challanDocumentId String?   @unique @db.Uuid
+  packingDocumentId String?   @unique @db.Uuid
+  challanDocument   Document? @relation("DeliveryChallan", fields: [challanDocumentId], references: [id], onDelete: SetNull)
+  packingDocument   Document? @relation("DeliveryPackingList", fields: [packingDocumentId], references: [id], onDelete: SetNull)
+  documents         Document[] @relation("DeliveryDocuments")
+
+  createdById String? @db.Uuid
+  updatedById String? @db.Uuid
+  createdBy   User? @relation("DeliveryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User? @relation("DeliveryUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([finalInvoiceId])
+  @@index([status])
+  @@index([deliveryDate])
+  @@index([expectedDate])
+  @@index([dispatchDate])
+  @@index([actualDeliveryDate])
+  @@map("deliveries")
+}
+
+model DeliveryItem {
+  id         String @id @default(uuid()) @db.Uuid
+  deliveryId String @db.Uuid
+  invoiceItemId String @db.Uuid
+  productId  String @db.Uuid
+  productModelId String? @db.Uuid
+
+  productName String
+  productCode String
+  brandName String
+  modelName String?
+  modelNumber String?
+  description String?
+  quantity Int
+  unit String
+  packageCount Int?
+  remarks String?
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  invoiceItem FinalInvoiceItem @relation(fields: [invoiceItemId], references: [id], onDelete: Restrict)
+
+  @@unique([deliveryId, invoiceItemId])
+  @@index([deliveryId])
+  @@index([invoiceItemId])
+  @@map("delivery_items")
+}
+
+model DeliveryStatusHistory {
+  id         String         @id @default(uuid()) @db.Uuid
+  deliveryId String         @db.Uuid
+  previousStatus DeliveryStatus?
+  newStatus DeliveryStatus
+  remarks String?
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  changedById String? @db.Uuid
+  changedBy User? @relation("DeliveryStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt DateTime @default(now())
+
+  @@index([deliveryId, changedAt])
+  @@map("delivery_status_history")
+}
+
+model ShipmentTrackingEvent {
+  id         String @id @default(uuid()) @db.Uuid
+  deliveryId String @db.Uuid
+  status String
+  location String?
+  remarks String?
+  source DeliveryTrackingSource @default(MANUAL)
+  externalReference String?
+  eventAt DateTime @default(now())
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryId, eventAt])
+  @@map("shipment_tracking_events")
+}
+
+model PackingList {
+  id         String @id @default(uuid()) @db.Uuid
+  deliveryId String @db.Uuid
+  packingNumber String @unique
+  packageNumber Int
+  description String?
+  weight String?
+  dimensions String?
+  remarks String?
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  items PackingListItem[]
+
+  createdAt DateTime @default(now())
+  @@index([deliveryId])
+  @@map("packing_lists")
+}
+
+model PackingListItem {
+  id String @id @default(uuid()) @db.Uuid
+  packingListId String @db.Uuid
+  deliveryItemId String @db.Uuid
+  quantity Int
+  packingList PackingList @relation(fields: [packingListId], references: [id], onDelete: Cascade)
+
+  @@index([packingListId])
+  @@map("packing_list_items")
+}
+
+model ProofOfDelivery {
+  id String @id @default(uuid()) @db.Uuid
+  deliveryId String @db.Uuid @unique
+  receiverName String
+  receiverContact String?
+  actualDeliveryDate DateTime @db.Date
+  deliveryConfirmation Boolean @default(false)
+  remarks String?
+  confirmedById String? @db.Uuid
+  confirmedAt DateTime @default(now())
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+  confirmedBy User? @relation("DeliveryConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+
+  @@map("proof_of_delivery")
 }

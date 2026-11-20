@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValidTimeZone } from '../common/utils/business-date';
 
 /** The only Cloudinary variable names the application reads. */
 const CLOUDINARY_KEYS = [
@@ -140,6 +141,9 @@ export const envSchema = z.object({
   // google-vision: Google Cloud Vision REST API, requires OCR_API_KEY.
   OCR_PROVIDER: z.enum(['stub', 'google-vision']).default('stub'),
   OCR_API_KEY: z.string().optional(),
+
+  // Calendar day used for "today", default dates and overdue checks.
+  BUSINESS_TIMEZONE: z.string().trim().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -190,6 +194,10 @@ export function validateEnv(raw: Record<string, unknown>): Env {
       `OCR_PROVIDER=${parsed.data.OCR_PROVIDER} requires OCR_API_KEY. ` +
         'Set the key, or use OCR_PROVIDER=stub.',
     );
+  }
+
+  if (parsed.data.BUSINESS_TIMEZONE && !isValidTimeZone(parsed.data.BUSINESS_TIMEZONE)) {
+    throw new Error(`BUSINESS_TIMEZONE="${parsed.data.BUSINESS_TIMEZONE}" is not a valid IANA time zone (e.g. Asia/Kolkata).`);
   }
 
   return parsed.data;

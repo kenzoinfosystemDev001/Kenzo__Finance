@@ -1,43 +1,74 @@
 /**
- * The business's calendar.
+ * The business's calendar day, as 00:00 UTC of that date (the shape of
+ * @db.Date columns).
  *
- * Date-only values (quotation date, validity, follow-up dates) are stored as
- * UTC midnight of the calendar day the user picked. "Today" must be the same
- * kind of value for the business's own time zone: using the UTC date made
- * everything between 00:00 and 05:30 IST a day behind (new quotations dated
- * yesterday, today's follow-ups shown as upcoming, expired quotations still
- * sendable).
+ * "Today" used to be the UTC date, which in India is still yesterday between
+ * 00:00 and 05:30 IST: new enquiries defaulted to yesterday and the
+ * today / upcoming / overdue follow-up tabs were a day behind. The zone is
+ * configurable (BUSINESS_TIMEZONE); the web app reads the same value from
+ * NEXT_PUBLIC_BUSINESS_TIMEZONE so both sides agree on the date.
  */
-export const BUSINESS_TIME_ZONE = process.env.BUSINESS_TIME_ZONE || 'Asia/Kolkata';
+export const DEFAULT_BUSINESS_TIMEZONE = 'Asia/Kolkata';
 
-const formatter = new Intl.DateTimeFormat('en-CA', {
-  timeZone: BUSINESS_TIME_ZONE,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
+let cached: { zone: string; formatter: Intl.DateTimeFormat } | null = null;
 
-/** Today's date in the business time zone, as UTC midnight of that day. */
-export function businessToday(now: Date = new Date()): Date {
-  // en-CA formats as YYYY-MM-DD.
-  return new Date(`${formatter.format(now)}T00:00:00.000Z`);
+function formatter(): Intl.DateTimeFormat {
+  const zone = process.env.BUSINESS_TIMEZONE?.trim() || DEFAULT_BUSINESS_TIMEZONE;
+  if (!cached || cached.zone !== zone) {
+    cached = {
+      zone,
+      formatter: new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }),
+    };
+  }
+  return cached.formatter;
 }
 
-const partsFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: BUSINESS_TIME_ZONE,
-  hourCycle: 'h23',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-});
+/** YYYY-MM-DD of `at` in the business time zone. */
+export function businessDateIso(at: Date = new Date()): string {
+  return formatter().format(at);
+}
+
+/** Today in the business time zone, as a date-only value (00:00 UTC). */
+export function businessToday(at: Date = new Date()): Date {
+  return new Date(`${businessDateIso(at)}T00:00:00.000Z`);
+}
+
+/** True when `zone` is a time zone this runtime understands. */
+export function isValidTimeZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-CA', { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+let cachedParts: { zone: string; formatter: Intl.DateTimeFormat } | null = null;
+
+function partsFormatter(): Intl.DateTimeFormat {
+  const zone = process.env.BUSINESS_TIMEZONE?.trim() || DEFAULT_BUSINESS_TIMEZONE;
+  if (!cachedParts || cachedParts.zone !== zone) {
+    cachedParts = {
+      zone,
+      formatter: new Intl.DateTimeFormat('en-US', {
+        timeZone: zone,
+        hourCycle: 'h23',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }),
+    };
+  }
+  return cachedParts.formatter;
+}
 
 /** Milliseconds the business zone is ahead of UTC at `instant`. */
 function zoneOffsetMs(instant: Date): number {
   const parts = Object.fromEntries(
-    partsFormatter.formatToParts(instant).map((p) => [p.type, Number(p.value)]),
+    partsFormatter().formatToParts(instant).map((p) => [p.type, Number(p.value)]),
   ) as Record<string, number>;
   const asIfUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
   return asIfUtc - Math.floor(instant.getTime() / 1000) * 1000;

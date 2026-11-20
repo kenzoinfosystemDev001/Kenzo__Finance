@@ -1,6 +1,6 @@
-import { businessDayEnd, businessDayStart } from '../common/utils/business-date';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DocumentKind, Prisma } from '@prisma/client';
+import { businessDayEnd, businessDayStart, businessToday } from '../common/utils/business-date';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { DocumentsService } from '../documents/documents.service';
@@ -162,13 +162,37 @@ export class EnquiryChildrenService {
     if (latest) await tx.enquiry.update({ where: { id: enquiryId }, data: { nextFollowUpDate: latest.nextFollowUpDate } });
   }
 
+  /** The next-follow-up plan of the latest follow-up (what syncNextFollowUp copies). */
+  private async latestPlan(tx: Prisma.TransactionClient, enquiryId: string): Promise<Date | null> {
+    const latest = await tx.enquiryFollowUp.findFirst({
+      where: { enquiryId },
+      orderBy: [{ followUpDate: 'desc' }, { createdAt: 'desc' }],
+      select: { nextFollowUpDate: true },
+    });
+    return latest?.nextFollowUpDate ?? null;
+  }
+
+  /**
+   * After a follow-up is edited or removed, re-derive the enquiry's next
+   * follow-up date - but only while it still holds the value derived from the
+   * follow-ups. A date the user set by hand on the enquiry is kept.
+   */
+  private async resyncNextFollowUp(tx: Prisma.TransactionClient, enquiryId: string, previousPlan: Date | null) {
+    const enquiry = await tx.enquiry.findUnique({ where: { id: enquiryId }, select: { nextFollowUpDate: true } });
+    if (!enquiry) return;
+    if ((enquiry.nextFollowUpDate?.getTime() ?? null) !== (previousPlan?.getTime() ?? null)) return;
+    await tx.enquiry.update({ where: { id: enquiryId }, data: { nextFollowUpDate: await this.latestPlan(tx, enquiryId) } });
+  }
+
   private async validateFollowUp(enquiryId: string, customerId: string, dto: Partial<FollowUpInputDto>) {
     await this.enquiries.assertContactOfCustomer(customerId, dto.contactId);
     await this.enquiries.assertAssignableUser(dto.assignedToId);
     if (dto.followUpDate && new Date(dto.followUpDate) > new Date(Date.now() + 5 * 60 * 1000)) {
       throw new BadRequestException('A follow-up records an interaction that happened; its date cannot be in the future. Use the next follow-up date to plan one.');
     }
-    if (dto.nextFollowUpDate && dto.followUpDate && dateOnly(dto.nextFollowUpDate) < dateOnly(dto.followUpDate)) {
+    // Compare calendar days in the business time zone: the instant of the
+    // follow-up (e.g. 01:00 IST) can fall on the previous UTC date.
+    if (dto.nextFollowUpDate && dto.followUpDate && dateOnly(dto.nextFollowUpDate) < businessToday(new Date(dto.followUpDate))) {
       throw new BadRequestException('The next follow-up date cannot be before this follow-up.');
     }
   }
@@ -221,10 +245,13 @@ export class EnquiryChildrenService {
     if (dto.discussionSummary !== undefined && !dto.discussionSummary?.trim()) throw new BadRequestException('Discussion summary is required.');
     await this.validateFollowUp(existing.enquiryId, existing.enquiry.customerId, {
       ...dto,
+      // An unchanged assignee who has since left must not block corrections.
+      assignedToId: dto.assignedToId && dto.assignedToId !== existing.assignedToId ? dto.assignedToId : undefined,
       followUpDate: dto.followUpDate ?? existing.followUpDate.toISOString(),
     });
     const { enquiry: _enquiry, ...before } = existing;
     return this.prisma.$transaction(async (tx) => {
+      const previousPlan = await this.latestPlan(tx, existing.enquiryId);
       const updated = await tx.enquiryFollowUp.update({
         where: { id: followUpId },
         data: {
@@ -239,7 +266,7 @@ export class EnquiryChildrenService {
           ...(dto.internalNotes !== undefined ? { internalNotes: cleanMultiline(dto.internalNotes) ?? null } : {}),
         },
       });
-      await this.syncNextFollowUp(tx, existing.enquiryId);
+      await this.resyncNextFollowUp(tx, existing.enquiryId, previousPlan);
       await this.audit(tx, actor, context, existing.enquiryId, {
         action: 'enquiry.followup.update',
         entityType: 'EnquiryFollowUp',
@@ -256,8 +283,9 @@ export class EnquiryChildrenService {
     const existing = await this.prisma.enquiryFollowUp.findUnique({ where: { id: followUpId } });
     if (!existing) throw new NotFoundException('Follow-up was not found.');
     await this.prisma.$transaction(async (tx) => {
+      const previousPlan = await this.latestPlan(tx, existing.enquiryId);
       await tx.enquiryFollowUp.delete({ where: { id: followUpId } });
-      await this.syncNextFollowUp(tx, existing.enquiryId);
+      await this.resyncNextFollowUp(tx, existing.enquiryId, previousPlan);
       await this.audit(tx, actor, context, existing.enquiryId, {
         action: 'enquiry.followup.delete',
         entityType: 'EnquiryFollowUp',
@@ -272,18 +300,47 @@ export class EnquiryChildrenService {
    * Follow-up dashboard. Today / upcoming / overdue are open enquiries by
    * their planned next follow-up date; completed lists recorded follow-ups.
    */
-  async followUpBoard(query: FollowUpQueryDto) {
+  /** Filters of the completed tab (recorded follow-ups). */
+  private completedWhere(query: Pick<FollowUpQueryDto, 'assignedToId' | 'customerId' | 'dateFrom' | 'dateTo'>): Prisma.EnquiryFollowUpWhereInput {
+    return {
+      ...(query.assignedToId ? { assignedToId: query.assignedToId } : {}),
+      ...(query.customerId ? { enquiry: { customerId: query.customerId } } : {}),
+      ...(query.dateFrom || query.dateTo
+        ? { followUpDate: { ...(query.dateFrom ? { gte: businessDayStart(query.dateFrom) } : {}), ...(query.dateTo ? { lt: businessDayEnd(query.dateTo) } : {}) } }
+        : {}),
+    };
+  }
+
+  /**
+   * Filters of the today / upcoming / overdue tabs (by next follow-up date).
+   * The user's date range NARROWS the tab's own range - it never replaces it,
+   * so an early "from" date cannot pull overdue items into the Today tab.
+   */
+  private plannedWhere(
+    view: 'today' | 'upcoming' | 'overdue',
+    query: Pick<FollowUpQueryDto, 'assignedToId' | 'customerId' | 'dateFrom' | 'dateTo'>,
+  ): Prisma.EnquiryWhereInput {
     const today = todayUtc();
+    const tomorrow = new Date(today.getTime() + 86_400_000);
+    const viewRange: Prisma.DateTimeNullableFilter =
+      view === 'today' ? { gte: today, lt: tomorrow } : view === 'overdue' ? { lt: today } : { gte: tomorrow };
+    const userRange: Prisma.DateTimeNullableFilter = {
+      ...(query.dateFrom ? { gte: dateOnly(query.dateFrom) } : {}),
+      ...(query.dateTo ? { lte: dateOnly(query.dateTo) } : {}),
+    };
+    return {
+      status: { in: OPEN_STATUSES },
+      AND: [{ nextFollowUpDate: viewRange }, ...(query.dateFrom || query.dateTo ? [{ nextFollowUpDate: userRange }] : [])],
+      ...(query.assignedToId ? { assignedToId: query.assignedToId } : {}),
+      ...(query.customerId ? { customerId: query.customerId } : {}),
+    };
+  }
+
+  async followUpBoard(query: FollowUpQueryDto) {
     const view = query.view ?? 'today';
 
     if (view === 'completed') {
-      const where: Prisma.EnquiryFollowUpWhereInput = {
-        ...(query.assignedToId ? { assignedToId: query.assignedToId } : {}),
-        ...(query.customerId ? { enquiry: { customerId: query.customerId } } : {}),
-        ...(query.dateFrom || query.dateTo
-          ? { followUpDate: { ...(query.dateFrom ? { gte: businessDayStart(query.dateFrom) } : {}), ...(query.dateTo ? { lt: businessDayEnd(query.dateTo) } : {}) } }
-          : {}),
-      };
+      const where = this.completedWhere(query);
       const [items, totalItems] = await this.prisma.$transaction([
         this.prisma.enquiryFollowUp.findMany({
           where,
@@ -302,24 +359,7 @@ export class EnquiryChildrenService {
       return { view, ...buildPaginatedResult(items, totalItems, query.page, query.pageSize) };
     }
 
-    const tomorrow = new Date(today.getTime() + 86_400_000);
-    const dateFilter: Prisma.DateTimeNullableFilter =
-      view === 'today' ? { gte: today, lt: tomorrow } : view === 'overdue' ? { lt: today } : { gte: tomorrow };
-    // The date range narrows the tab, it never widens it: replacing the tab's
-    // own bound let "Upcoming" list overdue enquiries.
-    if (query.dateFrom) {
-      const from = dateOnly(query.dateFrom);
-      const current = dateFilter.gte as Date | undefined;
-      dateFilter.gte = current && current > from ? current : from;
-    }
-    if (query.dateTo) dateFilter.lte = dateOnly(query.dateTo);
-
-    const where: Prisma.EnquiryWhereInput = {
-      status: { in: OPEN_STATUSES },
-      nextFollowUpDate: dateFilter,
-      ...(query.assignedToId ? { assignedToId: query.assignedToId } : {}),
-      ...(query.customerId ? { customerId: query.customerId } : {}),
-    };
+    const where = this.plannedWhere(view, query);
     const [items, totalItems] = await this.prisma.$transaction([
       this.prisma.enquiry.findMany({
         where,
@@ -343,15 +383,13 @@ export class EnquiryChildrenService {
     return { view, ...buildPaginatedResult(items, totalItems, query.page, query.pageSize) };
   }
 
-  async followUpCounts(assignedToId?: string) {
-    const today = todayUtc();
-    const tomorrow = new Date(today.getTime() + 86_400_000);
-    const base = { status: { in: OPEN_STATUSES }, ...(assignedToId ? { assignedToId } : {}) };
+  /** Tab badges, computed with exactly the filters the tab lists use. */
+  async followUpCounts(query: Pick<FollowUpQueryDto, 'assignedToId' | 'customerId' | 'dateFrom' | 'dateTo'>) {
     const [todayCount, upcoming, overdue, completed] = await this.prisma.$transaction([
-      this.prisma.enquiry.count({ where: { ...base, nextFollowUpDate: { gte: today, lt: tomorrow } } }),
-      this.prisma.enquiry.count({ where: { ...base, nextFollowUpDate: { gte: tomorrow } } }),
-      this.prisma.enquiry.count({ where: { ...base, nextFollowUpDate: { lt: today } } }),
-      this.prisma.enquiryFollowUp.count({ where: assignedToId ? { assignedToId } : {} }),
+      this.prisma.enquiry.count({ where: this.plannedWhere('today', query) }),
+      this.prisma.enquiry.count({ where: this.plannedWhere('upcoming', query) }),
+      this.prisma.enquiry.count({ where: this.plannedWhere('overdue', query) }),
+      this.prisma.enquiryFollowUp.count({ where: this.completedWhere(query) }),
     ]);
     return { today: todayCount, upcoming, overdue, completed };
   }

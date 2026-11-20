@@ -20,6 +20,10 @@ import { BrandingModule } from './branding/branding.module';
 import { CustomersModule } from './customers/customers.module';
 import { EnquiriesModule } from './enquiries/enquiries.module';
 import { QuotationsModule } from './quotations/quotations.module';
+import { ProformaInvoicesModule } from './proforma-invoices/proforma-invoices.module';
+import { FinalInvoicesModule } from './final-invoices/final-invoices.module';
+import { PaymentsModule } from './payments/payments.module';
+import { DeliveriesModule } from './deliveries/deliveries.module';
 import { HealthController } from './health/health.controller';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
@@ -53,6 +57,10 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     CustomersModule,
     EnquiriesModule,
     QuotationsModule,
+    ProformaInvoicesModule,
+    FinalInvoicesModule,
+    PaymentsModule,
+    DeliveriesModule,
   ],
   controllers: [HealthController],
   providers: [

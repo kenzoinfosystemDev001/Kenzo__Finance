@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { access, mkdir, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, stat, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
 import type { Readable } from 'node:stream';
 import type {
@@ -47,16 +47,15 @@ export class LocalStorageDriver implements StorageDriver {
   }
 
   async createReadStream(storageKey: string): Promise<Readable> {
-    const path = this.resolveKey(storageKey);
-    // fs.createReadStream reports a missing file asynchronously, after the
-    // response headers are sent. Checking first turns a file lost to an
-    // ephemeral-disk redeploy into a clean 404.
-    try {
-      await access(path);
-    } catch {
-      throw new NotFoundException('The stored file is no longer available.');
+    const absolutePath = this.resolveKey(storageKey);
+    // A record whose file is gone (lost disk, manual cleanup) is a 404, not
+    // a stream error after the response has started.
+    const info = await stat(absolutePath).catch(() => null);
+    if (!info?.isFile()) {
+      this.logger.error(`Stored file missing for key ${storageKey}`);
+      throw new NotFoundException('The file for this document is no longer available in storage.');
     }
-    return createReadStream(path);
+    return createReadStream(absolutePath);
   }
 
   async remove(storageKey: string): Promise<void> {

@@ -624,12 +624,14 @@ export class ProductsService {
    * Soft delete. Refused while stock remains on hand: archiving a product that
    * physically exists would hide real inventory from every report.
    */
-  async archive(id: string, actor: AuthenticatedUser) {
+  async archive(id: string, actor: AuthenticatedUser, context?: RequestContext) {
     const existing = await this.prisma.product.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException(`Product ${id} was not found`);
     if (existing.archivedAt) throw new BadRequestException('This product is already archived.');
 
-    const archived = await this.prisma.$transaction(async (tx) => {
+    // One transaction: the stock check, the state change and its audit row
+    // succeed or fail together.
+    return this.prisma.$transaction(async (tx) => {
       // Same row lock as StockService.postMovement, so a movement cannot land
       // between the balance check and the archive.
       await tx.$queryRaw`SELECT "id" FROM "products" WHERE "id" = ${id}::uuid FOR UPDATE`;
@@ -648,44 +650,53 @@ export class ProductsService {
         );
       }
 
-      return tx.product.update({
+      const archived = await tx.product.update({
         where: { id },
         data: { archivedAt: new Date(), isActive: false, updatedById: actor.id },
         select: productListSelect,
       });
+      await this.auditService.record(
+        {
+          actorUserId: actor.id,
+          action: 'product.archive',
+          entityType: PRODUCT_ENTITY,
+          entityId: id,
+          summary: `Archived product ${archived.productCode} - ${archived.name}`,
+          ipAddress: context?.ipAddress,
+          userAgent: context?.userAgent,
+        },
+        tx,
+      );
+      return archived;
     });
-
-    await this.auditService.record({
-      actorUserId: actor.id,
-      action: 'product.archive',
-      entityType: PRODUCT_ENTITY,
-      entityId: id,
-      summary: `Archived product ${archived.productCode} - ${archived.name}`,
-    });
-
-    return archived;
   }
 
-  async restore(id: string, actor: AuthenticatedUser) {
+  async restore(id: string, actor: AuthenticatedUser, context?: RequestContext) {
     const existing = await this.prisma.product.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException(`Product ${id} was not found`);
     if (!existing.archivedAt) throw new BadRequestException('This product is not archived.');
 
-    const restored = await this.prisma.product.update({
-      where: { id },
-      data: { archivedAt: null, isActive: true, updatedById: actor.id },
-      select: productListSelect,
+    // One transaction: the state change and its audit row succeed or fail together.
+    return this.prisma.$transaction(async (tx) => {
+      const restored = await tx.product.update({
+        where: { id },
+        data: { archivedAt: null, isActive: true, updatedById: actor.id },
+        select: productListSelect,
+      });
+      await this.auditService.record(
+        {
+          actorUserId: actor.id,
+          action: 'product.restore',
+          entityType: PRODUCT_ENTITY,
+          entityId: id,
+          summary: `Restored product ${restored.productCode} - ${restored.name}`,
+          ipAddress: context?.ipAddress,
+          userAgent: context?.userAgent,
+        },
+        tx,
+      );
+      return restored;
     });
-
-    await this.auditService.record({
-      actorUserId: actor.id,
-      action: 'product.restore',
-      entityType: PRODUCT_ENTITY,
-      entityId: id,
-      summary: `Restored product ${restored.productCode} - ${restored.name}`,
-    });
-
-    return restored;
   }
 
   /**
@@ -693,15 +704,18 @@ export class ProductsService {
    * (enquiry, quotation, PI and delivery lines) add their counts here.
    */
   async getReferenceCounts(id: string): Promise<Record<string, number>> {
-    const [vendorMappings, stockMovements, documents, enquiryItems, customerInterests, quotationItems] = await this.prisma.$transaction([
+    const [vendorMappings, stockMovements, documents, enquiryItems, customerInterests, quotationItems, proformaItems, invoiceItems] = await this.prisma.$transaction([
       this.prisma.vendorProduct.count({ where: { productId: id } }),
       this.prisma.stockMovement.count({ where: { productId: id } }),
-      this.prisma.document.count({ where: { productId: id, kind: { not: DocumentKind.PRODUCT_IMAGE } } }),
+      // Removed (archived) files do not block: remove() detaches them.
+      this.prisma.document.count({ where: { productId: id, archivedAt: null, kind: { not: DocumentKind.PRODUCT_IMAGE } } }),
       this.prisma.enquiryItem.count({ where: { productId: id } }),
       this.prisma.customerProductInterest.count({ where: { productId: id } }),
       this.prisma.quotationItem.count({ where: { productId: id } }),
+      this.prisma.proformaInvoiceItem.count({ where: { productId: id } }),
+      this.prisma.finalInvoiceItem.count({ where: { productId: id } }),
     ]);
-    return { vendorMappings, stockMovements, documents, enquiryItems, customerInterests, quotationItems };
+    return { vendorMappings, stockMovements, documents, enquiryItems, customerInterests, quotationItems, proformaItems, invoiceItems };
   }
 
   /** Permanent delete of an unreferenced product (e.g. created by mistake). Its models go with it. */

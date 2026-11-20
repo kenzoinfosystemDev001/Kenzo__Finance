@@ -357,6 +357,14 @@ export class QuotationsService {
     const contactId = dto.header?.contactId !== undefined ? dto.header.contactId : quotation.contactId;
     await this.enquiriesService.assertContactOfCustomer(quotation.customerId, contactId);
     if (dto.header?.assignedToId) await this.assertAssignable(dto.header.assignedToId);
+    // Currency is stored on the quotation, not per revision. Earlier revisions
+    // are frozen and were priced in the current currency, so changing it now
+    // would silently re-label their historical amounts.
+    if (dto.header?.currency && dto.header.currency !== quotation.currency && revision.revisionNumber > 1) {
+      throw new BadRequestException(
+        `The currency cannot be changed after revision 1: earlier revisions are priced in ${quotation.currency}. Create a new quotation for a different currency.`,
+      );
+    }
 
     const enquiryItemIds = quotation.enquiryId
       ? new Set((await this.prisma.enquiryItem.findMany({ where: { enquiryId: quotation.enquiryId }, select: { id: true } })).map((i) => i.id))
@@ -647,6 +655,7 @@ export class QuotationsService {
         revisions: { orderBy: { revisionNumber: 'desc' }, include: revisionInclude },
         statusHistory: { orderBy: { changedAt: 'desc' }, include: { changedBy: userSelect, revision: { select: { revisionNumber: true } } } },
         communications: { orderBy: { occurredAt: 'desc' }, include: { createdBy: userSelect } },
+        proformaInvoices: { orderBy: { createdAt: 'desc' }, select: { id: true, piNumber: true, status: true, piDate: true, grandTotal: true, activeRevisionId: true } },
         documents: {
           where: { archivedAt: null },
           select: { id: true, kind: true, originalFilename: true, mimeType: true, sizeBytes: true, createdAt: true, replacesDocumentId: true, uploadedBy: userSelect },
@@ -720,9 +729,15 @@ export class QuotationsService {
         })
         .filter((row) => row.change === 'modified'),
     ];
-    const headerFields = ['quotationDate', 'validUntil', 'subtotal', 'itemDiscountTotal', 'additionalDiscount', 'taxTotal', 'otherCharges', 'grandTotal', 'termsAndConditions', 'paymentTerms', 'deliveryTerms', 'warrantyTerms', 'notes', 'internalRemarks'] as const;
+    const headerFields = ['quotationDate', 'validUntil', 'subtotal', 'itemDiscountTotal', 'additionalDiscount', 'taxableAmount', 'taxTotal', 'otherChargesLabel', 'otherCharges', 'grandTotal', 'termsAndConditions', 'paymentTerms', 'deliveryTerms', 'warrantyTerms', 'notes', 'internalRemarks'] as const;
     const fmt = (v: unknown) => (v instanceof Date ? v.toISOString().slice(0, 10) : str(v));
     const header = headerFields.filter((f) => fmt(from[f]) !== fmt(to[f])).map((f) => ({ field: f, from: fmt(from[f]), to: fmt(to[f]) }));
+    // Tax grouping (e.g. "GST 18%" -> "IGST 18%") can change with identical totals.
+    const taxText = (v: unknown) =>
+      (Array.isArray(v) ? (v as Array<{ label: string; rate: string; tax: string }>) : []).map((g) => `${g.label} ${g.rate}%: ${g.tax}`).join('; ');
+    if (taxText(from.taxBreakdown) !== taxText(to.taxBreakdown)) {
+      header.push({ field: 'taxBreakdown' as (typeof headerFields)[number], from: taxText(from.taxBreakdown), to: taxText(to.taxBreakdown) });
+    }
     return { from: { revisionNumber: from.revisionNumber, status: from.status }, to: { revisionNumber: to.revisionNumber, status: to.status }, items, header };
   }
 
@@ -735,11 +750,16 @@ export class QuotationsService {
     const quotation = await this.prisma.quotation.findUnique({ where: { id: quotationId }, select: { id: true, quotationNumber: true, customerId: true, currency: true, acceptedRevisionId: true, enquiryId: true } });
     if (!quotation) throw new NotFoundException(`Quotation ${quotationId} was not found`);
     const revision = await this.revision(quotationId, revisionNumber);
-    const ready = quotation.acceptedRevisionId === revision.id;
+    const accepted = quotation.acceptedRevisionId === revision.id;
+    const live = accepted
+      ? await this.prisma.proformaInvoice.findUnique({ where: { activeRevisionId: revision.id }, select: { id: true, piNumber: true, status: true } })
+      : null;
+    const ready = accepted && !live;
     return {
       ready,
-      problems: ready ? [] : ['Only the revision the customer accepted can become a Proforma Invoice.'],
-      proformaModuleAvailable: false,
+      problems: !accepted ? ['Only the revision the customer accepted can become a Proforma Invoice.'] : live ? [`Proforma invoice ${live.piNumber} already exists for this revision.`] : [],
+      proformaModuleAvailable: true,
+      existingProforma: live,
       quotationId: quotation.id,
       quotationNumber: quotation.quotationNumber,
       revisionId: revision.id,

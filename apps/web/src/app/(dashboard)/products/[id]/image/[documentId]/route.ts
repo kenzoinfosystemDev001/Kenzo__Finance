@@ -4,6 +4,8 @@ import { getAccessToken } from '@/lib/session';
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Streams a product image.
  *
@@ -16,17 +18,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string; documentId: string }> },
 ): Promise<Response> {
   const { id, documentId } = await params;
+  if (!UUID.test(id) || !UUID.test(documentId)) {
+    return new NextResponse(null, { status: 404 });
+  }
   const token = await getAccessToken();
 
   if (!token) {
     return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-  // Only a UUID reaches the API path, so an encoded "../" segment cannot
-  // redirect this request to another endpoint.
-  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuid.test(id) || !uuid.test(documentId)) {
-    return new NextResponse(null, { status: 404 });
   }
 
   // Product-scoped image endpoint: needs only product.read, and refuses a
@@ -37,12 +35,8 @@ export async function GET(
     signal: AbortSignal.timeout(30_000),
   }).catch(() => null);
 
-  if (!upstream) {
-    return new NextResponse(null, { status: 503 });
-  }
-
-  if (!upstream.ok) {
-    return new NextResponse(null, { status: upstream.status });
+  if (!upstream || !upstream.ok) {
+    return new NextResponse(null, { status: upstream?.status ?? 503 });
   }
 
   const contentType = upstream.headers.get('content-type') ?? '';

@@ -16,7 +16,6 @@ import {
   ApiBody,
   ApiConsumes,
   ApiOperation,
-  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { DocumentKind, OcrStatus } from '@prisma/client';
@@ -27,6 +26,27 @@ import {
 } from '../vendors/dto/vendor-children.dto';
 import { DocumentsService } from '../documents/documents.service';
 import { PaginationQueryDto } from '../common/dto/pagination.dto';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsEnum, IsOptional } from 'class-validator';
+
+/**
+ * The whole query string is validated against one DTO (forbidNonWhitelisted),
+ * so the filters must be declared here - separate @Query('status') params
+ * were rejected as "property status should not exist".
+ */
+class OcrJobsQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ enum: OcrStatus })
+  @IsOptional()
+  @IsEnum(OcrStatus, { message: 'Unknown OCR status.' })
+  status?: OcrStatus;
+
+  @ApiPropertyOptional({ type: Boolean })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  unconsumedOnly?: boolean;
+}
 import { CurrentUser, RequirePermissions } from '../common/decorators';
 import { PERMISSIONS } from '../common/authz/permissions';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
@@ -112,24 +132,14 @@ export class OcrController {
   @Get('jobs')
   @RequirePermissions(PERMISSIONS.OCR_READ)
   @ApiOperation({ summary: 'List OCR jobs' })
-  @ApiQuery({ name: 'status', required: false, enum: OcrStatus })
-  @ApiQuery({ name: 'unconsumedOnly', required: false, type: Boolean })
-  async findAll(
-    @Query() pagination: PaginationQueryDto,
-    @Query('status') status?: OcrStatus,
-    @Query('unconsumedOnly') unconsumedOnly?: string,
-  ) {
-    if (status && !Object.values(OcrStatus).includes(status)) {
-      throw new BadRequestException('Unknown OCR status.');
-    }
-
+  async findAll(@Query() query: OcrJobsQueryDto) {
     return this.ocrService.findAll({
-      page: pagination.page,
-      pageSize: pagination.pageSize,
-      skip: pagination.skip,
-      take: pagination.take,
-      status,
-      unconsumedOnly: unconsumedOnly === 'true',
+      page: query.page,
+      pageSize: query.pageSize,
+      skip: query.skip,
+      take: query.take,
+      status: query.status,
+      unconsumedOnly: query.unconsumedOnly === true,
     });
   }
 

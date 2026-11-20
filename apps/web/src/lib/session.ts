@@ -46,14 +46,20 @@ export async function setSessionCookies(
 }
 
 /**
- * True in a Server Action or Route Handler, false while rendering a Server
- * Component (where `cookies().set` throws). A refresh must not be attempted
- * when its rotated token could not be stored: the browser would keep the
- * revoked one and the next use would look like token theft to the API.
+ * Whether this request may write cookies (Server Actions and Route Handlers
+ * can; Server Component renders cannot). Probed by rewriting the
+ * remember-me cookie with its current value, which changes nothing.
  */
-export async function canWriteSessionCookies(): Promise<boolean> {
+export async function canWriteCookies(): Promise<boolean> {
+  const store = await cookies();
+  const current = store.get(REMEMBER_COOKIE)?.value;
+  if (current === undefined) return false;
   try {
-    (await cookies()).set('kenzo_probe', '', { ...baseOptions, maxAge: 0 });
+    const persistent = current === '1';
+    store.set(REMEMBER_COOKIE, current, {
+      ...baseOptions,
+      ...(persistent ? { maxAge: 60 * 60 * 24 * 7 } : {}),
+    });
     return true;
   } catch {
     return false;

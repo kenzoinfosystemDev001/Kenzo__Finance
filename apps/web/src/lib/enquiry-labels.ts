@@ -110,16 +110,16 @@ export const LOCKED_ENQUIRY_STATUSES: EnquiryStatus[] = ['CONVERTED', 'LOST', 'C
 export const isEnquiryLocked = (status: EnquiryStatus) => LOCKED_ENQUIRY_STATUSES.includes(status);
 
 /**
- * Today as YYYY-MM-DD in the business time zone, matching the API's
- * businessToday(). The UTC date was yesterday's between 00:00 and 05:30 IST.
+ * The business's calendar day. Must match the API's BUSINESS_TIMEZONE so
+ * "today", default dates and overdue flags agree on both sides. A UTC day
+ * was wrong for India between 00:00 and 05:30 IST (it was still yesterday),
+ * and a fixed zone also keeps server render and browser hydration identical.
  */
-const todayFormatter = new Intl.DateTimeFormat('en-CA', {
-  timeZone: process.env.NEXT_PUBLIC_BUSINESS_TIME_ZONE || 'Asia/Kolkata',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
-export const todayIso = () => todayFormatter.format(new Date());
+const BUSINESS_TIMEZONE = process.env.NEXT_PUBLIC_BUSINESS_TIMEZONE || 'Asia/Kolkata';
+const dayFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: BUSINESS_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' });
+
+/** Today as YYYY-MM-DD in the business time zone (en-CA formats as ISO). */
+export const todayIso = () => dayFormatter.format(new Date());
 
 /** A planned follow-up before today on an enquiry that is still open. */
 export function isFollowUpOverdue(nextFollowUpDate: string | null, status: EnquiryStatus): boolean {

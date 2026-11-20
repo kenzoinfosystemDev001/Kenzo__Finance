@@ -168,12 +168,10 @@ Rules:
 `GET /quotations/:id/revisions/:n/proforma-handoff` (or
 `QuotationsService.proformaHandoff`). It returns `ready` only for the accepted
 revision, along with the items, totals, customer and currency, and creates
-nothing. The PI module should:
-
-- store `quotationId` and `revisionId` (Restrict);
-- copy the lines into its own tables;
-- add itself to `QuotationsService.remove` guards and to the customer and
-  product reference counts.
+nothing. Implemented by Module 6 (see `07_PROFORMA_INVOICE.md`): PIs store
+`quotationId` and `quotationRevisionId` (Restrict), copy the lines into their
+own tables, and are counted in the customer and product reference checks; the
+hand-off now also reports the live PI (`existingProforma`).
 
 Permissions: `quotation.read`, `create` (from enquiry), `create_manual`,
 `update`, `revise`, `submit`, `approve`, `send` (mark sent and record

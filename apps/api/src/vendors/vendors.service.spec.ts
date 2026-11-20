@@ -302,19 +302,12 @@ describe('VendorsService', () => {
         expect.objectContaining({ where: { id: 'job1', consumedAt: null } }),
       );
       expect(prisma.document.updateMany).toHaveBeenCalledWith({
-        where: {
-          id: 'doc1',
-          vendorId: null,
-          productId: null,
-          customerId: null,
-          enquiryId: null,
-          quotationId: null,
-        },
+        where: { id: 'doc1', vendorId: null, productId: null, customerId: null, enquiryId: null, quotationId: null },
         data: { vendorId: 'new-vendor' },
       });
     });
 
-    it('refuses to re-home a document that already belongs to a record', async () => {
+    it('refuses to re-home an OCR source document that already belongs to a record', async () => {
       prisma.ocrJob.findUnique.mockResolvedValue({
         id: 'job1',
         status: 'COMPLETED',
@@ -322,14 +315,11 @@ describe('VendorsService', () => {
         documentId: 'doc1',
         consumedAt: null,
       });
-      prisma.vendor.create.mockResolvedValue({ id: 'new', vendorCode: 'KI/VEN/0001' });
+      prisma.vendor.create.mockResolvedValue({ id: 'new-vendor', vendorCode: 'KI/VEN/0001', businessName: 'Shree Computers Pvt Ltd' });
       prisma.ocrJob.updateMany.mockResolvedValue({ count: 1 });
-      // The document is owned by another vendor/customer, so the guard matches nothing.
       prisma.document.updateMany.mockResolvedValue({ count: 0 });
 
-      await expect(
-        service.create(baseDto({ ocrJobId: 'job1' }), actor, context),
-      ).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.create(baseDto({ ocrJobId: 'job1' }), actor, context)).rejects.toBeInstanceOf(ConflictException);
     });
 
     it('returns the attached document on the created vendor', async () => {

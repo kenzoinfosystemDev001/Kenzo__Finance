@@ -1,5 +1,5 @@
-import { businessToday } from '../common/utils/business-date';
 import { EnquiryStatus } from '@prisma/client';
+import { businessToday } from '../common/utils/business-date';
 
 /**
  * Enquiry lifecycle. Only the transitions listed here are allowed through
@@ -62,8 +62,7 @@ export const OPEN_STATUSES: EnquiryStatus[] = [
   EnquiryStatus.ON_HOLD,
 ];
 
-/** Today at 00:00 UTC, matching @db.Date columns. */
-/** Today in the business time zone (see common/utils/business-date). */
+/** Today in the business time zone, as 00:00 UTC of that date (matches @db.Date columns). */
 export function todayUtc(): Date {
   return businessToday();
 }
