@@ -1,4 +1,5 @@
 import { QuotationStatus } from '@prisma/client';
+import { businessToday } from '../common/utils/business-date';
 
 /**
  * Quotation lifecycle (applies to the CURRENT revision only; older revisions
@@ -39,9 +40,9 @@ export const REMARKS_REQUIRED: QuotationStatus[] = [QuotationStatus.REJECTED, Qu
 
 export const label = (status: QuotationStatus) => status.toLowerCase().replace(/_/g, ' ');
 
+/** Today in the business time zone, as 00:00 UTC of that date (matches @db.Date columns). */
 export function todayUtc(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  return businessToday();
 }
 
 export const dateOnly = (value: string) => new Date(`${value.slice(0, 10)}T00:00:00.000Z`);

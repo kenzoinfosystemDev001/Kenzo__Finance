@@ -28,6 +28,15 @@ type Dec = Prisma.Decimal;
 const ZERO = new D(0);
 const HUNDRED = new D(100);
 const round = (value: Dec) => value.toDecimalPlaces(2, D.ROUND_HALF_UP);
+/** Largest value the Decimal(14,2) money columns can hold. */
+const MAX_AMOUNT = new D('999999999999.99');
+
+/** Rejects an amount the database could not store, instead of failing with a 500 on save. */
+function assertStorable(value: Dec, what: string): void {
+  if (value.abs().greaterThan(MAX_AMOUNT)) {
+    throw new BadRequestException(`${what} exceeds the maximum supported amount (999,999,999,999.99).`);
+  }
+}
 
 export interface LineInput {
   quantity: number;
@@ -71,7 +80,10 @@ export function calculateLine(line: LineInput, index: number): LineResult {
   }
   const taxable = gross.minus(discountAmount);
   const taxAmount = round(taxable.times(taxRate).dividedBy(HUNDRED));
-  return { gross, discountAmount, taxable, taxAmount, lineTotal: taxable.plus(taxAmount) };
+  const lineTotal = taxable.plus(taxAmount);
+  assertStorable(gross, `${label}: the line amount`);
+  assertStorable(lineTotal, `${label}: the line total`);
+  return { gross, discountAmount, taxable, taxAmount, lineTotal };
 }
 
 export interface TotalsResult {
@@ -102,6 +114,14 @@ export function calculateTotals(
   }
   const grandTotal = taxableAmount.plus(taxTotal).plus(otherCharges).minus(additionalDiscount);
   if (grandTotal.isNegative()) throw new BadRequestException('The additional discount is larger than the quotation total.');
+  for (const [value, what] of [
+    [subtotal, 'The subtotal'],
+    [taxableAmount.plus(taxTotal).plus(otherCharges), 'The quotation total'],
+    [additionalDiscount, 'The additional discount'],
+    [otherCharges, 'Other charges'],
+  ] as const) {
+    assertStorable(value, what);
+  }
 
   // Group tax by label + rate, e.g. "GST 18%": a breakdown, not a policy.
   const groups = new Map<string, { label: string; rate: Dec; taxable: Dec; tax: Dec }>();

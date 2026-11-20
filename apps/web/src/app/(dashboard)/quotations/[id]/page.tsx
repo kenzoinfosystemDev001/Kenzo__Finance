@@ -123,10 +123,28 @@ export default async function QuotationProfilePage({
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-ink">Accepted: revision {accepted.revisionNumber} &middot; {money(accepted.grandTotal)}</h2>
             <p className="text-sm text-ink-muted">
-              The customer accepted revision {accepted.revisionNumber}. A Proforma Invoice will be raised from this exact revision.
+              The customer accepted revision {accepted.revisionNumber}. A proforma invoice is raised from this exact revision.
             </p>
-            <p className="mt-1 text-sm font-medium text-ink-subtle">Proforma Invoice module not yet available.</p>
+            {quotation.proformaInvoices.length > 0 && (
+              <ul className="mt-2 space-y-1 text-sm">
+                {quotation.proformaInvoices.map((p) => (
+                  <li key={p.id}>
+                    {can('proforma.read') ? (
+                      <Link href={`/proforma-invoices/${p.id}`} className="font-mono font-semibold text-ink hover:text-accent hover:underline">{p.piNumber}</Link>
+                    ) : (
+                      <span className="font-mono font-semibold text-ink">{p.piNumber}</span>
+                    )}
+                    <span className="text-ink-muted"> &middot; {formatDate(p.piDate)} &middot; {money(p.grandTotal)} &middot; {p.status.toLowerCase().replace(/_/g, ' ')}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
+          {can('proforma.create') && !quotation.proformaInvoices.some((p) => p.activeRevisionId) && (
+            <Link href={`/proforma-invoices/new?quotationId=${quotation.id}`} className="btn-primary">
+              <IconInvoice size={16} /> {quotation.proformaInvoices.length ? 'Raise replacement PI' : 'Create Proforma Invoice'}
+            </Link>
+          )}
         </section>
       )}
 

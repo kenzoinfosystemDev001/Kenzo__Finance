@@ -27,7 +27,9 @@ blueprint for the Kenzo Infosystems ERP and Business Management System.
 | Brands/companies, product catalogue (minimum for vendor mapping) | Implemented |
 | Documents, OCR extraction + review, audit log, document numbering | Implemented |
 | Settings (runtime business switches) | Implemented |
-| Modules 3-7 - Customers, enquiries, quotations, PI, payments, delivery | Not started |
+| Modules 3-5 - Customers, enquiries, quotations | Implemented |
+| **Module 6 - Proforma Invoice** | **Implemented** ([07_PROFORMA_INVOICE.md](07_PROFORMA_INVOICE.md)) |
+| Modules 7-8 - Payments, delivery | Not started |
 
 Setup and run instructions are in the repository [README](../README.md).
 

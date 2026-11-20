@@ -360,7 +360,9 @@ export class EnquiriesService {
     }
     const contactId = dto.customerContactId !== undefined ? dto.customerContactId || null : dto.customerId ? null : existing.customerContactId;
     await this.assertContactOfCustomer(customerId, contactId);
-    if (dto.sourceId) await this.assertSourceUsable(dto.sourceId);
+    // Only a newly chosen source must be active; an enquiry keeps the source
+    // it was recorded with even after that source is deactivated.
+    if (dto.sourceId && dto.sourceId !== existing.sourceId) await this.assertSourceUsable(dto.sourceId);
 
     const data: Prisma.EnquiryUncheckedUpdateInput = { updatedById: actor.id, customerId, customerContactId: contactId };
     if (dto.enquiryDate) data.enquiryDate = dateOnly(dto.enquiryDate);

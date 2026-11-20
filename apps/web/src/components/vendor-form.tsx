@@ -729,6 +729,10 @@ export function VendorForm({
           brandSearch={brandSearch}
           onCreated={(option) => {
             setProducts((current) => [...current, option]);
+            // Same rule as picking a product: its brand must be mapped too,
+            // or the API rejects the save.
+            const brand = option.meta;
+            if (brand) setBrands((current) => (current.some((b) => b.id === brand.id) ? current : [...current, brand]));
             setProductModal(false);
           }}
         />

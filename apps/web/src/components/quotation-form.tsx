@@ -449,7 +449,7 @@ export function QuotationForm({
             <TextField label="Valid Until" type="date" value={content.validUntil} onChange={(v) => setC('validUntil', v)} error={errors.validUntil} hint="Optional. A quotation cannot be marked sent after this date." />
             <TextField label="Subject" value={header.subject} onChange={(v) => setH('subject', v)} error={errors.subject} maxLength={LIMITS.subject} />
             <TextField label="Customer Reference No." value={header.referenceNumber} onChange={(v) => setH('referenceNumber', v)} error={errors.referenceNumber} maxLength={LIMITS.referenceNumber} hint="e.g. the customer's RFQ or PO reference" />
-            {creating || quotationId ? (
+            {creating || (quotationId && (revisionNumber ?? 1) <= 1) ? (
               <div>
                 <TextField label="Currency" value={currency} onChange={(v) => { setCurrency(v.toUpperCase()); setErrors(({ currency: _c, ...rest }) => rest); }} error={errors.currency} maxLength={3} />
                 {fromEnquiryNote(fromEnquiry && currency === handoff?.currency)}
@@ -458,6 +458,9 @@ export function QuotationForm({
               <div>
                 <span className="field-label">Currency</span>
                 <p className="field-input flex items-center bg-surface-muted text-ink-muted">{currency}</p>
+                {quotationId && (
+                  <p className="field-hint">Fixed after revision 1: earlier revisions are priced in {currency}.</p>
+                )}
               </div>
             )}
           </div>

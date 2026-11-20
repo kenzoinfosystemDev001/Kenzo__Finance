@@ -52,6 +52,8 @@ interface SearchParams {
 const PAGE_SIZES = [10, 25, 50, 100];
 const UUID = /^[0-9a-f-]{36}$/i;
 
+const LIST_SORT_FIELDS = ['businessName', 'vendorCode', 'contactPerson', 'phone', 'email', 'city', 'status', 'productCount', 'brandCount', 'createdAt', 'updatedAt'];
+
 export default async function VendorsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const user = await getCurrentUser();
@@ -59,7 +61,8 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
   const can = (permission: string) => permissions.includes(permission);
 
   const pageSize = PAGE_SIZES.includes(Number(params.pageSize)) ? Number(params.pageSize) : 10;
-  const sortBy = params.sortBy ?? 'createdAt';
+  // Only fields the API accepts; a stale or edited URL must not break the list.
+  const sortBy = params.sortBy && LIST_SORT_FIELDS.includes(params.sortBy) ? params.sortBy : 'createdAt';
   const sortDir = params.sortDir === 'asc' ? 'asc' : 'desc';
   const companyId = params.companyId && UUID.test(params.companyId) ? params.companyId : undefined;
   const productId = params.productId && UUID.test(params.productId) ? params.productId : undefined;

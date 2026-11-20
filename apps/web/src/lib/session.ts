@@ -45,6 +45,27 @@ export async function setSessionCookies(
   store.set(REMEMBER_COOKIE, persistent ? '1' : '0', { ...baseOptions, ...refreshMaxAge });
 }
 
+/**
+ * Whether this request may write cookies (Server Actions and Route Handlers
+ * can; Server Component renders cannot). Probed by rewriting the
+ * remember-me cookie with its current value, which changes nothing.
+ */
+export async function canWriteCookies(): Promise<boolean> {
+  const store = await cookies();
+  const current = store.get(REMEMBER_COOKIE)?.value;
+  if (current === undefined) return false;
+  try {
+    const persistent = current === '1';
+    store.set(REMEMBER_COOKIE, current, {
+      ...baseOptions,
+      ...(persistent ? { maxAge: 60 * 60 * 24 * 7 } : {}),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function getAccessToken(): Promise<string | undefined> {
   return (await cookies()).get(ACCESS_COOKIE)?.value;
 }

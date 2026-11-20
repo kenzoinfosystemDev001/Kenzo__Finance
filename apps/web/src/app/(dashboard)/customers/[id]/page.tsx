@@ -3,13 +3,14 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiFetch, ApiError, queryString } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth-actions';
-import type { ActivityEntry, CustomerAddress, CustomerDetail, EnquiryListItem, PaginatedResponse, QuotationListItem } from '@/lib/types';
+import type { ActivityEntry, CustomerAddress, CustomerDetail, EnquiryListItem, FinalInvoiceListItem, PaginatedResponse, QuotationListItem } from '@/lib/types';
 import { CUSTOMER_ADDRESS_TYPE_LABELS, CUSTOMER_TYPE_LABELS } from '@/lib/customer-labels';
 import { activityLabel, formatAddress, formatDate, formatDateTime, formatPhone } from '@/lib/vendor-labels';
 import { DefinitionList, ErrorState, Pagination, Tabs, VendorStatusBadge } from '@/components/ui';
 import { EmptyStateClient } from '@/components/panel-shared';
 import { EnquiryStatusBadge } from '@/components/enquiry-badges';
 import { PastValidityBadge, QuotationStatusBadge } from '@/components/quotation-badges';
+import { DraftNumberPill, FinalInvoiceStatusBadge } from '@/components/final-invoice-badges';
 import { formatMoney } from '@/lib/quotation-labels';
 import { isFollowUpOverdue } from '@/lib/enquiry-labels';
 import { IconChevronLeft, IconPencil, IconPlus, IconUser, IconWarehouse } from '@/components/icons';
@@ -190,6 +191,7 @@ export default async function CustomerProfilePage({
           canCreateEnquiry={can('enquiry.create') && customer.status === 'ACTIVE'}
           canReadQuotations={can('quotation.read')}
           canCreateQuotation={can('quotation.create_manual') && customer.status === 'ACTIVE'}
+          canReadInvoices={can('invoice.read')}
         />
       )}
     </div>
@@ -243,6 +245,7 @@ async function TransactionsTab({
   canCreateEnquiry,
   canReadQuotations,
   canCreateQuotation,
+  canReadInvoices,
 }: {
   customerId: string;
   customerCode: string;
@@ -250,6 +253,7 @@ async function TransactionsTab({
   canCreateEnquiry: boolean;
   canReadQuotations: boolean;
   canCreateQuotation: boolean;
+  canReadInvoices: boolean;
 }) {
   let enquiries: PaginatedResponse<EnquiryListItem> | null = null;
   let enquiryError: string | null = null;
@@ -267,6 +271,15 @@ async function TransactionsTab({
       quotations = await apiFetch<PaginatedResponse<QuotationListItem>>(`/quotations${queryString({ customerId, pageSize: 50, sortBy: 'createdAt', sortDir: 'desc' })}`);
     } catch (error) {
       quotationError = error instanceof ApiError ? error.messages[0] : 'The server could not be reached.';
+    }
+  }
+  let invoices: PaginatedResponse<FinalInvoiceListItem> | null = null;
+  let invoiceError: string | null = null;
+  if (canReadInvoices) {
+    try {
+      invoices = await apiFetch<PaginatedResponse<FinalInvoiceListItem>>(`/final-invoices${queryString({ customerId, pageSize: 50, sortBy: 'createdAt', sortDir: 'desc' })}`);
+    } catch (error) {
+      invoiceError = error instanceof ApiError ? error.messages[0] : 'The server could not be reached.';
     }
   }
 
@@ -384,6 +397,61 @@ async function TransactionsTab({
                         {q.pastValidity && <div className="mt-0.5"><PastValidityBadge /></div>}
                       </td>
                       <td><QuotationStatusBadge status={q.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {canReadInvoices && (
+        <section className="card">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+            <div>
+              <h2 className="text-lg font-semibold text-ink">Invoices</h2>
+              <p className="text-sm text-ink-muted">
+                {invoices && invoices.meta.totalItems > invoices.items.length
+                  ? `Latest ${invoices.items.length} of ${invoices.meta.totalItems} final invoices.`
+                  : 'Final invoices raised for this customer.'}
+              </p>
+            </div>
+            {invoices && invoices.meta.totalItems > 0 && (
+              <Link href={`/final-invoices?customerId=${customerId}`} className="btn-secondary">View all</Link>
+            )}
+          </div>
+          {invoiceError ? (
+            <div className="p-5"><ErrorState title="Could not load invoices" message={invoiceError} /></div>
+          ) : !invoices || invoices.items.length === 0 ? (
+            <EmptyStateClient title="No invoices yet" description="Final invoices raised for this customer will appear here." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Invoice No.</th>
+                    <th scope="col">Invoice Date</th>
+                    <th scope="col">Proforma Inv.</th>
+                    <th scope="col" className="text-right">Total</th>
+                    <th scope="col">Due Date</th>
+                    <th scope="col">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.items.map((inv) => (
+                    <tr key={inv.id}>
+                      <td className="whitespace-nowrap">
+                        <Link href={`/final-invoices/${inv.id}`} className="font-mono text-sm font-semibold text-ink hover:text-accent hover:underline">{inv.invoiceNumber ?? <DraftNumberPill />}</Link>
+                      </td>
+                      <td className="whitespace-nowrap">{formatDate(inv.invoiceDate)}</td>
+                      <td className="whitespace-nowrap font-mono text-sm">{inv.proformaInvoice.piNumber}</td>
+                      <td className="whitespace-nowrap text-right tabular-nums">{formatMoney(inv.grandTotal, inv.currency)}</td>
+                      <td className={inv.pastDue ? 'whitespace-nowrap font-semibold text-danger' : 'whitespace-nowrap'}>
+                        {inv.dueDate ? formatDate(inv.dueDate) : <span className="text-ink-subtle">&mdash;</span>}
+                        {inv.pastDue && ' (past due date)'}
+                      </td>
+                      <td><FinalInvoiceStatusBadge status={inv.status} /></td>
                     </tr>
                   ))}
                 </tbody>

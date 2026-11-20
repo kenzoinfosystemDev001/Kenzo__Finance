@@ -95,10 +95,9 @@ export class EnquiriesController {
 
   @Get('follow-ups/counts')
   @RequirePermissions(PERMISSIONS.ENQUIRY_READ)
-  @ApiQuery({ name: 'assignedToId', required: false })
-  @ApiOperation({ summary: 'Counts for the follow-up board' })
-  followUpCounts(@Query('assignedToId') assignedToId?: string) {
-    return this.children.followUpCounts(assignedToId && /^[0-9a-f-]{36}$/i.test(assignedToId) ? assignedToId : undefined);
+  @ApiOperation({ summary: 'Counts for the follow-up board (same filters as the board)' })
+  followUpCounts(@Query() query: FollowUpQueryDto) {
+    return this.children.followUpCounts(query);
   }
 
   @Get('export')

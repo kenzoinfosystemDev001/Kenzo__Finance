@@ -20,6 +20,8 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 type Params = Record<'search' | 'customerType' | 'categoryId' | 'industry' | 'status' | 'country' | 'state' | 'createdFrom' | 'createdTo' | 'sortBy' | 'sortDir' | 'page' | 'pageSize', string | undefined>;
 
+const LIST_SORT_FIELDS = ['customerCode', 'name', 'customerType', 'status', 'createdAt', 'updatedAt'];
+
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<Partial<Params>> }) {
   const params = await searchParams;
   const user = await getCurrentUser();
@@ -27,7 +29,8 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const can = (p: string) => permissions.includes(p);
 
   const pageSize = PAGE_SIZES.includes(Number(params.pageSize)) ? Number(params.pageSize) : 10;
-  const sortBy = params.sortBy ?? 'createdAt';
+  // Only fields the API accepts; a stale or edited URL must not break the list.
+  const sortBy = params.sortBy && LIST_SORT_FIELDS.includes(params.sortBy) ? params.sortBy : 'createdAt';
   const sortDir = params.sortDir === 'asc' ? 'asc' : 'desc';
   const filters = {
     search: params.search,
