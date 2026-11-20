@@ -21,6 +21,19 @@ const REQUEST_TIMEOUT_MS = Number(process.env.API_TIMEOUT_MS ?? 8000);
 /** Uploads legitimately take longer than a page render, so they get their own. */
 const UPLOAD_TIMEOUT_MS = Number(process.env.API_UPLOAD_TIMEOUT_MS ?? 60000);
 
+/**
+ * Statuses a proxy returns on the API's behalf when it has no answer to pass
+ * on. Our own API never produces these, so they always mean the backend is
+ * unreachable rather than refusing. 500 is deliberately absent: that is our
+ * API failing, and it should surface as a real error.
+ */
+const GATEWAY_STATUSES = new Set([502, 503, 504]);
+
+function truncate(value: string, max: number): string {
+  const text = value.trim();
+  return text.length > max ? `${text.slice(0, max)}...` : text;
+}
+
 /** True when the API server is down/unreachable, rather than returning an error. */
 export function isApiUnavailable(error: unknown): boolean {
   return (
@@ -151,12 +164,28 @@ async function handleResponse<T>(response: Response): Promise<T> {
   const contentType = response.headers.get('content-type') ?? '';
 
   if (!response.ok) {
+    // A gateway status does not come from our API - it comes from whatever
+    // sits in front of it reporting that it could not get an answer: the
+    // service is deploying, restart-looping or asleep. Treating it as an
+    // ordinary API error made the Next server throw, which a visitor sees as
+    // a blank "Application error" page instead of our own retry screen.
+    if (GATEWAY_STATUSES.has(response.status)) {
+      throw new ApiError(API_UNAVAILABLE_STATUS, {
+        statusCode: API_UNAVAILABLE_STATUS,
+        error: 'API_UNAVAILABLE',
+        message: `The API at ${API_URL} is not currently serving requests.`,
+        details: `Upstream returned HTTP ${response.status}.`,
+      });
+    }
+
     const body: ApiErrorBody = contentType.includes('application/json')
       ? await response.json()
       : {
           statusCode: response.status,
           error: response.statusText,
-          message: await response.text(),
+          // A non-JSON error body is an error page from the platform, not a
+          // message for the user. Keep enough to identify it, not all of it.
+          message: truncate(await response.text(), 300),
         };
     throw new ApiError(response.status, body);
   }

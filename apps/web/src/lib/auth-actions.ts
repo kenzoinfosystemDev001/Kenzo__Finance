@@ -123,7 +123,24 @@ export async function getSession(): Promise<SessionResult> {
     if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
       return { status: 'anonymous' };
     }
-    throw error;
+
+    // Anything else - a 404 because the base URL is missing /api/v1, a 500
+    // inside the API, an unparseable body - still means "no usable session".
+    // Rethrowing produced an unhandled Server Component error, which Vercel
+    // renders as a bare "Application error ... Digest: 123456" with no way
+    // forward. The operator needs the detail, so it goes to the server log
+    // where it is actually readable; the visitor gets a page with a retry.
+    console.error('[getSession] Unexpected failure resolving the session:', error);
+
+    return {
+      status: 'api-unavailable',
+      detail:
+        error instanceof ApiError
+          ? `HTTP ${error.status}: ${error.message}`
+          : error instanceof Error
+            ? error.message
+            : String(error),
+    };
   }
 }
 

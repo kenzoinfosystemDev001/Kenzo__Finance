@@ -248,8 +248,41 @@ curl -o /dev/null -w "%{http_code}\n" https://your-api.onrender.com/api/v1/vendo
 # -> 401
 ```
 
+### Is the frontend actually talking to the backend?
+
+Curling the API from your laptop proves the API is up. It proves nothing
+about what the **Vercel server** can reach — different network, different
+environment variables, and `NEXT_PUBLIC_API_URL` was fixed when the site was
+built, not when you curled it. The frontend answers that itself:
+
+```bash
+curl https://your-site.vercel.app/api/health
+```
+
+```jsonc
+// connected
+{ "web": "ok", "api": "ok", "apiUrl": "https://...onrender.com/api/v1",
+  "latencyMs": 412, "database": "connected" }
+```
+
+`database: "connected"` is the useful part — it proves the chain reaches
+PostgreSQL, not just that something is listening. Anything else names the
+problem:
+
+| `api` | Means |
+| --- | --- |
+| `not-configured` | `NEXT_PUBLIC_API_URL` was unset **at build time** — set it and redeploy |
+| `unreachable` | Wrong host name, or the service is not running |
+| `timeout` | No answer in 10s — usually a free instance waking; retry once |
+| `unhealthy` + `httpStatus: 404` | Reached the host but not the API — the URL is missing `/api/v1` |
+| `unhealthy` + other status | The API answered but is unwell — read its own log |
+
+It returns HTTP 200 only when fully connected, so it also works as an uptime
+check. It exposes nothing private: the API URL already ships to every
+browser in `NEXT_PUBLIC_API_URL`.
+
 Then open the Vercel URL and sign in. If the frontend shows
-*"The API server is not responding"*, the cause is one of:
+*"The service is temporarily unavailable"*, the cause is one of:
 
 | Symptom | Cause |
 | --- | --- |
@@ -257,6 +290,20 @@ Then open the Vercel URL and sign in. If the frontend shows
 | Login fails but health is OK | `WEB_URL` on Render does not exactly match the Vercel origin (CORS) |
 | First request after idle fails | Render free tier cold start; the API retries the database automatically |
 | Works then logs out | `AUTH_*` secrets changed between deploys, invalidating issued tokens |
+
+### `Application error: a server-side exception has occurred` + a digest
+
+The hosting platform's own error page, shown when a Server Component throws
+and nothing catches it. The real message is stripped in production, leaving
+only the digest — which is the key to the matching entry in the Vercel
+function log, so quote it when you look there.
+
+If `/` loads but `/login` does not, the fault is in the API call: the landing
+page makes none. The usual cause was an upstream `502`/`503`/`504` from a
+backend that was deploying, restart-looping or asleep — those are now
+reported as "service unavailable" with a retry, and `/api/health` names the
+underlying problem. A root error boundary catches whatever is left, so this
+platform page should no longer be reachable.
 
 
 ### Build fails: "Property 'xyz' does not exist on type 'PrismaClient'"
