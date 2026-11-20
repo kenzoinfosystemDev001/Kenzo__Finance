@@ -198,15 +198,15 @@ export class ProductsController {
   @Post(':id/archive')
   @RequirePermissions(PERMISSIONS.PRODUCT_ARCHIVE)
   @ApiOperation({ summary: 'Archive a product', description: 'Refused while the product still has stock on hand.' })
-  async archive(@Param('id', uuid()) id: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.productsService.archive(id, user);
+  async archive(@Param('id', uuid()) id: string, @CurrentUser() user: AuthenticatedUser, @Req() request: Request) {
+    return this.productsService.archive(id, user, contextOf(request));
   }
 
   @Post(':id/restore')
   @RequirePermissions(PERMISSIONS.PRODUCT_ARCHIVE)
   @ApiOperation({ summary: 'Restore an archived product' })
-  async restore(@Param('id', uuid()) id: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.productsService.restore(id, user);
+  async restore(@Param('id', uuid()) id: string, @CurrentUser() user: AuthenticatedUser, @Req() request: Request) {
+    return this.productsService.restore(id, user, contextOf(request));
   }
 
   @Delete(':id')

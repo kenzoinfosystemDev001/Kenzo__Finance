@@ -72,11 +72,26 @@ export class OcrService {
         mimeType: true,
         originalFilename: true,
         archivedAt: true,
+        vendorId: true,
+        productId: true,
+        customerId: true,
+        enquiryId: true,
+        quotationId: true,
       },
     });
 
     if (!document || document.archivedAt) {
       throw new NotFoundException(`Document ${documentId} was not found`);
+    }
+
+    // Only a document uploaded for onboarding (not yet filed under any record)
+    // can feed a new vendor. Re-extracting a file that already belongs to a
+    // vendor, customer, product, enquiry or quotation would let confirming
+    // the draft move that file onto a different record.
+    if (document.vendorId || document.productId || document.customerId || document.enquiryId || document.quotationId) {
+      throw new BadRequestException(
+        'This document is already attached to a record. Upload the file again to start a new OCR draft.',
+      );
     }
 
     const job = await this.prisma.ocrJob.create({

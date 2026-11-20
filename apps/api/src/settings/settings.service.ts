@@ -35,6 +35,15 @@ export const SETTING_KEYS = {
    * Pending Approval and only a user with quotation.approve can approve.
    */
   QUOTATION_APPROVAL_REQUIRED: 'quotation.approvalRequired',
+
+  /**
+   * Whether proforma invoices must be approved before they can be issued.
+   * Off by default: no PI approval policy has been confirmed.
+   */
+  PROFORMA_APPROVAL_REQUIRED: 'proforma.approvalRequired',
+
+  /** Whether final invoices must be approved before they can be issued. Off by default (no policy confirmed). */
+  INVOICE_APPROVAL_REQUIRED: 'invoice.approvalRequired',
 } as const;
 
 /**
@@ -51,6 +60,16 @@ export const BRANDING_SETTING_KEYS = {
   COMPANY_PROFILE: 'branding.companyProfile',
   /** Default terms copied into new quotations (empty until an administrator sets them). */
   QUOTATION_DEFAULT_TERMS: 'quotation.defaultTerms',
+  /** Bank account printed on proforma invoices: { bankName, accountName, accountNumber, ifsc, swift, branch }. Empty until an administrator enters it. */
+  PROFORMA_BANK_DETAILS: 'proforma.bankDetails',
+  /** Default payment instructions copied into new proforma invoices. */
+  PROFORMA_PAYMENT_INSTRUCTIONS: 'proforma.paymentInstructions',
+  /** { prefix, padding, financialYear, fyStartMonth } for final invoice numbers. Null = defaults, not yet confirmed. */
+  INVOICE_NUMBERING: 'invoice.numbering',
+  /** Accepted payment methods [{ code, label, active }]. Null = the PRD's suggested list, not yet confirmed. */
+  PAYMENT_METHODS: 'payment.methods',
+  /** Method codes verified automatically when recorded by a user who may verify. Empty = never. */
+  PAYMENT_AUTO_VERIFY_METHODS: 'payment.autoVerifyMethods',
 } as const;
 
 export const SETTING_DEFAULTS: Record<string, unknown> = {
@@ -61,6 +80,13 @@ export const SETTING_DEFAULTS: Record<string, unknown> = {
   [SETTING_KEYS.QUOTATION_APPROVAL_REQUIRED]: false,
   [BRANDING_SETTING_KEYS.COMPANY_PROFILE]: null,
   [BRANDING_SETTING_KEYS.QUOTATION_DEFAULT_TERMS]: null,
+  [SETTING_KEYS.PROFORMA_APPROVAL_REQUIRED]: false,
+  [BRANDING_SETTING_KEYS.PROFORMA_BANK_DETAILS]: null,
+  [BRANDING_SETTING_KEYS.PROFORMA_PAYMENT_INSTRUCTIONS]: null,
+  [SETTING_KEYS.INVOICE_APPROVAL_REQUIRED]: false,
+  [BRANDING_SETTING_KEYS.INVOICE_NUMBERING]: null,
+  [BRANDING_SETTING_KEYS.PAYMENT_METHODS]: null,
+  [BRANDING_SETTING_KEYS.PAYMENT_AUTO_VERIFY_METHODS]: null,
 };
 
 export const SETTING_DESCRIPTIONS: Record<string, string> = {
@@ -76,7 +102,18 @@ export const SETTING_DESCRIPTIONS: Record<string, string> = {
     'Quotations must be approved by a user with quotation approval permission before they can be sent.',
   [BRANDING_SETTING_KEYS.COMPANY_PROFILE]: 'Company name, address and registration details printed on quotations.',
   [BRANDING_SETTING_KEYS.QUOTATION_DEFAULT_TERMS]: 'Terms and conditions copied into new quotations (editable per quotation).',
+  [SETTING_KEYS.PROFORMA_APPROVAL_REQUIRED]:
+    'Proforma invoices must be approved by a user with proforma approval permission before they can be issued.',
+  [BRANDING_SETTING_KEYS.PROFORMA_BANK_DETAILS]: 'Bank account printed on proforma invoices.',
+  [BRANDING_SETTING_KEYS.PROFORMA_PAYMENT_INSTRUCTIONS]: 'Payment instructions copied into new proforma invoices (editable per PI).',
+  [SETTING_KEYS.INVOICE_APPROVAL_REQUIRED]: 'Final invoices must be approved by a user with invoice approval permission before they can be issued.',
+  [BRANDING_SETTING_KEYS.INVOICE_NUMBERING]: 'Final invoice number format (prefix, digits, financial-year series).',
+  [BRANDING_SETTING_KEYS.PAYMENT_METHODS]: 'Payment methods accepted from customers.',
+  [BRANDING_SETTING_KEYS.PAYMENT_AUTO_VERIFY_METHODS]: 'Payment methods verified automatically when recorded.',
 };
+
+/** Readable only through their module's settings endpoint (permission-checked), never via GET /settings. */
+const RESTRICTED_KEYS = new Set<string>([BRANDING_SETTING_KEYS.PROFORMA_BANK_DETAILS, BRANDING_SETTING_KEYS.PROFORMA_PAYMENT_INSTRUCTIONS]);
 
 @Injectable()
 export class SettingsService {
@@ -102,7 +139,7 @@ export class SettingsService {
 
     // Every known key is reported, including ones never written, so the UI
     // shows the real effective configuration rather than an empty list.
-    return Object.keys(SETTING_DEFAULTS).map((key) => ({
+    return Object.keys(SETTING_DEFAULTS).filter((key) => !RESTRICTED_KEYS.has(key)).map((key) => ({
       key,
       value: byKey.has(key) ? byKey.get(key) : SETTING_DEFAULTS[key],
       description: SETTING_DESCRIPTIONS[key] ?? '',

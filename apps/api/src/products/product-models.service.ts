@@ -135,17 +135,19 @@ export class ProductModelsService {
    */
   async remove(modelId: string, actor: AuthenticatedUser, context: RequestContext): Promise<void> {
     const existing = await this.loadModel(modelId);
-    const [vendorMappings, enquiryItems, customerInterests, quotationItems] = await this.prisma.$transaction([
+    const [vendorMappings, enquiryItems, customerInterests, quotationItems, proformaItems, invoiceItems] = await this.prisma.$transaction([
       this.prisma.vendorProductModel.count({ where: { productModelId: modelId } }),
       this.prisma.enquiryItem.count({ where: { productModelId: modelId } }),
       this.prisma.customerProductInterest.count({ where: { productModelId: modelId } }),
       this.prisma.quotationItem.count({ where: { productModelId: modelId } }),
+      this.prisma.proformaInvoiceItem.count({ where: { productModelId: modelId } }),
+      this.prisma.finalInvoiceItem.count({ where: { productModelId: modelId } }),
     ]);
-    if (vendorMappings + enquiryItems + customerInterests + quotationItems > 0) {
+    if (vendorMappings + enquiryItems + customerInterests + quotationItems + proformaItems + invoiceItems > 0) {
       throw new ConflictException({
         message: 'This model is used by vendor mappings, enquiries, quotations or customer interests. Deactivate it instead to keep history.',
         details: Object.fromEntries(
-          Object.entries({ vendorMappings, enquiryItems, customerInterests, quotationItems }).filter(([, count]) => count > 0),
+          Object.entries({ vendorMappings, enquiryItems, customerInterests, quotationItems, proformaItems, invoiceItems }).filter(([, count]) => count > 0),
         ),
       });
     }

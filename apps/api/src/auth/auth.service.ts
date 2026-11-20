@@ -23,6 +23,8 @@ export interface RequestContext {
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
+/** How long after a rotation a parallel refresh of the same token is tolerated. */
+const ROTATION_GRACE_MS = 30 * 1000;
 
 @Injectable()
 export class AuthService {
@@ -72,7 +74,10 @@ export class AuthService {
     );
 
     if (!passwordMatches) {
-      await this.registerFailedAttempt(user.id, user.failedLoginAttempts, context);
+      // An expired lock starts a fresh count; otherwise one typo after the
+      // lock lifts would immediately lock the account again.
+      const priorAttempts = user.lockedUntil ? 0 : user.failedLoginAttempts;
+      await this.registerFailedAttempt(user.id, priorAttempts, context);
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -129,6 +134,17 @@ export class AuthService {
       include: { user: true },
     });
 
+    // Two requests from the same browser (parallel page loads, prefetches)
+    // can present the same refresh token at once. The loser of that race is
+    // not an attacker: answer it with a fresh pair instead of revoking every
+    // session the user has.
+    if (stored && stored.revokedAt && (await this.isConcurrentRotation(stored))) {
+      if (stored.user.status !== 'ACTIVE' || stored.user.archivedAt) {
+        throw new UnauthorizedException('Account is not active');
+      }
+      return this.issueTokens(stored.user.id, stored.user.email, context);
+    }
+
     if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
       // A presented token that is not live may be a replay of a rotated token.
       // Revoke the whole family so a stolen token cannot be used further.
@@ -151,13 +167,49 @@ export class AuthService {
       throw new UnauthorizedException('Account is not active');
     }
 
-    // Rotation: the presented token is single-use.
-    await this.prisma.refreshToken.update({
-      where: { id: stored.id },
+    // Rotation: the presented token is single-use. The conditional update is
+    // atomic, so of two simultaneous refreshes exactly one wins the rotation.
+    const rotated = await this.prisma.refreshToken.updateMany({
+      where: { id: stored.id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
 
+    if (rotated.count === 0) {
+      // Lost the race to a parallel refresh of the same token.
+      const current = await this.prisma.refreshToken.findUnique({ where: { id: stored.id } });
+      if (!current || !(await this.isConcurrentRotation(current))) {
+        throw new UnauthorizedException('Invalid or expired refresh token');
+      }
+    }
+
     return this.issueTokens(stored.user.id, stored.user.email, context);
+  }
+
+  /**
+   * True when a revoked token was rotated moments ago by a legitimate refresh,
+   * i.e. its successor was issued at the time of revocation and is still live.
+   * Logout and password changes revoke without issuing a successor (or revoke
+   * the successor too), so they never qualify.
+   */
+  private async isConcurrentRotation(token: {
+    userId: string;
+    revokedAt: Date | null;
+    expiresAt: Date;
+  }): Promise<boolean> {
+    if (!token.revokedAt || token.expiresAt < new Date()) return false;
+    const revokedAt = token.revokedAt.getTime();
+    if (Date.now() - revokedAt > ROTATION_GRACE_MS) return false;
+
+    const successor = await this.prisma.refreshToken.findFirst({
+      where: {
+        userId: token.userId,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+        createdAt: { gte: new Date(revokedAt - 1000), lte: new Date(revokedAt + 5000) },
+      },
+      select: { id: true },
+    });
+    return successor !== null;
   }
 
   async logout(refreshToken: string): Promise<void> {
@@ -277,6 +329,8 @@ export class AuthService {
       data: {
         userId,
         tokenHash: this.hashToken(refreshToken),
+        // App clock, so it is comparable with revokedAt (also app clock).
+        createdAt: new Date(),
         expiresAt: new Date(Date.now() + refreshTtlMs),
         ipAddress: context.ipAddress ?? null,
         userAgent: context.userAgent ?? null,

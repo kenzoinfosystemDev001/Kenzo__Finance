@@ -1,12 +1,12 @@
-{
+ {
   "name": "@kenzo-erp/web",
   "version": "0.1.0",
   "private": true,
   "description": "Kenzo Infosystems ERP - Next.js web application",
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "node scripts/start.js",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
   },

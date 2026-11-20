@@ -425,7 +425,9 @@ export class CustomersService {
       const clash = await this.prisma.customer.findFirst({ where: { gstin: tax.gstin, id: { not: id } }, select: { name: true, customerCode: true } });
       if (clash) throw new ConflictException(`GSTIN already belongs to ${clash.name} (${clash.customerCode}).`);
     }
-    if (dto.categoryId) await this.assertCategoryUsable(dto.categoryId);
+    // Only a newly chosen category must be active; deactivating a category
+    // must not make its existing customers uneditable.
+    if (dto.categoryId && dto.categoryId !== existing.categoryId) await this.assertCategoryUsable(dto.categoryId);
 
     const data: Prisma.CustomerUncheckedUpdateInput = { updatedById: actor.id, customerType, ...tax };
     if (dto.name) {
@@ -502,12 +504,16 @@ export class CustomersService {
    * quotations, PIs, payments and deliveries add their counts here.
    */
   async getReferenceCounts(id: string): Promise<Record<string, number>> {
-    const [documents, enquiries, quotations] = await this.prisma.$transaction([
-      this.prisma.document.count({ where: { customerId: id } }),
+    const [documents, enquiries, quotations, proformaInvoices, finalInvoices, payments] = await this.prisma.$transaction([
+      // Removed (archived) files do not block: remove() detaches them.
+      this.prisma.document.count({ where: { customerId: id, archivedAt: null } }),
       this.prisma.enquiry.count({ where: { customerId: id } }),
       this.prisma.quotation.count({ where: { customerId: id } }),
+      this.prisma.proformaInvoice.count({ where: { customerId: id } }),
+      this.prisma.finalInvoice.count({ where: { customerId: id } }),
+      this.prisma.payment.count({ where: { customerId: id } }),
     ]);
-    return { documents, enquiries, quotations };
+    return { documents, enquiries, quotations, proformaInvoices, finalInvoices, payments };
   }
 
   /** Permanent delete of a customer nothing refers to; contacts, addresses and interests go with it. */
@@ -522,6 +528,9 @@ export class CustomersService {
       });
     }
     await this.prisma.$transaction(async (tx) => {
+      // Document.customer is Restrict: detach removed (archived) files, which
+      // are kept for audit, or the delete fails on the foreign key.
+      await tx.document.updateMany({ where: { customerId: id, archivedAt: { not: null } }, data: { customerId: null } });
       await tx.customer.delete({ where: { id } });
       await this.auditService.record(
         {

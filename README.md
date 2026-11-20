@@ -80,6 +80,30 @@ npm run dev              # API on :4000, web on :3000
 | http://localhost:4000/api/docs | Swagger (development only) |
 | http://localhost:4000/api/v1/health/ready | Readiness + database check |
 
+To run the production web server, build it first, then start it from the
+workspace root:
+
+```powershell
+npm run build --workspace @kenzo-erp/web
+npm run start --workspace @kenzo-erp/web
+```
+
+The web server uses port `3000` by default. Set `PORT` in PowerShell to use a
+different port; the start script checks availability and reports the owning
+process without terminating it:
+
+```powershell
+$env:PORT = '3001'
+npm run start --workspace @kenzo-erp/web
+```
+
+Inspect a listener on Windows with
+`Get-NetTCPConnection -LocalPort 3000 -State Listen`. Check the reported PID
+with `Get-Process -Id <PID>`. Stop the server with Ctrl+C in the terminal
+that started it. If that terminal is unavailable, use
+`Stop-Process -Id <PID>` only after confirming the PID belongs to the server
+you intend to stop.
+
 Sign in with the seeded administrator and change the password immediately
 (**Sign out menu → change password** endpoint, or `POST /auth/change-password`).
 
