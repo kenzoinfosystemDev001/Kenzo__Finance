@@ -44,6 +44,11 @@ export function LoginForm({ supportEmail }: { supportEmail: string | null }) {
   const [state, formAction] = useActionState<LoginState, FormData>(loginAction, {});
   const [showPassword, setShowPassword] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  // Controlled so a failed sign-in keeps them: React 19 resets uncontrolled
+  // fields after a form action completes, error or not. The password is
+  // deliberately left uncontrolled and is cleared after a failed attempt.
+  const [email, setEmail] = useState('');
+  const [remember, setRemember] = useState(true);
 
   return (
     <form action={formAction} className="space-y-5" noValidate>
@@ -59,7 +64,7 @@ export function LoginForm({ supportEmail }: { supportEmail: string | null }) {
         </label>
         <div className="relative">
           <IconMail size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#8a96ab]" />
-          <input id="email" name="email" type="email" autoComplete="username" required placeholder="Enter your email address" className={inputClass} />
+          <input id="email" name="email" type="email" autoComplete="username" required placeholder="Enter your email address" className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} />
         </div>
       </div>
 
@@ -94,7 +99,7 @@ export function LoginForm({ supportEmail }: { supportEmail: string | null }) {
 
       <div className="flex items-center justify-between gap-3 text-sm">
         <label className="flex cursor-pointer items-center gap-2 text-[#0d162d]">
-          <input type="checkbox" name="remember" defaultChecked className="h-4 w-4 rounded accent-[#1d4fd8]" />
+          <input type="checkbox" name="remember" checked={remember} onChange={(event) => setRemember(event.target.checked)} className="h-4 w-4 rounded accent-[#1d4fd8]" />
           Remember Me
         </label>
         <button type="button" onClick={() => setShowHelp((value) => !value)} className="font-medium text-[#1d4fd8] hover:underline" aria-expanded={showHelp}>

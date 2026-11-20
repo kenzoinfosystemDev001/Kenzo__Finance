@@ -200,7 +200,6 @@ async function handleResponse<T>(response: Response): Promise<T> {
 async function tryRefresh(): Promise<boolean> {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) return false;
-
   // Refresh tokens are single-use. Rotating one where the new pair cannot be
   // stored (a Server Component render) would leave the browser holding a
   // revoked token. src/middleware.ts renews sessions before rendering, so

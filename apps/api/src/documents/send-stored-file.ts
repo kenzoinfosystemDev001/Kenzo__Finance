@@ -36,11 +36,19 @@ export function sendStoredFile(
   response.setHeader('X-Content-Type-Options', 'nosniff');
   response.setHeader('Cache-Control', 'private, no-store');
 
+  pipeStoredFile(file.stream, response, file.filename);
+}
+
+/**
+ * Pipes a stored file to the response with error handling. Also used by the
+ * public sign-in background endpoint, which sets its own headers.
+ */
+export function pipeStoredFile(stream: Readable, response: Response, label: string): void {
   // Without an 'error' listener a read failure (file removed, remote storage
   // dropping the connection) was an uncaught exception that terminated the
   // whole API process.
-  file.stream.once('error', (error) => {
-    logger.error(`Streaming ${file.filename} failed: ${error.message}`);
+  stream.once('error', (error) => {
+    logger.error(`Streaming ${label} failed: ${error.message}`);
     if (!response.headersSent) {
       response.removeHeader('Content-Disposition');
       response.removeHeader('Content-Length');
@@ -55,8 +63,8 @@ export function sendStoredFile(
     }
   });
   // A client that disconnects mid-download must not leave the source open.
-  response.once('close', () => file.stream.destroy());
-  file.stream.pipe(response);
+  response.once('close', () => stream.destroy());
+  stream.pipe(response);
 }
 
 const logger = new Logger('sendStoredFile');

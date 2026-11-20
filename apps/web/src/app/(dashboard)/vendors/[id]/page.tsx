@@ -1,3 +1,4 @@
+import { BUSINESS_TIME_ZONE } from '@/lib/vendor-labels';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -339,7 +340,7 @@ async function ActivityTab({ vendorId, page }: { vendorId: string; page?: string
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="font-semibold text-ink">{activityLabel(entry.action)}</p>
                     <time dateTime={entry.createdAt} className="text-xs text-ink-subtle" title={formatDateTime(entry.createdAt)}>
-                      {formatDate(entry.createdAt)} &middot; {new Date(entry.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      {formatDate(entry.createdAt)} &middot; {new Date(entry.createdAt).toLocaleTimeString('en-IN', { timeZone: BUSINESS_TIME_ZONE, hour: '2-digit', minute: '2-digit' })}
                     </time>
                   </div>
                   {entry.summary && <p className="text-sm text-ink-muted">{entry.summary}</p>}

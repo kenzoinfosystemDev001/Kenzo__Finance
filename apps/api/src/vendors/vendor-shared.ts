@@ -61,8 +61,8 @@ export function addressData(dto: VendorAddressInputDto) {
  *
  * - Two primaries of the same contact type is a client error, not something
  *   to resolve silently by picking one.
- * - If no contact is primary at all, the first one becomes primary, so every
- *   vendor with contacts has a definite main contact.
+ * - Each contact type with no primary gets its first contact as primary, so
+ *   every type in use has a definite main contact.
  */
 export function resolveContactPrimaries<T extends { contactType: VendorContactType; isPrimary: boolean }>(
   contacts: T[],
@@ -78,10 +78,13 @@ export function resolveContactPrimaries<T extends { contactType: VendorContactTy
     seen.add(contact.contactType);
   }
 
-  if (contacts.length > 0 && seen.size === 0) {
-    return contacts.map((contact, index) => ({ ...contact, isPrimary: index === 0 }));
-  }
-  return contacts;
+  // Every contact type that has contacts gets a primary (the first of that
+  // type), matching the rule the contacts service enforces on later edits.
+  return contacts.map((contact) => {
+    if (contact.isPrimary || seen.has(contact.contactType)) return contact;
+    seen.add(contact.contactType);
+    return { ...contact, isPrimary: true };
+  });
 }
 
 /** Exactly one primary address: first one when none flagged, error when several. */

@@ -11,7 +11,7 @@ import {
   buildPaginatedResult,
   type PaginatedResult,
 } from '../common/dto/pagination.dto';
-import { cleanOptional, normalizeName } from '../common/utils/normalize';
+import { cleanOptional, normalizeName, normalizedNameFilter } from '../common/utils/normalize';
 import type {
   CreateCompanyDto,
   QueryCompaniesDto,
@@ -35,7 +35,7 @@ export class CompaniesService {
             OR: [
               { name: { contains: query.search, mode: 'insensitive' } },
               { code: { contains: query.search.toUpperCase() } },
-              { normalizedName: { contains: normalizeName(query.search) } },
+              { normalizedName: normalizedNameFilter(query.search) },
             ],
           }
         : {}),

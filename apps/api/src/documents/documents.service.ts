@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   PayloadTooLargeException,
@@ -18,6 +19,7 @@ import {
   detectFileType,
 } from '../common/utils/file-validation';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
+import { PERMISSIONS, ROLE_CODES, type PermissionCode } from '../common/authz/permissions';
 
 export interface UploadInput {
   buffer: Buffer;
@@ -284,6 +286,74 @@ export class DocumentsService {
       select: documentSummarySelect,
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /**
+   * Access rule for the generic /documents endpoints.
+   *
+   * Every module serves its own documents behind its own permissions
+   * (customer.read, quotation.read, ...). The generic endpoints only checked
+   * document.*, so a role with document.download but no customer access could
+   * fetch a customer's KYC file by id, and document.archive could remove a
+   * quotation's issued PDF or the sign-in background. Here the document's
+   * owner decides what else is required:
+   *
+   * - read/download: the owning module's read permission
+   * - archive: only unattached uploads, or vendor documents with
+   *   vendor.manage_documents; anything else is removed from its own record
+   */
+  async assertGenericAccess(
+    id: string,
+    user: AuthenticatedUser,
+    action: 'read' | 'archive',
+  ): Promise<void> {
+    const document = await this.prisma.document.findUnique({
+      where: { id },
+      select: {
+        kind: true,
+        vendorId: true,
+        productId: true,
+        customerId: true,
+        enquiryId: true,
+        quotationId: true,
+      },
+    });
+    if (!document) throw new NotFoundException(`Document ${id} was not found`);
+    if (user.roles.includes(ROLE_CODES.SUPER_ADMIN)) return;
+
+    const has = (permission: PermissionCode) => user.permissions.includes(permission);
+
+    if (action === 'read') {
+      const required: PermissionCode | null = document.vendorId
+        ? PERMISSIONS.VENDOR_READ
+        : document.productId
+          ? PERMISSIONS.PRODUCT_READ
+          : document.customerId
+            ? PERMISSIONS.CUSTOMER_READ
+            : document.enquiryId
+              ? PERMISSIONS.ENQUIRY_READ
+              : document.quotationId
+                ? PERMISSIONS.QUOTATION_READ
+                : null;
+      // Reported as not found, so the endpoint does not confirm the id exists.
+      if (required && !has(required)) throw new NotFoundException(`Document ${id} was not found`);
+      return;
+    }
+
+    const ownedElsewhere =
+      document.productId ||
+      document.customerId ||
+      document.enquiryId ||
+      document.quotationId ||
+      document.kind === DocumentKind.BRANDING_IMAGE;
+    if (ownedElsewhere) {
+      throw new BadRequestException(
+        'This document belongs to a record. Remove it from that record’s documents instead.',
+      );
+    }
+    if (document.vendorId && !has(PERMISSIONS.VENDOR_MANAGE_DOCUMENTS)) {
+      throw new ForbiddenException('Removing vendor documents needs the vendor.manage_documents permission.');
+    }
   }
 
   /** Current (non-archived) document metadata, used for ownership checks. */

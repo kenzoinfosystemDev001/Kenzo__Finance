@@ -6,7 +6,7 @@ import { NumberingService } from '../numbering/numbering.service';
 import { EnquiriesService } from '../enquiries/enquiries.service';
 import { BRANDING_SETTING_KEYS, SettingsService } from '../settings/settings.service';
 import { buildPaginatedResult, type PaginationQueryDto } from '../common/dto/pagination.dto';
-import { normalizeName } from '../common/utils/normalize';
+import { normalizedNameFilter } from '../common/utils/normalize';
 import { businessToday } from '../common/utils/business-date';
 import { PERMISSIONS, type PermissionCode } from '../common/authz/permissions';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
@@ -390,7 +390,7 @@ export class PaymentsService {
           { receiptNumber: text },
           { transactionReference: text },
           { bankReference: text },
-          { customer: { OR: [{ name: text }, { customerCode: text }, { normalizedName: { contains: normalizeName(query.search) } }] } },
+          { customer: { OR: [{ name: text }, { customerCode: text }, { normalizedName: normalizedNameFilter(query.search) }] } },
           { allocations: { some: { finalInvoice: { invoiceNumber: text } } } },
         ],
       });

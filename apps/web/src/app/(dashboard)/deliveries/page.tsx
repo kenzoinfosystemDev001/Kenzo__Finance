@@ -4,6 +4,7 @@ import { apiFetch, ApiError, queryString } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth-actions';
 import { EmptyState, ErrorState, StatCard, Pagination } from '@/components/ui';
 import { IconTruck } from '@/components/icons';
+import { formatDate } from '@/lib/vendor-labels';
 
 export const metadata: Metadata={title:'Delivery Management'};
 
@@ -39,7 +40,7 @@ export default async function DeliveriesPage({searchParams}:{searchParams:Promis
       <label className="text-sm">Status<select name="status" defaultValue={params.status??''} className="form-input mt-1"><option value="">All</option>{['DRAFT','SCHEDULED','READY_FOR_DISPATCH','DISPATCHED','IN_TRANSIT','PARTIALLY_DELIVERED','DELIVERED','DELIVERY_FAILED','RETURNED','CANCELLED'].map(s=><option key={s}>{s}</option>)}</select></label>
       <button className="btn-secondary" type="submit">Filter</button>
     </form>
-    <div className="card overflow-hidden">{data.items.length===0?<EmptyState title="No deliveries" description="Create a delivery from an issued final invoice."/>:<div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Delivery</th><th>Invoice</th><th>Customer</th><th>Delivery Date</th><th>Status</th><th>Tracking</th></tr></thead><tbody>{data.items.map((d:any)=><tr key={d.id}><td><Link className="font-semibold text-accent" href={`/deliveries/${d.id}`}>{d.deliveryNumber}</Link></td><td>{d.finalInvoice?.invoiceNumber??'—'}</td><td>{d.customer?.name??'—'}</td><td>{d.deliveryDate?new Date(d.deliveryDate).toLocaleDateString():''}</td><td>{d.status}</td><td>{d.trackingNumber??'—'}</td></tr>)}</tbody></table></div>}</div>
+    <div className="card overflow-hidden">{data.items.length===0?<EmptyState title="No deliveries" description="Create a delivery from an issued final invoice."/>:<div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Delivery</th><th>Invoice</th><th>Customer</th><th>Delivery Date</th><th>Status</th><th>Tracking</th></tr></thead><tbody>{data.items.map((d:any)=><tr key={d.id}><td><Link className="font-semibold text-accent" href={`/deliveries/${d.id}`}>{d.deliveryNumber}</Link></td><td>{d.finalInvoice?.invoiceNumber??'—'}</td><td>{d.customer?.name??'—'}</td><td>{d.deliveryDate?formatDate(d.deliveryDate):''}</td><td>{d.status}</td><td>{d.trackingNumber??'—'}</td></tr>)}</tbody></table></div>}</div>
     <Pagination meta={data.meta} basePath="/deliveries" params={{search:params.search,status:params.status}}/>
   </div>;
 }

@@ -1,3 +1,4 @@
+import { businessDayEnd, businessDayStart } from '../common/utils/business-date';
 import {
   BadRequestException,
   ConflictException,
@@ -12,7 +13,7 @@ import {
   buildPaginatedResult,
   type PaginatedResult,
 } from '../common/dto/pagination.dto';
-import { cleanOptional, normalizeName } from '../common/utils/normalize';
+import { cleanOptional, normalizeName, normalizedNameFilter } from '../common/utils/normalize';
 import type {
   CreateStockLocationDto,
   CreateStockMovementDto,
@@ -229,7 +230,7 @@ export class StockService {
       and.push({
         OR: [
           { name: { contains: query.search, mode: 'insensitive' } },
-          { normalizedName: { contains: normalizeName(query.search) } },
+          { normalizedName: normalizedNameFilter(query.search) },
           { productCode: { contains: query.search, mode: 'insensitive' } },
           { modelNumber: { contains: query.search, mode: 'insensitive' } },
         ],
@@ -375,6 +376,20 @@ export class StockService {
     const quantityDelta = sign * dto.quantity;
 
     return this.prisma.$transaction(async (tx) => {
+      // Serialise every movement for this product. Without the row lock two
+      // concurrent issues both read the same balance under READ COMMITTED and
+      // both pass the negative-stock check (and two opening balances can both
+      // see "none recorded yet").
+      const locked = await tx.$queryRaw<{ archivedAt: Date | null }[]>`
+        SELECT "archivedAt" FROM "products" WHERE "id" = ${productId}::uuid FOR UPDATE`;
+      // Re-checked under the lock: the product may have been archived since
+      // the read above.
+      if (locked[0]?.archivedAt) {
+        throw new BadRequestException(
+          'This product is archived. Restore it before posting stock movements.',
+        );
+      }
+
       // Opening balance is the starting count, so it only makes sense once.
       if (dto.type === StockMovementType.OPENING_BALANCE) {
         const existingOpening = await tx.stockMovement.count({
@@ -398,7 +413,9 @@ export class StockService {
       const balanceBefore = current._sum.quantityDelta ?? 0;
       const balanceAfter = balanceBefore + quantityDelta;
 
-      if (balanceAfter < 0 && !allowNegative) {
+      // Only outbound movements are refused: a receipt that reduces an existing
+      // deficit (left over from when negative stock was allowed) must succeed.
+      if (quantityDelta < 0 && balanceAfter < 0 && !allowNegative) {
         throw new ConflictException(
           `Only ${balanceBefore} unit(s) are in stock at ${location.name}; cannot remove ${dto.quantity}.`,
         );
@@ -466,8 +483,8 @@ export class StockService {
       ...(query.from || query.to
         ? {
             occurredAt: {
-              ...(query.from ? { gte: new Date(query.from) } : {}),
-              ...(query.to ? { lte: this.endOfDay(query.to) } : {}),
+              ...(query.from ? { gte: businessDayStart(query.from) } : {}),
+              ...(query.to ? { lt: businessDayEnd(query.to) } : {}),
             },
           }
         : {}),
@@ -540,9 +557,4 @@ export class StockService {
     return location;
   }
 
-  private endOfDay(date: string): Date {
-    const parsed = new Date(date);
-    parsed.setHours(23, 59, 59, 999);
-    return parsed;
-  }
 }

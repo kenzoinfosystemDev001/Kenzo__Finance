@@ -77,7 +77,7 @@ export function EnquiryHeaderActions({
       {can('enquiry.assign') && !locked && (
         <button type="button" className="btn-secondary" onClick={() => setOpen('assign')}><IconUser size={16} /> Assign</button>
       )}
-      {can('enquiry.convert') && canConvertStatus(enquiry.status) && (
+      {can('enquiry.convert') && can('quotation.create') && canConvertStatus(enquiry.status) && (
         <button type="button" className="btn-secondary" onClick={conversion.start} disabled={conversion.pending}>
           <IconArrowRight size={16} /> {conversion.pending ? 'Checking...' : 'Convert to Quotation'}
         </button>

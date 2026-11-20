@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useTransition } from 'react';
 
 export default function DashboardError({
   error,
@@ -9,9 +10,20 @@ export default function DashboardError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+  const [retrying, startRetry] = useTransition();
+
   useEffect(() => {
     console.error(error);
   }, [error]);
+
+  // reset() alone re-renders the cached failed Server Component payload;
+  // refresh() refetches it so a recovered API actually shows.
+  const retry = () =>
+    startRetry(() => {
+      router.refresh();
+      reset();
+    });
 
   return (
     <div className="mx-auto max-w-lg py-16 text-center">
@@ -25,8 +37,8 @@ export default function DashboardError({
           Reference: {error.digest}
         </p>
       )}
-      <button type="button" onClick={reset} className="btn-primary mt-6">
-        Try again
+      <button type="button" onClick={retry} disabled={retrying} className="btn-primary mt-6">
+        {retrying ? 'Retrying...' : 'Try again'}
       </button>
     </div>
   );

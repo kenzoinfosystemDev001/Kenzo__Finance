@@ -195,7 +195,7 @@ export class CustomerChildrenService {
     const existing = await this.prisma.customerAddress.findUnique({ where: { id: addressId } });
     if (!existing) throw new NotFoundException('Address was not found.');
     if (dto.addressLine1 !== undefined && !dto.addressLine1?.trim()) throw new BadRequestException('Address line 1 is required.');
-    if (dto.isDefault === false && existing.isDefault && !dto.addressType) {
+    if (dto.isDefault === false && existing.isDefault && (dto.addressType ?? existing.addressType) === existing.addressType) {
       throw new BadRequestException('Mark another address of this type as default instead.');
     }
 
@@ -334,7 +334,7 @@ export class CustomerChildrenService {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.customerProductInterest.update({
         where: { id: interestId },
-        data: { notes: cleanOptional(dto.notes) ?? null },
+        data: dto.notes !== undefined ? { notes: cleanOptional(dto.notes) ?? null } : {},
       });
       await this.audit(tx, actor, context, customerId, {
         action: 'customer.product.update',

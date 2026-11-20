@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  ValidateIf,
 } from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 
@@ -47,8 +48,10 @@ export class CreateCompanyDto {
 
 export class UpdateCompanyDto {
   @ApiPropertyOptional()
-  @IsOptional()
+  // Validated whenever present, so `null` or a blank name is a 400.
+  @ValidateIf((o: UpdateCompanyDto) => o.name !== undefined)
   @IsString()
+  @IsNotEmpty()
   @MaxLength(150)
   @Transform(trim)
   name?: string;

@@ -1,3 +1,4 @@
+import { businessDayEnd, businessDayStart } from '../common/utils/business-date';
 import {
   BadRequestException,
   ConflictException,
@@ -16,7 +17,7 @@ import {
   PaginationQueryDto,
   type PaginatedResult,
 } from '../common/dto/pagination.dto';
-import { cleanOptional, normalizeName } from '../common/utils/normalize';
+import { cleanOptional, normalizeName, normalizedNameFilter } from '../common/utils/normalize';
 import { PERMISSIONS } from '../common/authz/permissions';
 import type {
   CreateProductCategoryDto,
@@ -204,12 +205,10 @@ export class ProductsService {
     if (query.categoryId) and.push({ categoryId: query.categoryId });
     if (query.vendorId) and.push({ vendors: { some: { vendorId: query.vendorId } } });
 
-    if (query.createdFrom) and.push({ createdAt: { gte: new Date(`${query.createdFrom.slice(0, 10)}T00:00:00.000Z`) } });
+    if (query.createdFrom) and.push({ createdAt: { gte: businessDayStart(query.createdFrom) } });
     if (query.createdTo) {
-      // Inclusive: everything before the start of the following day.
-      const end = new Date(`${query.createdTo.slice(0, 10)}T00:00:00.000Z`);
-      end.setUTCDate(end.getUTCDate() + 1);
-      and.push({ createdAt: { lt: end } });
+      // Inclusive: everything before the start of the following business day.
+      and.push({ createdAt: { lt: businessDayEnd(query.createdTo) } });
     }
 
     if (query.companyName) {
@@ -231,7 +230,7 @@ export class ProductsService {
       and.push({
         OR: [
           { name: text },
-          { normalizedName: { contains: normalizeName(query.search) } },
+          { normalizedName: normalizedNameFilter(query.search) },
           { productCode: text },
           { sku: text },
           { modelNumber: text },
@@ -630,17 +629,27 @@ export class ProductsService {
     if (!existing) throw new NotFoundException(`Product ${id} was not found`);
     if (existing.archivedAt) throw new BadRequestException('This product is already archived.');
 
-    if (await this.stockService.isTrackingEnabled()) {
-      const onHand = await this.stockService.getProductBalance(id);
+    // One transaction: the stock check, the state change and its audit row
+    // succeed or fail together.
+    return this.prisma.$transaction(async (tx) => {
+      // Same row lock as StockService.postMovement, so a movement cannot land
+      // between the balance check and the archive.
+      await tx.$queryRaw`SELECT "id" FROM "products" WHERE "id" = ${id}::uuid FOR UPDATE`;
+
+      // Checked whether or not tracking is currently on: the ledger survives
+      // tracking being switched off, and archived products drop out of every
+      // stock report once it is switched back on.
+      const ledger = await tx.stockMovement.aggregate({
+        where: { productId: id },
+        _sum: { quantityDelta: true },
+      });
+      const onHand = ledger._sum.quantityDelta ?? 0;
       if (onHand !== 0) {
         throw new ConflictException(
           `This product still has ${onHand} unit(s) in stock. Issue or adjust the stock to zero before archiving.`,
         );
       }
-    }
 
-    // One transaction: the state change and its audit row succeed or fail together.
-    return this.prisma.$transaction(async (tx) => {
       const archived = await tx.product.update({
         where: { id },
         data: { archivedAt: new Date(), isActive: false, updatedById: actor.id },
@@ -805,7 +814,9 @@ export class ProductsService {
       actor,
     );
 
-    if (!document.mimeType.startsWith('image/')) {
+    // Explicit list: TIFF passes the upload signature check but browsers
+    // cannot render it as a catalogue image.
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(document.mimeType)) {
       // The upload already verified the signature; this rejects a valid PDF
       // being set as the catalogue image.
       await this.documentsService.archive(document.id, actor);
@@ -914,7 +925,7 @@ export class ProductsService {
     const updated = await this.prisma.productCategory.update({
       where: { id },
       data: {
-        ...(dto.name !== undefined ? { name: dto.name, normalizedName: normalizeName(dto.name) } : {}),
+        ...(dto.name ? { name: dto.name, normalizedName: normalizeName(dto.name) } : {}),
         ...(dto.description !== undefined ? { description: cleanOptional(dto.description) ?? null } : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       },

@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiPropertyOptional, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min, ValidateIf } from 'class-validator';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { normalizeName } from '../common/utils/normalize';
@@ -45,8 +45,11 @@ export class CreateVendorCategoryDto {
 
 export class UpdateVendorCategoryDto {
   @ApiPropertyOptional()
-  @IsOptional()
+  // Validated whenever present: IsOptional would let `null` through (500 in
+  // normalizeName) and a blank name would save an empty category.
+  @ValidateIf((o: UpdateVendorCategoryDto) => o.name !== undefined)
   @IsString()
+  @IsNotEmpty()
   @MaxLength(100)
   @Transform(trim)
   name?: string;

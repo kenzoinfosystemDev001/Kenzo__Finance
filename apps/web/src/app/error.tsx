@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useTransition } from 'react';
 
 /**
  * Catches anything thrown while rendering a page outside the dashboard,
@@ -20,9 +21,19 @@ export default function RootError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+  const [retrying, startRetry] = useTransition();
+
   useEffect(() => {
     console.error(error);
   }, [error]);
+
+  // reset() alone re-renders the cached failed payload; refresh() refetches.
+  const retry = () =>
+    startRetry(() => {
+      router.refresh();
+      reset();
+    });
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-12">
@@ -45,8 +56,8 @@ export default function RootError({
           )}
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <button type="button" onClick={reset} className="btn-primary">
-              Try again
+            <button type="button" onClick={retry} disabled={retrying} className="btn-primary">
+              {retrying ? 'Retrying...' : 'Try again'}
             </button>
             <Link href="/" className="btn-secondary">
               Back to home

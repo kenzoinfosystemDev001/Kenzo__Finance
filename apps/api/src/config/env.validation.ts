@@ -23,11 +23,15 @@ function hasValue(value: unknown): boolean {
 function normalizeCloudinaryUrl(value: unknown): unknown {
   if (typeof value !== 'string') return value;
 
-  return value
+  const cleaned = value
     .trim()
     .replace(/^CLOUDINARY_URL\s*=\s*/i, '')
     .replace(/^["']|["']$/g, '')
     .trim();
+  // `CLOUDINARY_URL=` (as in .env.example) reaches here as ''. That means
+  // "not set", not "set to an invalid URL", or STORAGE_DRIVER=local could
+  // not boot from the example file.
+  return cleaned === '' ? undefined : cleaned;
 }
 
 /**
@@ -97,8 +101,18 @@ export const envSchema = z.object({
   AUTH_REFRESH_SECRET: z
     .string()
     .min(32, 'AUTH_REFRESH_SECRET must be at least 32 characters'),
-  AUTH_ACCESS_TTL: z.string().default('15m'),
-  AUTH_REFRESH_TTL: z.string().default('7d'),
+  // Same grammar AuthService.parseTtlMs accepts; anything else would boot
+  // fine and then fail every sign-in.
+  AUTH_ACCESS_TTL: z
+    .string()
+    .trim()
+    .regex(/^\d+[smhd]$/, 'AUTH_ACCESS_TTL must look like 15m, 2h or 7d')
+    .default('15m'),
+  AUTH_REFRESH_TTL: z
+    .string()
+    .trim()
+    .regex(/^\d+[smhd]$/, 'AUTH_REFRESH_TTL must look like 15m, 2h or 7d')
+    .default('7d'),
 
   // 'local' needs a persistent disk in production; 'cloudinary' survives an
   // ephemeral container such as Render.

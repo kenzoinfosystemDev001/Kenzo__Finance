@@ -1,7 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
+import { startTransition, useActionState } from 'react';
 import { uploadOcrDocumentAction, type OcrUploadState } from '@/lib/vendor-actions';
 import { DOCUMENT_KIND_LABELS, formatBytes, UPLOADABLE_DOCUMENT_KINDS } from '@/lib/vendor-labels';
 import type { OcrEngineStatus, OcrJob, ProductCategory, VendorCategory } from '@/lib/types';
@@ -15,8 +14,7 @@ import {
 import { ResultAlert } from '@/components/client-ui';
 import { IconCheckCircle, IconFile, IconScan, IconUpload } from '@/components/icons';
 
-function UploadButton() {
-  const { pending } = useFormStatus();
+function UploadButton({ pending }: { pending: boolean }) {
   return (
     <button type="submit" className="btn-primary px-5" disabled={pending}>
       <IconUpload size={16} />
@@ -119,13 +117,22 @@ export function OcrVendorWizard({
   permissions: string[];
   engine: OcrEngineStatus | null;
 }) {
-  const [state, formAction] = useActionState<OcrUploadState, FormData>(uploadOcrDocumentAction, {});
+  const [state, formAction, pending] = useActionState<OcrUploadState, FormData>(uploadOcrDocumentAction, {});
+
+  // Submitted by hand rather than through the form's `action` prop: React 19
+  // resets a form after its action completes, which threw away the chosen
+  // file and document type whenever the upload was rejected.
+  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(() => formAction(formData));
+  };
   const job = state.job;
 
   if (!job) {
     return (
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <form action={formAction} className="card space-y-5 p-6">
+        <form onSubmit={submit} className="card space-y-5 p-6">
           <ResultAlert result={{ error: state.error }} />
 
           <div>
@@ -164,7 +171,7 @@ export function OcrVendorWizard({
             <p className="field-hint">The file type is verified from its contents, not its name. The file is stored privately.</p>
           </div>
 
-          <UploadButton />
+          <UploadButton pending={pending} />
         </form>
 
         <aside className="space-y-4">

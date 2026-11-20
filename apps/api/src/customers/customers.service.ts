@@ -1,3 +1,4 @@
+import { businessDayEnd, businessDayStart } from '../common/utils/business-date';
 import {
   BadRequestException,
   ConflictException,
@@ -9,7 +10,7 @@ import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { NumberingService, SEQUENCE_KEYS } from '../numbering/numbering.service';
 import { buildPaginatedResult, PaginationQueryDto } from '../common/dto/pagination.dto';
-import { cleanOptional, normalizeEmail, normalizeName, normalizePhone, normalizeTaxId } from '../common/utils/normalize';
+import { cleanOptional, normalizeEmail, normalizeName, normalizedNameFilter, normalizePhone, normalizeTaxId } from '../common/utils/normalize';
 import { panFromGstin } from '../common/utils/tax-id';
 import { PERMISSIONS } from '../common/authz/permissions';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
@@ -374,11 +375,10 @@ export class CustomersService {
     if (query.country) and.push({ addresses: { some: { country: { equals: query.country, mode: 'insensitive' } } } });
     if (query.state) and.push({ addresses: { some: { state: { contains: query.state, mode: 'insensitive' } } } });
     if (query.productId) and.push({ interests: { some: { productId: query.productId } } });
-    if (query.createdFrom) and.push({ createdAt: { gte: new Date(`${query.createdFrom.slice(0, 10)}T00:00:00.000Z`) } });
+    if (query.createdFrom) and.push({ createdAt: { gte: businessDayStart(query.createdFrom) } });
     if (query.createdTo) {
-      const end = new Date(`${query.createdTo.slice(0, 10)}T00:00:00.000Z`);
-      end.setUTCDate(end.getUTCDate() + 1);
-      and.push({ createdAt: { lt: end } });
+      // Inclusive: everything before the start of the following business day.
+      and.push({ createdAt: { lt: businessDayEnd(query.createdTo) } });
     }
     if (query.search) {
       const term = query.search;
@@ -389,7 +389,7 @@ export class CustomersService {
       and.push({
         OR: [
           { name: text },
-          { normalizedName: { contains: normalizeName(term) } },
+          { normalizedName: normalizedNameFilter(term) },
           { customerCode: text },
           { gstin: { contains: term.toUpperCase().replace(/\s/g, '') } },
           { pan: { contains: term.toUpperCase().replace(/\s/g, '') } },

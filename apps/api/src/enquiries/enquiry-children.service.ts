@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DocumentKind, Prisma } from '@prisma/client';
-import { businessToday } from '../common/utils/business-date';
+import { businessDayEnd, businessDayStart, businessToday } from '../common/utils/business-date';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { DocumentsService } from '../documents/documents.service';
 import { buildPaginatedResult } from '../common/dto/pagination.dto';
-import { cleanOptional } from '../common/utils/normalize';
+import { cleanMultiline, cleanOptional } from '../common/utils/normalize';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
 import {
@@ -218,11 +218,11 @@ export class EnquiryChildrenService {
           followUpDate: new Date(dto.followUpDate),
           method: dto.method,
           discussionSummary: dto.discussionSummary,
-          customerResponse: cleanOptional(dto.customerResponse) ?? null,
+          customerResponse: cleanMultiline(dto.customerResponse) ?? null,
           outcome: dto.outcome,
           nextFollowUpDate: dto.nextFollowUpDate ? dateOnly(dto.nextFollowUpDate) : null,
           assignedToId: dto.assignedToId ?? null,
-          internalNotes: cleanOptional(dto.internalNotes) ?? null,
+          internalNotes: cleanMultiline(dto.internalNotes) ?? null,
           createdById: actor.id,
         },
       });
@@ -259,11 +259,11 @@ export class EnquiryChildrenService {
           ...(dto.contactId !== undefined ? { contactId: dto.contactId || null } : {}),
           ...(dto.method ? { method: dto.method } : {}),
           ...(dto.discussionSummary ? { discussionSummary: dto.discussionSummary } : {}),
-          ...(dto.customerResponse !== undefined ? { customerResponse: cleanOptional(dto.customerResponse) ?? null } : {}),
+          ...(dto.customerResponse !== undefined ? { customerResponse: cleanMultiline(dto.customerResponse) ?? null } : {}),
           ...(dto.outcome ? { outcome: dto.outcome } : {}),
           ...(dto.nextFollowUpDate !== undefined ? { nextFollowUpDate: dto.nextFollowUpDate ? dateOnly(dto.nextFollowUpDate) : null } : {}),
           ...(dto.assignedToId !== undefined ? { assignedToId: dto.assignedToId || null } : {}),
-          ...(dto.internalNotes !== undefined ? { internalNotes: cleanOptional(dto.internalNotes) ?? null } : {}),
+          ...(dto.internalNotes !== undefined ? { internalNotes: cleanMultiline(dto.internalNotes) ?? null } : {}),
         },
       });
       await this.resyncNextFollowUp(tx, existing.enquiryId, previousPlan);
@@ -306,7 +306,7 @@ export class EnquiryChildrenService {
       ...(query.assignedToId ? { assignedToId: query.assignedToId } : {}),
       ...(query.customerId ? { enquiry: { customerId: query.customerId } } : {}),
       ...(query.dateFrom || query.dateTo
-        ? { followUpDate: { ...(query.dateFrom ? { gte: dateOnly(query.dateFrom) } : {}), ...(query.dateTo ? { lt: new Date(dateOnly(query.dateTo).getTime() + 86_400_000) } : {}) } }
+        ? { followUpDate: { ...(query.dateFrom ? { gte: businessDayStart(query.dateFrom) } : {}), ...(query.dateTo ? { lt: businessDayEnd(query.dateTo) } : {}) } }
         : {}),
     };
   }

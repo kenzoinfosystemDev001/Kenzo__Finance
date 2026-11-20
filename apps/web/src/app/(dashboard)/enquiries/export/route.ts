@@ -23,8 +23,17 @@ export async function GET(request: NextRequest): Promise<Response> {
     {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
+      // Exports can be large, but a hung API must not hold the request forever.
+      signal: AbortSignal.timeout(60_000),
     },
-  );
+  ).catch(() => null);
+
+  if (!upstream) {
+    return NextResponse.json(
+      { message: 'The API could not be reached. Try again shortly.' },
+      { status: 503 },
+    );
+  }
 
   if (!upstream.ok) {
     return NextResponse.json(
