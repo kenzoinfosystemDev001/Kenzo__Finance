@@ -46,7 +46,7 @@ const NAV: NavItem[] = [
   { label: 'Proforma Invoice', href: '/proforma-invoices', icon: IconInvoice, permission: 'proforma.read' },
   { label: 'Final Invoice', href: '/final-invoices', icon: IconFile, permission: 'invoice.read' },
   { label: 'Payment Management', href: '/payments', icon: IconWallet, comingSoon: true },
-  { label: 'Delivery Management', href: '/deliveries', icon: IconTruck, comingSoon: true },
+  { label: 'Delivery Management', href: '/deliveries', icon: IconTruck, permission: 'delivery.read' },
   { label: 'Reports & Analytics', href: '/reports', icon: IconChart, comingSoon: true },
   { label: 'Settings', href: '/settings', icon: IconSettings },
 ];
