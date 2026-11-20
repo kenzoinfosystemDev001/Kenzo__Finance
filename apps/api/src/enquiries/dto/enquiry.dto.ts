@@ -145,7 +145,7 @@ export class CreateEnquiryDto {
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Expected budget must be a number with up to 2 decimals' })
   @Min(0)
-  @Max(1_000_000_000_000)
+  @Max(999_999_999_999.99)
   expectedBudget?: number;
 
   @ApiPropertyOptional({ default: 'INR' })

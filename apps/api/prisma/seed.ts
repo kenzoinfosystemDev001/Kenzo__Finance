@@ -208,7 +208,9 @@ async function seedVendorCategories(): Promise<void> {
         description: category.description,
         sortOrder: category.sortOrder,
       },
-      update: { description: category.description, sortOrder: category.sortOrder },
+      // Existing rows are left alone: the seed runs on every deploy and must
+      // not undo descriptions or ordering an administrator has edited.
+      update: {},
     });
   }
   console.log(`  vendor categories: ${VENDOR_CATEGORIES.length}`);

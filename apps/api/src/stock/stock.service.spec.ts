@@ -34,6 +34,7 @@ describe('StockService', () => {
       findMany: jest.Mock;
     };
     $transaction: jest.Mock;
+    $queryRaw: jest.Mock;
   };
   let settings: { isStockTrackingEnabled: jest.Mock; getBoolean: jest.Mock };
 
@@ -61,6 +62,7 @@ describe('StockService', () => {
         count: jest.fn().mockResolvedValue(0),
         findMany: jest.fn().mockResolvedValue([]),
       },
+      $queryRaw: jest.fn().mockResolvedValue([]),
       $transaction: jest.fn(async (arg: unknown) =>
         typeof arg === 'function'
           ? (arg as (tx: unknown) => Promise<unknown>)(prisma)
@@ -164,6 +166,36 @@ describe('StockService', () => {
       ).rejects.toBeInstanceOf(ConflictException);
 
       expect(prisma.stockMovement.create).not.toHaveBeenCalled();
+    });
+
+    it('accepts a receipt that only reduces an existing deficit', async () => {
+      // -10 on hand from when negative stock was allowed; the setting is now off.
+      prisma.stockMovement.aggregate.mockResolvedValue({
+        _sum: { quantityDelta: -10 },
+      });
+
+      await service.postMovement(
+        'p1',
+        { type: StockMovementType.RECEIPT, quantity: 4 },
+        actor,
+        context,
+      );
+
+      expect(prisma.stockMovement.create.mock.calls[0][0].data.balanceAfter).toBe(-6);
+    });
+
+    it('locks the product row before reading the balance', async () => {
+      await service.postMovement(
+        'p1',
+        { type: StockMovementType.RECEIPT, quantity: 1 },
+        actor,
+        context,
+      );
+
+      expect(prisma.$queryRaw).toHaveBeenCalled();
+      expect(prisma.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+        prisma.stockMovement.aggregate.mock.invocationCallOrder[0],
+      );
     });
 
     it('permits going negative when that is explicitly allowed', async () => {

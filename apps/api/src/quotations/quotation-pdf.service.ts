@@ -35,6 +35,42 @@ type RevisionForPdf = Prisma.QuotationRevisionGetPayload<{ include: typeof revis
 const PAGE = { width: 595.28, height: 841.89, margin: 40 };
 const CONTENT_WIDTH = PAGE.width - PAGE.margin * 2;
 const BOTTOM = PAGE.height - PAGE.margin - 24; // room for the footer
+/**
+ * Tallest item row that still fits on a fresh page under the continuation
+ * header and the repeated table header. A row is never split across pages,
+ * so a taller one (a long description plus a long spec list) used to spill
+ * off the page with its price columns stranded on the previous one.
+ */
+const MAX_ROW_HEIGHT = BOTTOM - PAGE.margin - 120;
+
+/**
+ * Keeps an item's secondary lines within `budget` points: lines are kept in
+ * order while they fit, and the first that does not is shortened with an
+ * ellipsis. The full text stays on the quotation record.
+ */
+function fitItemText(lines: string[], budget: number, measure: (s: string) => number): string[] {
+  const kept: string[] = [];
+  let remaining = budget;
+  for (const line of lines) {
+    const height = measure(line);
+    if (height <= remaining) {
+      kept.push(line);
+      remaining -= height;
+      continue;
+    }
+    // Longest prefix that fits, found by bisection on the character count.
+    let low = 0;
+    let high = line.length;
+    while (low < high) {
+      const mid = Math.ceil((low + high) / 2);
+      if (measure(`${line.slice(0, mid).trimEnd()}…`) <= remaining) low = mid;
+      else high = mid - 1;
+    }
+    if (low > 0) kept.push(`${line.slice(0, low).trimEnd()}…`);
+    break;
+  }
+  return kept;
+}
 const COLORS = { ink: '#111827', muted: '#6b7280', line: '#d1d5db', head: '#1e293b', headText: '#ffffff', zebra: '#f8fafc' };
 
 /** Columns of the item table; widths sum to CONTENT_WIDTH. */
@@ -262,12 +298,16 @@ export class QuotationPdfService {
     revision.items.forEach((item, index) => {
       const itemWidth = COLUMNS[1].width - 8;
       const title = `${item.productName}${item.modelName ? ` — ${item.modelName}` : ''}`;
-      const sub = [
-        [item.brandName, item.modelNumber && `Model no. ${item.modelNumber}`, item.productCode].filter(Boolean).join(' · '),
-        item.description ?? '',
-        readSpecifications(item.specifications).map((s) => `${s.name}: ${s.value}`).join('; '),
-        item.remarks ?? '',
-      ].filter(Boolean);
+      const sub = fitItemText(
+        [
+          [item.brandName, item.modelNumber && `Model no. ${item.modelNumber}`, item.productCode].filter(Boolean).join(' · '),
+          item.description ?? '',
+          readSpecifications(item.specifications).map((s) => `${s.name}: ${s.value}`).join('; '),
+          item.remarks ?? '',
+        ].filter(Boolean),
+        MAX_ROW_HEIGHT - 10 - heightOf(title, itemWidth, 8.5, true),
+        (s) => heightOf(s, itemWidth, 7.5) + 1,
+      );
       const discount = item.discountAmount.isZero() ? '—' : `${formatMoney(item.discountAmount, currency)}${item.discountType === 'PERCENT' ? `\n(${item.discountValue.toString()}%)` : ''}`;
       const tax = item.taxRate.isZero() ? '—' : `${formatMoney(item.taxAmount, currency)}\n(${item.taxLabel ? `${item.taxLabel} ` : ''}${item.taxRate.toString()}%)`;
       const cells: Record<string, string> = {

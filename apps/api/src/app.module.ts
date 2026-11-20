@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { join } from 'node:path';
 import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './database/prisma.module';
@@ -23,6 +23,7 @@ import { QuotationsModule } from './quotations/quotations.module';
 import { HealthController } from './health/health.controller';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
+import { AppThrottlerGuard } from './common/guards/app-throttler.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 @Module({
@@ -57,7 +58,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     // Order matters: throttle, then authenticate, then authorise.
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: AppThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
   ],

@@ -1,6 +1,7 @@
 // Readable rather than fs.ReadStream: a remote storage driver (Cloudinary,
 // S3) streams over the network and never opens a file descriptor.
-import type { Readable } from 'node:stream';
+import { pipeline, type Readable } from 'node:stream';
+import { Logger } from '@nestjs/common';
 import type { Response } from 'express';
 
 /**
@@ -35,5 +36,21 @@ export function sendStoredFile(
   response.setHeader('X-Content-Type-Options', 'nosniff');
   response.setHeader('Cache-Control', 'private, no-store');
 
-  file.stream.pipe(response);
+  pipeStoredFile(file.stream, response);
+}
+
+const logger = new Logger('StoredFile');
+
+/**
+ * `stream.pipe()` attaches no error listener to the source, so a read error
+ * (file removed, remote storage dropping the connection) became an unhandled
+ * 'error' event and took the whole API process down. `pipeline` routes it
+ * here instead, and the half-sent response is aborted.
+ */
+export function pipeStoredFile(source: Readable, response: Response): void {
+  pipeline(source, response, (error) => {
+    if (!error) return;
+    logger.warn(`Streaming a stored file failed: ${error.message}`);
+    response.destroy(error);
+  });
 }

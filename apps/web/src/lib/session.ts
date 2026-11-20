@@ -45,6 +45,21 @@ export async function setSessionCookies(
   store.set(REMEMBER_COOKIE, persistent ? '1' : '0', { ...baseOptions, ...refreshMaxAge });
 }
 
+/**
+ * True in a Server Action or Route Handler, false while rendering a Server
+ * Component (where `cookies().set` throws). A refresh must not be attempted
+ * when its rotated token could not be stored: the browser would keep the
+ * revoked one and the next use would look like token theft to the API.
+ */
+export async function canWriteSessionCookies(): Promise<boolean> {
+  try {
+    (await cookies()).set('kenzo_probe', '', { ...baseOptions, maxAge: 0 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function getAccessToken(): Promise<string | undefined> {
   return (await cookies()).get(ACCESS_COOKIE)?.value;
 }

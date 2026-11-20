@@ -20,7 +20,8 @@ export default async function SettingsPage() {
 
   const branding = await getLoginBranding();
   const canReadQuotations = user?.permissions.includes('quotation.read') ?? false;
-  const quotationSettings = canReadQuotations
+  // The API serves these to quotation readers and to settings managers.
+  const quotationSettings = canReadQuotations || canManage
     ? await apiFetch<QuotationSettings>('/quotations/settings').catch(() => null)
     : null;
 

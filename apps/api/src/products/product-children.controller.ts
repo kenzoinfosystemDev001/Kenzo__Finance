@@ -201,4 +201,16 @@ export class ProductDocumentsController {
   ): Promise<void> {
     sendStoredFile(response, await this.documentsService.open(productId, documentId, user, preview === 'true'));
   }
+
+  @Get(':documentId/image')
+  @RequirePermissions(PERMISSIONS.PRODUCT_READ)
+  @ApiOperation({ summary: 'A product or model image, served inline (product.read is enough)' })
+  async image(
+    @Param('productId', uuid()) productId: string,
+    @Param('documentId', uuid()) documentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res() response: Response,
+  ): Promise<void> {
+    sendStoredFile(response, await this.documentsService.openImage(productId, documentId, user));
+  }
 }

@@ -5,7 +5,8 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { OcrStatus, Prisma } from '@prisma/client';
+import { DocumentKind, OcrStatus, Prisma } from '@prisma/client';
+import { VENDOR_DOCUMENT_KINDS } from '../vendors/dto/vendor-children.dto';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { StorageService } from '../storage/storage.service';
@@ -72,11 +73,33 @@ export class OcrService {
         mimeType: true,
         originalFilename: true,
         archivedAt: true,
+        kind: true,
+        vendorId: true,
+        productId: true,
+        customerId: true,
+        enquiryId: true,
+        quotationId: true,
       },
     });
 
     if (!document || document.archivedAt) {
       throw new NotFoundException(`Document ${documentId} was not found`);
+    }
+
+    // Only an unattached vendor-onboarding upload may be read here. Otherwise
+    // `ocr.submit` alone would expose the text of a customer's PAN or a
+    // quotation PDF, and confirming the draft would re-home that document
+    // onto the new vendor.
+    const owned =
+      document.vendorId ||
+      document.productId ||
+      document.customerId ||
+      document.enquiryId ||
+      document.quotationId;
+    if (owned || !(VENDOR_DOCUMENT_KINDS as readonly DocumentKind[]).includes(document.kind)) {
+      throw new BadRequestException(
+        'Only a newly uploaded vendor document that is not yet attached to a record can be read by OCR.',
+      );
     }
 
     const job = await this.prisma.ocrJob.create({

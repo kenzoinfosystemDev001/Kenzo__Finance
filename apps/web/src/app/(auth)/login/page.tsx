@@ -4,18 +4,10 @@ import { getSession } from '@/lib/auth-actions';
 import { getLoginBranding, loginBackgroundUrl } from '@/lib/branding';
 import { ApiUnavailable } from '@/components/api-unavailable';
 import { IconChart, IconHandshake, IconShield } from '@/components/icons';
+import { BrandLogo } from '@/components/brand-logo';
 import { LoginForm } from './login-form';
 
 export const metadata: Metadata = { title: 'Sign in' };
-
-function BrandMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 40 32" className={className} aria-hidden>
-      <path d="M20 2 36 30h-8L20 15 12 30H4Z" fill="rgb(var(--accent))" />
-      <path d="M20 15 28 30h-7.5L17 23.5Z" fill="#60a5fa" />
-    </svg>
-  );
-}
 
 const FEATURES = [
   { icon: IconHandshake, label: 'Manage Vendors & Products' },
@@ -60,7 +52,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         />
 
         <div className="relative flex items-center gap-5">
-          <BrandMark className="h-14 w-[4.5rem]" />
+          <BrandLogo className="h-16 w-16" priority />
           <div>
             <p className="text-4xl font-bold leading-none tracking-[0.12em]">KENZO</p>
             <p className="mt-1 text-xs font-medium uppercase tracking-[0.42em] text-blue-100/80">Infosystems</p>
@@ -104,7 +96,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <div className="relative w-full max-w-md rounded-3xl border border-white bg-white/95 px-7 py-9 shadow-[0_24px_60px_-20px_rgba(15,40,100,0.25)] sm:px-10">
           <div className="text-center">
             <span className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#e8f0ff]">
-              <BrandMark className="h-12 w-16" />
+              <BrandLogo className="h-16 w-16" />
             </span>
             <h2 className="mt-5 text-3xl font-bold text-[#0d162d]">Kenzo Infosystems</h2>
             <div className="mt-2 flex items-center justify-center gap-3 text-[#43516b]">

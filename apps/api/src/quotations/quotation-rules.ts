@@ -1,3 +1,4 @@
+import { businessToday } from '../common/utils/business-date';
 import { QuotationStatus } from '@prisma/client';
 
 /**
@@ -39,9 +40,9 @@ export const REMARKS_REQUIRED: QuotationStatus[] = [QuotationStatus.REJECTED, Qu
 
 export const label = (status: QuotationStatus) => status.toLowerCase().replace(/_/g, ' ');
 
+/** Today in the business time zone (see common/utils/business-date). */
 export function todayUtc(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  return businessToday();
 }
 
 export const dateOnly = (value: string) => new Date(`${value.slice(0, 10)}T00:00:00.000Z`);

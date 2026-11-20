@@ -1,4 +1,4 @@
-import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Logger, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { PrismaService } from '../database/prisma.service';
@@ -7,6 +7,8 @@ import { Public } from '../common/decorators';
 @ApiTags('Health')
 @Controller('health')
 export class HealthController {
+  private readonly logger = new Logger(HealthController.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   @Public()
@@ -28,11 +30,15 @@ export class HealthController {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
+      this.logger.warn(
+        `Readiness check failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
       response.status(HttpStatus.SERVICE_UNAVAILABLE);
       return {
         status: 'degraded',
+        // The raw driver message names the database host; this endpoint is
+        // public, so the detail goes to the log only.
         database: 'unreachable',
-        error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
       };
     }

@@ -17,7 +17,7 @@ import {
 import {
   cleanOptional,
   normalizeEmail,
-  normalizeName,
+  normalizeName, normalizedNameFilter,
   normalizePhone,
   normalizeTaxId,
 } from '../common/utils/normalize';
@@ -199,25 +199,35 @@ export class VendorsService {
 
     if (conditions.length === 0) return [];
 
-    const candidates = await this.prisma.vendor.findMany({
-      where: {
-        OR: conditions,
-        ...(excludeVendorId ? { id: { not: excludeVendorId } } : {}),
-      },
-      select: {
-        id: true,
-        vendorCode: true,
-        businessName: true,
-        normalizedName: true,
-        gstin: true,
-        email: true,
-        phone: true,
-        status: true,
-        archivedAt: true,
-        contacts: { select: { email: true, phone: true } },
-      },
+    const candidateSelect = {
+      id: true,
+      vendorCode: true,
+      businessName: true,
+      normalizedName: true,
+      gstin: true,
+      email: true,
+      phone: true,
+      status: true,
+      archivedAt: true,
+      contacts: { select: { email: true, phone: true } },
+    } satisfies Prisma.VendorSelect;
+    const notExcluded = excludeVendorId ? { id: { not: excludeVendorId } } : {};
+
+    // The blocking GSTIN match is looked up on its own. Inside the capped OR
+    // query below it could be crowded out by ten vendors sharing a phone or
+    // e-mail, and the create would then fail with a bare P2002 instead.
+    const gstinMatch = gstin
+      ? await this.prisma.vendor.findFirst({ where: { gstin, ...notExcluded }, select: candidateSelect })
+      : null;
+
+    const others = await this.prisma.vendor.findMany({
+      where: { OR: conditions, ...notExcluded },
+      select: candidateSelect,
       take: 10,
     });
+    const candidates = gstinMatch
+      ? [gstinMatch, ...others.filter((candidate) => candidate.id !== gstinMatch.id)]
+      : others;
 
     const matches: DuplicateMatch[] = [];
 
@@ -387,10 +397,23 @@ export class VendorsService {
 
         // Attach the source document to the new vendor so the original stays
         // retrievable from the vendor record.
-        await tx.document.update({
-          where: { id: ocrJob.documentId },
+        // Guarded: never move a document that already belongs to a record.
+        const attached = await tx.document.updateMany({
+          where: {
+            id: ocrJob.documentId,
+            vendorId: null,
+            productId: null,
+            customerId: null,
+            enquiryId: null,
+            quotationId: null,
+          },
           data: { vendorId: created.id },
         });
+        if (attached.count === 0) {
+          throw new ConflictException(
+            'The document behind this OCR draft is already attached to another record.',
+          );
+        }
 
         // `created` was read before the document was attached, so re-read it;
         // otherwise the response reports no documents on a vendor that has one.
@@ -709,7 +732,7 @@ export class VendorsService {
         OR: [
           { businessName: text },
           { legalName: text },
-          { normalizedName: { contains: normalizeName(term) } },
+          { normalizedName: normalizedNameFilter(term) },
           { vendorCode: text },
           { registrationNumber: text },
           { contactPerson: text },
@@ -851,7 +874,11 @@ export class VendorsService {
       }
     }
 
-    await this.assertCategoryExists(dto.categoryId ?? undefined);
+    // Only a changed type is validated: the edit form always resends the
+    // current type, which may since have been deactivated.
+    if (dto.categoryId && dto.categoryId !== existing.categoryId) {
+      await this.assertCategoryExists(dto.categoryId);
+    }
 
     const data: Prisma.VendorUpdateInput = { updatedBy: { connect: { id: actor.id } } };
 
@@ -1160,6 +1187,7 @@ export class VendorsService {
     actor: AuthenticatedUser,
     context: RequestContext,
   ) {
+    await this.assertVendorActive(vendorId);
     const existing = await this.prisma.vendorCompany.findUnique({
       where: { vendorId_companyId: { vendorId, companyId } },
       include: { company: { select: { name: true } } },
@@ -1207,6 +1235,7 @@ export class VendorsService {
     actor: AuthenticatedUser,
     context: RequestContext,
   ): Promise<void> {
+    await this.assertVendorActive(vendorId);
     const mapping = await this.prisma.vendorCompany.findUnique({
       where: { vendorId_companyId: { vendorId, companyId } },
       include: { company: { select: { name: true } } },
@@ -1392,6 +1421,7 @@ export class VendorsService {
     actor: AuthenticatedUser,
     context: RequestContext,
   ) {
+    await this.assertVendorActive(vendorId);
     const existing = await this.prisma.vendorProduct.findUnique({
       where: { vendorId_productId: { vendorId, productId } },
       include: { product: { select: { name: true } }, models: { select: { productModelId: true } } },
@@ -1489,6 +1519,7 @@ export class VendorsService {
     actor: AuthenticatedUser,
     context: RequestContext,
   ): Promise<void> {
+    await this.assertVendorActive(vendorId);
     const mapping = await this.prisma.vendorProduct.findUnique({
       where: { vendorId_productId: { vendorId, productId } },
       include: { product: { select: { name: true } } },

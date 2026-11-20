@@ -171,13 +171,22 @@ export function activityLabel(action: string): string {
   return ACTIVITY_LABELS[action] ?? action;
 }
 
+/**
+ * Fixed rather than the runtime's zone: the server renders in UTC (Vercel)
+ * and the browser in the user's zone, so without it timestamps were 5h30
+ * off in server-rendered pages and hydration text differed between the two.
+ */
+export const BUSINESS_TIME_ZONE = process.env.NEXT_PUBLIC_BUSINESS_TIME_ZONE || 'Asia/Kolkata';
+
 const dateFormatter = new Intl.DateTimeFormat('en-IN', {
+  timeZone: BUSINESS_TIME_ZONE,
   day: '2-digit',
   month: 'short',
   year: 'numeric',
 });
 
 const dateTimeFormatter = new Intl.DateTimeFormat('en-IN', {
+  timeZone: BUSINESS_TIME_ZONE,
   day: '2-digit',
   month: 'short',
   year: 'numeric',

@@ -15,6 +15,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
@@ -253,8 +254,10 @@ export class CreateProductCategoryDto {
 
 export class UpdateProductCategoryDto {
   @ApiPropertyOptional()
-  @IsOptional()
+  // Validated whenever present, so `null` or a blank name is a 400.
+  @ValidateIf((o: UpdateProductCategoryDto) => o.name !== undefined)
   @IsString()
+  @IsNotEmpty()
   @MaxLength(100)
   @Transform(trim)
   name?: string;

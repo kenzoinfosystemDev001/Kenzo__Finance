@@ -22,7 +22,8 @@ export default async function NewQuotationPage({ searchParams }: { searchParams:
   // --- From an enquiry ------------------------------------------------------
   if (enquiryId) {
     if (!UUID.test(enquiryId)) notFound();
-    if (!can('quotation.create')) redirect(`/enquiries/${enquiryId}`);
+    // Same rule as the API: converting needs both permissions.
+    if (!can('quotation.create') || !can('enquiry.convert')) redirect(`/enquiries/${enquiryId}`);
 
     let handoff: QuotationEnquiryHandoff;
     try {

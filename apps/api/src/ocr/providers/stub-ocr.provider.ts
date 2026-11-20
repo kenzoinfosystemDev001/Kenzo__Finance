@@ -52,10 +52,13 @@ export class StubOcrProvider implements OcrProvider {
   }
 }
 
-export function isReadableAsText(mimeType: string, filename: string): boolean {
-  if (mimeType.startsWith('text/')) return true;
-  if (mimeType === 'application/json') return true;
-  return /\.(txt|csv|json|md)$/i.test(filename);
+/**
+ * Decided on the stored MIME type only. It was detected from the file's bytes
+ * at upload (a PDF signature wins over a .txt name), so trusting the filename
+ * here decoded binaries as text and never sent them to the OCR engine.
+ */
+export function isReadableAsText(mimeType: string, _filename?: string): boolean {
+  return mimeType.startsWith('text/') || mimeType === 'application/json';
 }
 
 export function confidenceFor(found: number): number {

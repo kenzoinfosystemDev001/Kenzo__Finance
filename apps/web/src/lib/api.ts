@@ -1,5 +1,10 @@
 import 'server-only';
-import { getAccessToken, getRefreshToken, setSessionCookies } from './session';
+import {
+  canWriteSessionCookies,
+  getAccessToken,
+  getRefreshToken,
+  setSessionCookies,
+} from './session';
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
@@ -200,6 +205,9 @@ async function handleResponse<T>(response: Response): Promise<T> {
 async function tryRefresh(): Promise<boolean> {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) return false;
+  // During a page render the middleware has already renewed the session; a
+  // second rotation here could not be saved (see canWriteSessionCookies).
+  if (!(await canWriteSessionCookies())) return false;
 
   try {
     const response = await fetch(`${API_URL}/auth/refresh`, {

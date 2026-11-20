@@ -1,3 +1,4 @@
+import { businessToday } from '../common/utils/business-date';
 import { EnquiryStatus } from '@prisma/client';
 
 /**
@@ -62,9 +63,9 @@ export const OPEN_STATUSES: EnquiryStatus[] = [
 ];
 
 /** Today at 00:00 UTC, matching @db.Date columns. */
+/** Today in the business time zone (see common/utils/business-date). */
 export function todayUtc(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  return businessToday();
 }
 
 export function dateOnly(value: string): Date {

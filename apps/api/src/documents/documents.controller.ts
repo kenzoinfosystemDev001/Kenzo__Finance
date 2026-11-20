@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Body,
   Controller,
   Get,
@@ -24,8 +25,10 @@ import { DocumentKind } from '@prisma/client';
 import type { Response } from 'express';
 import { DocumentsService } from './documents.service';
 import { sendStoredFile } from './send-stored-file';
+import { isUUID } from 'class-validator';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
-import { PERMISSIONS } from '../common/authz/permissions';
+import { PERMISSIONS, ROLE_CODES } from '../common/authz/permissions';
+import { VENDOR_DOCUMENT_KINDS } from '../vendors/dto/vendor-children.dto';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
 
 @ApiTags('Documents')
@@ -63,8 +66,18 @@ export class DocumentsController {
   ) {
     if (!file) throw new BadRequestException('No file was uploaded.');
 
-    if (kind && !Object.values(DocumentKind).includes(kind)) {
-      throw new BadRequestException('Unknown document kind.');
+    // This endpoint files vendor documents (or unattached vendor-onboarding
+    // uploads). Other kinds belong to their own module's upload endpoint,
+    // which checks that module's permissions.
+    if (kind && !(VENDOR_DOCUMENT_KINDS as readonly DocumentKind[]).includes(kind)) {
+      throw new BadRequestException('Unknown or unsupported document kind for this endpoint.');
+    }
+    if (vendorId) {
+      if (!isUUID(vendorId)) throw new BadRequestException('vendorId must be a UUID.');
+      const isSuperAdmin = user.roles.includes(ROLE_CODES.SUPER_ADMIN);
+      if (!isSuperAdmin && !user.permissions.includes(PERMISSIONS.VENDOR_MANAGE_DOCUMENTS)) {
+        throw new ForbiddenException('Attaching documents to a vendor needs the vendor.manage_documents permission.');
+      }
     }
 
     return this.documentsService.upload(
@@ -81,7 +94,11 @@ export class DocumentsController {
   @Get(':id')
   @RequirePermissions(PERMISSIONS.DOCUMENT_READ)
   @ApiOperation({ summary: 'Document metadata' })
-  async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {
+  async findOne(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    await this.documentsService.assertGenericAccess(id, user, 'read');
     return this.documentsService.findOne(id);
   }
 
@@ -100,6 +117,7 @@ export class DocumentsController {
     @CurrentUser() user: AuthenticatedUser,
     @Res() response: Response,
   ): Promise<void> {
+    await this.documentsService.assertGenericAccess(id, user, 'read');
     const file = await this.documentsService.openForDownload(id, user, {
       preview: preview === 'true',
     });
@@ -113,6 +131,7 @@ export class DocumentsController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
+    await this.documentsService.assertGenericAccess(id, user, 'archive');
     return this.documentsService.archive(id, user);
   }
 }

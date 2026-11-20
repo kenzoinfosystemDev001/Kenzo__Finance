@@ -135,17 +135,20 @@ the credentials are missing, rather than failing on the first upload.
 service → **Disks** → *Add Disk*, mount path `/var/data`, then set
 `STORAGE_DRIVER=local` and `STORAGE_LOCAL_ROOT=/var/data/storage`.
 
-### Seed the production database — once
+### Seeding the production database
 
-After the first successful deploy, open **Render → Shell** and run:
-
-```bash
-npm run db:seed
-```
-
-This creates permissions, roles, document sequences, vendor and product
+`render:build` runs the seed on every deploy, after the migrations. It
+creates permissions, roles, document sequences, vendor and product
 categories, and the one administrator. It creates **no** sample business data
-and is safe to re-run; it never overwrites an existing admin password.
+and only ever adds what is missing: it never resets a sequence, never edits an
+existing category, and never overwrites an existing admin password. Running it
+on each deploy is what gives roles any permission codes a new release adds
+(for example the `quotation.*` codes), and a fresh database its document
+sequences, without a manual step.
+
+If the service was created by hand rather than from the Blueprint, make sure
+its build command is `npm install && npm run render:build`. To run the seed
+manually instead, open **Render → Shell** and run `npm run db:seed`.
 
 Then **delete `SEED_SUPERADMIN_PASSWORD`** from the environment and change the
 password in the app.

@@ -151,6 +151,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
           message: 'The requested record was not found.',
         };
 
+      case 'P2023':
+        // Malformed value for the column type, e.g. a non-UUID id that
+        // reached a query without passing a ParseUUIDPipe.
+        return {
+          statusCode: HttpStatus.BAD_REQUEST,
+          error: 'BAD_REQUEST',
+          message: 'A supplied identifier is not valid.',
+        };
+
       case 'P2014':
         return {
           statusCode: HttpStatus.CONFLICT,

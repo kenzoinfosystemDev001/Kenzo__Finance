@@ -94,6 +94,19 @@ export class ProductDocumentsService {
     return this.documentsService.openForDownload(documentId, actor, { preview });
   }
 
+  /**
+   * A product or model image of this product, for display. Images are part of
+   * viewing the catalogue, so this needs only product.read, not the
+   * document.download permission that guards datasheets and other files.
+   */
+  async openImage(productId: string, documentId: string, actor: AuthenticatedUser) {
+    const document = await this.documentsService.findActive(documentId);
+    if (document.productId !== productId || document.kind !== DocumentKind.PRODUCT_IMAGE) {
+      throw new NotFoundException(`Image ${documentId} was not found`);
+    }
+    return this.documentsService.openForDownload(documentId, actor, { preview: true });
+  }
+
   private async assertOwned(productId: string, documentId: string) {
     const document = await this.documentsService.findActive(documentId);
     if (document.productId !== productId || !(PRODUCT_DOCUMENT_KINDS as readonly string[]).includes(document.kind)) {

@@ -1,3 +1,4 @@
+import { BUSINESS_TIME_ZONE } from '@/lib/vendor-labels';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { apiFetch, queryString } from '@/lib/api';
@@ -160,7 +161,7 @@ export default async function StockLedgerPage({
                   {data.items.map((movement) => (
                     <tr key={movement.id}>
                       <td className="whitespace-nowrap">
-                        {new Date(movement.occurredAt).toLocaleDateString('en-IN', {
+                        {new Date(movement.occurredAt).toLocaleDateString('en-IN', { timeZone: BUSINESS_TIME_ZONE,
                           day: '2-digit',
                           month: 'short',
                           year: 'numeric',

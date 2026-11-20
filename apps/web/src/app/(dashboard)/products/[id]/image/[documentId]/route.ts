@@ -9,23 +9,37 @@ const API_URL =
  *
  * Document storage is private, so there is no public URL an <img> could point
  * at. This route forwards the request with the server-held token; the API
- * still enforces the download permission.
+ * checks product.read and that the image belongs to this product.
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; documentId: string }> },
 ): Promise<Response> {
-  const { documentId } = await params;
+  const { id, documentId } = await params;
   const token = await getAccessToken();
 
   if (!token) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  const upstream = await fetch(`${API_URL}/documents/${documentId}/download`, {
+  // Only a UUID reaches the API path, so an encoded "../" segment cannot
+  // redirect this request to another endpoint.
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuid.test(id) || !uuid.test(documentId)) {
+    return new NextResponse(null, { status: 404 });
+  }
+
+  // Product-scoped image endpoint: needs only product.read, and refuses a
+  // document that is not an image of this product.
+  const upstream = await fetch(`${API_URL}/products/${id}/documents/${documentId}/image`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',
-  });
+    signal: AbortSignal.timeout(30_000),
+  }).catch(() => null);
+
+  if (!upstream) {
+    return new NextResponse(null, { status: 503 });
+  }
 
   if (!upstream.ok) {
     return new NextResponse(null, { status: upstream.status });

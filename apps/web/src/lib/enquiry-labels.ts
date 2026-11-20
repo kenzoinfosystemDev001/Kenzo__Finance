@@ -109,8 +109,17 @@ export function statusReasonRequired(from: EnquiryStatus, to: EnquiryStatus): bo
 export const LOCKED_ENQUIRY_STATUSES: EnquiryStatus[] = ['CONVERTED', 'LOST', 'CLOSED'];
 export const isEnquiryLocked = (status: EnquiryStatus) => LOCKED_ENQUIRY_STATUSES.includes(status);
 
-/** Today as YYYY-MM-DD in UTC, matching the API's date-only columns. */
-export const todayIso = () => new Date().toISOString().slice(0, 10);
+/**
+ * Today as YYYY-MM-DD in the business time zone, matching the API's
+ * businessToday(). The UTC date was yesterday's between 00:00 and 05:30 IST.
+ */
+const todayFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: process.env.NEXT_PUBLIC_BUSINESS_TIME_ZONE || 'Asia/Kolkata',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+export const todayIso = () => todayFormatter.format(new Date());
 
 /** A planned follow-up before today on an enquiry that is still open. */
 export function isFollowUpOverdue(nextFollowUpDate: string | null, status: EnquiryStatus): boolean {

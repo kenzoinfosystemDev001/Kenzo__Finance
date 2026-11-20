@@ -151,11 +151,16 @@ export class AuthService {
       throw new UnauthorizedException('Account is not active');
     }
 
-    // Rotation: the presented token is single-use.
-    await this.prisma.refreshToken.update({
-      where: { id: stored.id },
+    // Rotation: the presented token is single-use. Conditional on it still
+    // being live, so two concurrent refreshes cannot both pass the check
+    // above and both mint a new pair.
+    const rotated = await this.prisma.refreshToken.updateMany({
+      where: { id: stored.id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    if (rotated.count !== 1) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
 
     return this.issueTokens(stored.user.id, stored.user.email, context);
   }

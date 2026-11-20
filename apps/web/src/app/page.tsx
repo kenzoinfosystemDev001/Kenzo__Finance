@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getRefreshToken } from '@/lib/session';
+import { BrandLogo } from '@/components/brand-logo';
 
 export const metadata: Metadata = {
   title: 'Kenzo Infosystems — Business Management Software',
@@ -150,10 +151,7 @@ export default async function LandingPage() {
 function Logo() {
   return (
     <div className="flex items-center gap-2.5">
-      <svg viewBox="0 0 40 32" className="h-8 w-10" aria-hidden>
-        <path d="M20 2 36 30h-8L20 15 12 30H4Z" fill="rgb(var(--accent))" />
-        <path d="M20 15 28 30h-7.5L17 23.5Z" fill="#60a5fa" />
-      </svg>
+      <BrandLogo className="h-10 w-10" priority />
       <div>
         <p className="text-sm font-bold leading-tight tracking-wide text-ink">
           KENZO INFOSYSTEMS

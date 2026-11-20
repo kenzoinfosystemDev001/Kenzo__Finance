@@ -41,7 +41,7 @@ describe('VendorsService', () => {
     vendorCompany: { upsert: jest.Mock; findUnique: jest.Mock; create: jest.Mock };
     productModel: { count: jest.Mock };
     ocrJob: { findUnique: jest.Mock; updateMany: jest.Mock };
-    document: { update: jest.Mock };
+    document: { updateMany: jest.Mock };
     $transaction: jest.Mock;
   };
 
@@ -73,7 +73,7 @@ describe('VendorsService', () => {
       },
       productModel: { count: jest.fn().mockResolvedValue(0) },
       ocrJob: { findUnique: jest.fn(), updateMany: jest.fn() },
-      document: { update: jest.fn() },
+      document: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
       // Runs the callback with the mock itself standing in for the tx client.
       $transaction: jest.fn(async (arg: unknown) =>
         typeof arg === 'function'
@@ -301,10 +301,35 @@ describe('VendorsService', () => {
       expect(prisma.ocrJob.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'job1', consumedAt: null } }),
       );
-      expect(prisma.document.update).toHaveBeenCalledWith({
-        where: { id: 'doc1' },
+      expect(prisma.document.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'doc1',
+          vendorId: null,
+          productId: null,
+          customerId: null,
+          enquiryId: null,
+          quotationId: null,
+        },
         data: { vendorId: 'new-vendor' },
       });
+    });
+
+    it('refuses to re-home a document that already belongs to a record', async () => {
+      prisma.ocrJob.findUnique.mockResolvedValue({
+        id: 'job1',
+        status: 'COMPLETED',
+        targetType: 'VENDOR',
+        documentId: 'doc1',
+        consumedAt: null,
+      });
+      prisma.vendor.create.mockResolvedValue({ id: 'new', vendorCode: 'KI/VEN/0001' });
+      prisma.ocrJob.updateMany.mockResolvedValue({ count: 1 });
+      // The document is owned by another vendor/customer, so the guard matches nothing.
+      prisma.document.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.create(baseDto({ ocrJobId: 'job1' }), actor, context),
+      ).rejects.toBeInstanceOf(ConflictException);
     });
 
     it('returns the attached document on the created vendor', async () => {

@@ -88,7 +88,7 @@ export function EnquiryRowActions({
     if (can('customer.read')) {
       items.push({ label: 'View customer', icon: <IconUser size={16} />, onSelect: () => router.push(`/customers/${enquiry.customerId}`) });
     }
-    if (can('enquiry.convert') && canConvertStatus(enquiry.status)) {
+    if (can('enquiry.convert') && can('quotation.create') && canConvertStatus(enquiry.status)) {
       items.push({ label: conversion.pending ? 'Checking...' : 'Convert to quotation', icon: <IconArrowRight size={16} />, onSelect: conversion.start });
     }
   }
