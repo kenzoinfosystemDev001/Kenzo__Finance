@@ -464,6 +464,9 @@ export class FinalInvoicesService {
             // Money already recorded against the invoice must be rejected or reversed first.
             const live = await tx.paymentAllocation.count({ where: { finalInvoiceId: id, payment: { status: { in: [PaymentStatus.VERIFIED, PaymentStatus.PENDING_VERIFICATION] } } } });
             if (live > 0) throw new ConflictException(`This invoice has ${live} verified or pending payment(s). Reverse or reject them in Payment Management before cancelling.`);
+            // Goods allocated or sent against the invoice must be cancelled or returned first.
+            const deliveries = await tx.delivery.count({ where: { finalInvoiceId: id, status: { notIn: ['CANCELLED', 'RETURNED'] } } });
+            if (deliveries > 0) throw new ConflictException(`This invoice has ${deliveries} delivery(ies) in progress or delivered. Cancel or return them in Delivery Management before cancelling.`);
           }
           break;
       }

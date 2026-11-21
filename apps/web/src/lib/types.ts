@@ -1661,3 +1661,274 @@ export interface CustomerPaymentHistory {
   }>;
   payments: PaymentListItem[];
 }
+
+// ---------------------------------------------------------------------------
+// Delivery Management (Module 9) - shapes returned by apps/api/src/deliveries
+// ---------------------------------------------------------------------------
+
+export type DeliveryStatus =
+  | 'DRAFT'
+  | 'SCHEDULED'
+  | 'READY_FOR_DISPATCH'
+  | 'DISPATCHED'
+  | 'IN_TRANSIT'
+  | 'PARTIALLY_DELIVERED'
+  | 'DELIVERED'
+  | 'DELIVERY_FAILED'
+  | 'RETURNED'
+  | 'CANCELLED';
+
+export type TransportMode = 'DIRECT' | 'OWN_VEHICLE' | 'TRANSPORT' | 'COURIER';
+
+export type InvoiceDeliveryState = 'NOT_DELIVERED' | 'PARTIALLY_DELIVERED' | 'DELIVERED';
+
+export type DeliveryUploadKind = 'DELIVERY_POD' | 'DELIVERY_SIGNATURE' | 'DELIVERY_PHOTO' | 'DELIVERY_ATTACHMENT';
+
+/** Row of the register, invoice / customer history and report lists (listSelect + withFlags). */
+export interface DeliveryListItem {
+  id: string;
+  deliveryNumber: string;
+  status: DeliveryStatus;
+  deliveryDate: string;
+  expectedDate: string | null;
+  dispatchDate: string | null;
+  actualDeliveryDate: string | null;
+  transportMode: TransportMode | null;
+  transporterName: string | null;
+  courierCompany: string | null;
+  trackingNumber: string | null;
+  deliveryAddress: string;
+  createdAt: string;
+  customer: { id: string; name: string; customerCode: string };
+  finalInvoice: { id: string; invoiceNumber: string | null };
+  items: Array<{ quantity: number; deliveredQuantity: number | null; unit: string }>;
+  totalQuantity: number;
+  delayed: boolean;
+}
+
+export interface DeliverySummary {
+  total: number;
+  draft: number;
+  scheduled: number;
+  readyForDispatch: number;
+  dispatched: number;
+  inTransit: number;
+  delivered: number;
+  partiallyDelivered: number;
+  failed: number;
+  returned: number;
+  cancelled: number;
+  delayed: number;
+  generatedAt: string;
+}
+
+/** GET /deliveries/eligible-invoices?customerId= */
+export interface EligibleDeliveryInvoice {
+  id: string;
+  invoiceNumber: string | null;
+  invoiceDate: string;
+  currency: string;
+  grandTotal: string;
+  customerSnapshot: QuotationCustomerSnapshot | null;
+  invoicedQuantity: number;
+  allocatedQuantity: number;
+  deliveredQuantity: number;
+  remainingQuantity: number;
+  deliveryState: InvoiceDeliveryState;
+}
+
+/** GET /deliveries/invoices/:id/items (also `invoicePositions` on a delivery). */
+export interface DeliveryInvoiceItem {
+  invoiceItemId: string;
+  productId: string;
+  productModelId: string | null;
+  productName: string;
+  productCode: string;
+  brandName: string;
+  modelName: string | null;
+  modelNumber: string | null;
+  description: string | null;
+  unit: string;
+  invoicedQuantity: number;
+  allocatedQuantity: number;
+  confirmedDeliveredQuantity: number;
+  remainingQuantity: number;
+}
+
+export interface DeliveryItemDetail {
+  id: string;
+  deliveryId: string;
+  invoiceItemId: string;
+  productId: string;
+  productModelId: string | null;
+  productName: string;
+  productCode: string;
+  brandName: string;
+  modelName: string | null;
+  modelNumber: string | null;
+  description: string | null;
+  quantity: number;
+  /** Null until the delivery is confirmed with proof of delivery. */
+  deliveredQuantity: number | null;
+  unit: string;
+  packageCount: number | null;
+  remarks: string | null;
+  packingItems: Array<{ quantity: number; packingList: { packageNumber: number } }>;
+}
+
+export interface DeliveryPackage {
+  id: string;
+  deliveryId: string;
+  packingNumber: string;
+  packageNumber: number;
+  description: string | null;
+  weight: string | null;
+  dimensions: string | null;
+  remarks: string | null;
+  createdAt: string;
+  items: Array<{
+    id: string;
+    packingListId: string;
+    deliveryItemId: string;
+    quantity: number;
+    deliveryItem: { productName: string; modelName: string | null; unit: string };
+  }>;
+}
+
+export interface DeliveryTrackingEvent {
+  id: string;
+  status: string;
+  location: string | null;
+  remarks: string | null;
+  source: 'MANUAL' | 'EXTERNAL';
+  provider: string | null;
+  externalReference: string | null;
+  eventAt: string;
+  createdAt: string;
+  recordedBy: { id: string; fullName: string } | null;
+}
+
+export interface DeliveryStatusHistoryEntry {
+  id: string;
+  previousStatus: DeliveryStatus | null;
+  newStatus: DeliveryStatus;
+  remarks: string | null;
+  changedAt: string;
+  changedBy: { id: string; fullName: string } | null;
+}
+
+export interface ProofOfDeliveryRecord {
+  id: string;
+  receiverName: string;
+  receiverContact: string | null;
+  actualDeliveryDate: string;
+  deliveryConfirmation: boolean;
+  remarks: string | null;
+  confirmedAt: string;
+  amendsId: string | null;
+  amendmentReason: string | null;
+  confirmedBy: { id: string; fullName: string } | null;
+}
+
+export interface DeliveryStoredDocument {
+  id: string;
+  originalFilename: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface DeliveryDocument {
+  id: string;
+  kind: string;
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+  replacesDocumentId: string | null;
+  uploadedBy: { id: string; fullName: string } | null;
+}
+
+/** GET /deliveries/:id */
+export interface DeliveryDetail extends Omit<DeliveryListItem, 'items' | 'finalInvoice'> {
+  customerId: string;
+  finalInvoiceId: string;
+  contactPerson: string | null;
+  contactNumber: string | null;
+  internalRemarks: string | null;
+  dispatchTime: string | null;
+  vehicleNumber: string | null;
+  driverName: string | null;
+  driverContact: string | null;
+  lrGrNumber: string | null;
+  dispatchRemarks: string | null;
+  failureDate: string | null;
+  failureReason: string | null;
+  failureRemarks: string | null;
+  nextAttemptDate: string | null;
+  dispatchedAt: string | null;
+  returnReason: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
+  redeliveryOfId: string | null;
+  challanDocumentId: string | null;
+  packingDocumentId: string | null;
+  updatedAt: string;
+  finalInvoice: { id: string; invoiceNumber: string | null; invoiceDate: string; status: FinalInvoiceStatus; proformaInvoiceId: string; quotationId: string };
+  items: DeliveryItemDetail[];
+  statusHistory: DeliveryStatusHistoryEntry[];
+  trackingEvents: DeliveryTrackingEvent[];
+  packingLists: DeliveryPackage[];
+  proofsOfDelivery: ProofOfDeliveryRecord[];
+  redeliveryOf: { id: string; deliveryNumber: string; status: DeliveryStatus } | null;
+  redeliveries: Array<{ id: string; deliveryNumber: string; status: DeliveryStatus }>;
+  challanDocument: DeliveryStoredDocument | null;
+  packingDocument: DeliveryStoredDocument | null;
+  documents: DeliveryDocument[];
+  createdBy: { id: string; fullName: string } | null;
+  updatedBy: { id: string; fullName: string } | null;
+  invoicePositions: DeliveryInvoiceItem[];
+  canEditItems: boolean;
+}
+
+/** GET /deliveries/invoices/:id/history */
+export interface InvoiceDeliveryHistory {
+  finalInvoiceId: string;
+  invoicedQuantity: number;
+  dispatchedQuantity: number;
+  confirmedDeliveredQuantity: number;
+  remainingQuantity: number;
+  unallocatedQuantity: number;
+  numberOfDeliveries: number;
+  deliveryState: InvoiceDeliveryState;
+  items: DeliveryInvoiceItem[];
+  deliveries: DeliveryListItem[];
+}
+
+/** GET /deliveries/customers/:id/history */
+export interface CustomerDeliveryHistory {
+  total: number;
+  scheduled: number;
+  inTransit: number;
+  completed: number;
+  partiallyDelivered: number;
+  failed: number;
+  delayed: number;
+  deliveries: DeliveryListItem[];
+}
+
+/** GET /deliveries/reports */
+export interface DeliveryReports {
+  filters: { dateFrom: string | null; dateTo: string | null; customerId: string | null; transporter: string | null };
+  dailyDispatch: Array<{ date: string; deliveries: number; quantity: number }>;
+  monthly: Array<{ month: string; deliveries: number; delivered: number }>;
+  byCustomer: Array<{ customer: { id: string; name: string }; deliveries: number; delivered: number }>;
+  byInvoice: Array<{ invoice: { id: string; invoiceNumber: string | null }; deliveries: number; dispatchedQuantity: number; deliveredQuantity: number }>;
+  byTransporter: Array<{ transporter: string; deliveries: number; delivered: number; failed: number }>;
+  scheduled: DeliveryListItem[];
+  inTransit: DeliveryListItem[];
+  delivered: DeliveryListItem[];
+  delayed: DeliveryListItem[];
+  failed: DeliveryListItem[];
+  partial: DeliveryListItem[];
+  generatedAt: string;
+}

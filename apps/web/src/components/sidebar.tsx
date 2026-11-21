@@ -48,7 +48,7 @@ const NAV: NavItem[] = [
   { label: 'Final Invoice', href: '/final-invoices', icon: IconFile, permission: 'invoice.read' },
   { label: 'Payment Management', href: '/payments', icon: IconWallet, permission: 'payment.read' },
   { label: 'Delivery Management', href: '/deliveries', icon: IconTruck, permission: 'delivery.read' },
-  { label: 'Reports & Analytics', href: '/reports', icon: IconChart, comingSoon: true },
+  { label: 'Reports & Analytics', href: '/reports', icon: IconChart, permission: 'analytics.dashboard' },
   { label: 'Settings', href: '/settings', icon: IconSettings },
 ];
 

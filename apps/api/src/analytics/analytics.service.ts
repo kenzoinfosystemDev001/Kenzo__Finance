@@ -573,7 +573,7 @@ export class AnalyticsService {
         SELECT fii."productId" AS id, MAX(fii."productName") AS name,
                COALESCE(SUM(di.quantity) FILTER (WHERE d.status IN ('DISPATCHED', 'IN_TRANSIT', 'PARTIALLY_DELIVERED', 'DELIVERED')), 0) AS dispatched,
                COALESCE(SUM(di.quantity) FILTER (WHERE d.status = 'DELIVERED'), 0) AS delivered
-        FROM delivery_items di JOIN deliveries d ON d.id = di."deliveryId" JOIN final_invoice_items fii ON fii.id = di."finalInvoiceItemId"
+        FROM delivery_items di JOIN deliveries d ON d.id = di."deliveryId" JOIN final_invoice_items fii ON fii.id = di."invoiceItemId"
         WHERE ${cond} GROUP BY 1 ORDER BY dispatched DESC LIMIT 25`,
       this.prisma.$queryRaw<Array<{ name: string | null; total: bigint; delivered: bigint; failed: bigint }>>`
         SELECT COALESCE(NULLIF(TRIM(COALESCE(d."courierCompany", d."transporterName")), ''), 'Not recorded') AS name, COUNT(*) AS total,

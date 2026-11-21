@@ -504,7 +504,7 @@ export class CustomersService {
    * quotations, PIs, payments and deliveries add their counts here.
    */
   async getReferenceCounts(id: string): Promise<Record<string, number>> {
-    const [documents, enquiries, quotations, proformaInvoices, finalInvoices, payments] = await this.prisma.$transaction([
+    const [documents, enquiries, quotations, proformaInvoices, finalInvoices, payments, deliveries] = await this.prisma.$transaction([
       // Removed (archived) files do not block: remove() detaches them.
       this.prisma.document.count({ where: { customerId: id, archivedAt: null } }),
       this.prisma.enquiry.count({ where: { customerId: id } }),
@@ -512,8 +512,9 @@ export class CustomersService {
       this.prisma.proformaInvoice.count({ where: { customerId: id } }),
       this.prisma.finalInvoice.count({ where: { customerId: id } }),
       this.prisma.payment.count({ where: { customerId: id } }),
+      this.prisma.delivery.count({ where: { customerId: id } }),
     ]);
-    return { documents, enquiries, quotations, proformaInvoices, finalInvoices, payments };
+    return { documents, enquiries, quotations, proformaInvoices, finalInvoices, payments, deliveries };
   }
 
   /** Permanent delete of a customer nothing refers to; contacts, addresses and interests go with it. */

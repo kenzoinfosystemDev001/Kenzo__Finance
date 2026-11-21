@@ -13,6 +13,7 @@ export const SEQUENCE_KEYS = {
   FINAL_INVOICE: 'FINAL_INVOICE',
   PAYMENT_RECEIPT: 'PAYMENT_RECEIPT',
   DELIVERY: 'DELIVERY',
+  PACKING_LIST: 'PACKING_LIST',
 } as const;
 
 export type SequenceKey = (typeof SEQUENCE_KEYS)[keyof typeof SEQUENCE_KEYS];
