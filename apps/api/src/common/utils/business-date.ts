@@ -42,3 +42,54 @@ export function isValidTimeZone(zone: string): boolean {
     return false;
   }
 }
+
+let cachedParts: { zone: string; formatter: Intl.DateTimeFormat } | null = null;
+
+function partsFormatter(): Intl.DateTimeFormat {
+  const zone = process.env.BUSINESS_TIMEZONE?.trim() || DEFAULT_BUSINESS_TIMEZONE;
+  if (!cachedParts || cachedParts.zone !== zone) {
+    cachedParts = {
+      zone,
+      formatter: new Intl.DateTimeFormat('en-US', {
+        timeZone: zone,
+        hourCycle: 'h23',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }),
+    };
+  }
+  return cachedParts.formatter;
+}
+
+/** Milliseconds the business zone is ahead of UTC at `instant`. */
+function zoneOffsetMs(instant: Date): number {
+  const parts = Object.fromEntries(
+    partsFormatter().formatToParts(instant).map((p) => [p.type, Number(p.value)]),
+  ) as Record<string, number>;
+  const asIfUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  return asIfUtc - Math.floor(instant.getTime() / 1000) * 1000;
+}
+
+/**
+ * The instant a business calendar day ("YYYY-MM-DD...") starts.
+ *
+ * For filtering real timestamps (createdAt, occurredAt) by a picked date:
+ * "created on 20 Nov" means from 20 Nov 00:00 in the business zone, which in
+ * IST is 19 Nov 18:30 UTC. Using UTC midnight put records made between 00:00
+ * and 05:30 IST on the previous day.
+ */
+export function businessDayStart(date: string): Date {
+  const utcMidnight = new Date(`${date.slice(0, 10)}T00:00:00.000Z`);
+  return new Date(utcMidnight.getTime() - zoneOffsetMs(utcMidnight));
+}
+
+/** The instant the business day after `date` starts: use as an exclusive upper bound. */
+export function businessDayEnd(date: string): Date {
+  const next = new Date(`${date.slice(0, 10)}T00:00:00.000Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return businessDayStart(next.toISOString());
+}

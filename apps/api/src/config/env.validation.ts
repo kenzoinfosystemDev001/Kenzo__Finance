@@ -1,6 +1,75 @@
 import { z } from 'zod';
 import { isValidTimeZone } from '../common/utils/business-date';
 
+/** The only Cloudinary variable names the application reads. */
+const CLOUDINARY_KEYS = [
+  'CLOUDINARY_URL',
+  'CLOUDINARY_CLOUD_NAME',
+  'CLOUDINARY_API_KEY',
+  'CLOUDINARY_API_SECRET',
+  'CLOUDINARY_FOLDER',
+] as const;
+
+function hasValue(value: unknown): boolean {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+/**
+ * Repairs the two ways a connection string gets mangled when it is copied out
+ * of a dashboard: the `KEY=` prefix comes along with the value, and the value
+ * arrives wrapped in quotes. Both produce a string that is not a URL at all,
+ * and the resulting failure points at the wrong thing.
+ */
+function normalizeCloudinaryUrl(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+
+  const cleaned = value
+    .trim()
+    .replace(/^CLOUDINARY_URL\s*=\s*/i, '')
+    .replace(/^["']|["']$/g, '')
+    .trim();
+  // `CLOUDINARY_URL=` (as in .env.example) reaches here as ''. That means
+  // "not set", not "set to an invalid URL", or STORAGE_DRIVER=local could
+  // not boot from the example file.
+  return cleaned === '' ? undefined : cleaned;
+}
+
+/**
+ * Says what was actually found, not just what is required.
+ *
+ * A misspelled or wrongly-named variable is indistinguishable from a missing
+ * one if the error only restates the requirement, so this also names any
+ * other Cloudinary-looking variable that is set - which is what a typo such
+ * as CLOUD_NAME or CLOUDINRY_URL looks like from in here. Names only; a
+ * credential must never reach a log.
+ */
+function describeCloudinaryEnv(raw: Record<string, unknown>): string {
+  const recognised = CLOUDINARY_KEYS.filter((key) => hasValue(raw[key]));
+
+  const unrecognised = Object.keys(raw).filter(
+    (key) =>
+      /cloudin|cloud_name/i.test(key) &&
+      !(CLOUDINARY_KEYS as readonly string[]).includes(key) &&
+      hasValue(raw[key]),
+  );
+
+  const lines = [
+    recognised.length
+      ? `  Recognised and set: ${recognised.join(', ')}`
+      : '  Recognised and set: none',
+  ];
+
+  if (unrecognised.length) {
+    lines.push(
+      `  Set but NOT read by this application: ${unrecognised.join(', ')}`,
+      '  -> These look like Cloudinary variables under the wrong name.',
+      `  -> Rename them to one of: ${CLOUDINARY_KEYS.join(', ')}`,
+    );
+  }
+
+  return lines.join('\n');
+}
+
 /**
  * Environment contract. Validated once at startup so the process fails fast
  * and loudly instead of throwing an obscure error on the first request.
@@ -32,8 +101,18 @@ export const envSchema = z.object({
   AUTH_REFRESH_SECRET: z
     .string()
     .min(32, 'AUTH_REFRESH_SECRET must be at least 32 characters'),
-  AUTH_ACCESS_TTL: z.string().default('15m'),
-  AUTH_REFRESH_TTL: z.string().default('7d'),
+  // Same grammar AuthService.parseTtlMs accepts; anything else would boot
+  // fine and then fail every sign-in.
+  AUTH_ACCESS_TTL: z
+    .string()
+    .trim()
+    .regex(/^\d+[smhd]$/, 'AUTH_ACCESS_TTL must look like 15m, 2h or 7d')
+    .default('15m'),
+  AUTH_REFRESH_TTL: z
+    .string()
+    .trim()
+    .regex(/^\d+[smhd]$/, 'AUTH_REFRESH_TTL must look like 15m, 2h or 7d')
+    .default('7d'),
 
   // 'local' needs a persistent disk in production; 'cloudinary' survives an
   // ephemeral container such as Render.
@@ -43,7 +122,16 @@ export const envSchema = z.object({
 
   // Required only when STORAGE_DRIVER=cloudinary. Either CLOUDINARY_URL, or
   // the three separate values; the cross-field check below enforces that.
-  CLOUDINARY_URL: z.string().optional(),
+  CLOUDINARY_URL: z.preprocess(
+    normalizeCloudinaryUrl,
+    z
+      .string()
+      .startsWith(
+        'cloudinary://',
+        'CLOUDINARY_URL must look like cloudinary://<api_key>:<api_secret>@<cloud_name>',
+      )
+      .optional(),
+  ),
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
@@ -94,7 +182,9 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     if (!hasUrl && !hasTriple) {
       throw new Error(
         'STORAGE_DRIVER=cloudinary requires either CLOUDINARY_URL, or all of ' +
-          'CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET.',
+          'CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET.\n' +
+          describeCloudinaryEnv(raw) +
+          '\n  Or set STORAGE_DRIVER=local to run without remote storage.',
       );
     }
   }

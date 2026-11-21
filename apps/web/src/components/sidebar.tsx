@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
+import { BrandLogo } from './brand-logo';
 import {
   IconBox,
   IconChart,
@@ -86,10 +87,7 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
         )}
       >
         <div className="flex h-16 items-center gap-3 px-5">
-          <svg viewBox="0 0 40 32" className="h-8 w-10 shrink-0" aria-hidden>
-            <path d="M20 2 36 30h-8L20 15 12 30H4Z" fill="rgb(var(--accent))" />
-            <path d="M20 15 28 30h-7.5L17 23.5Z" fill="#60a5fa" />
-          </svg>
+          <BrandLogo className="h-10 w-10" priority />
           <div className="min-w-0">
             <p className="truncate text-lg font-bold leading-tight tracking-wide text-white">KENZO</p>
             <p className="truncate text-[0.65rem] font-medium uppercase leading-tight tracking-[0.2em] text-sidebar-muted">

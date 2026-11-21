@@ -1,3 +1,4 @@
+import { BUSINESS_TIME_ZONE } from '@/lib/vendor-labels';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
@@ -118,7 +119,7 @@ export default async function DashboardPage() {
                         {vendor._count.products}
                       </td>
                       <td className="whitespace-nowrap">
-                        {new Date(vendor.createdAt).toLocaleDateString('en-IN', {
+                        {new Date(vendor.createdAt).toLocaleDateString('en-IN', { timeZone: BUSINESS_TIME_ZONE,
                           day: '2-digit',
                           month: 'short',
                           year: 'numeric',

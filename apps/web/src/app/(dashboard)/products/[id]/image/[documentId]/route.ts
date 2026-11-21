@@ -10,9 +10,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * Streams a product image.
  *
  * Document storage is private, so there is no public URL an <img> could point
- * at. This route forwards the request with the server-held token to the
- * product-scoped endpoint, so the API checks both the download permission and
- * that the image belongs to this product (any other document id is a 404).
+ * at. This route forwards the request with the server-held token; the API
+ * checks product.read and that the image belongs to this product.
  */
 export async function GET(
   request: NextRequest,
@@ -28,10 +27,13 @@ export async function GET(
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  const upstream = await fetch(
-    `${API_URL}/products/${id}/documents/${documentId}/content?preview=true`,
-    { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' },
-  ).catch(() => null);
+  // Product-scoped image endpoint: needs only product.read, and refuses a
+  // document that is not an image of this product.
+  const upstream = await fetch(`${API_URL}/products/${id}/documents/${documentId}/image`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+    signal: AbortSignal.timeout(30_000),
+  }).catch(() => null);
 
   if (!upstream || !upstream.ok) {
     return new NextResponse(null, { status: upstream?.status ?? 503 });

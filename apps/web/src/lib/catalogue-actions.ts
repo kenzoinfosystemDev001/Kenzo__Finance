@@ -90,8 +90,10 @@ export async function updateBrandAction(
       method: 'PATCH',
       body: {
         name,
-        code: values.code?.trim() || undefined,
-        website: values.website?.trim() || undefined,
+        // '' (not undefined) so clearing a field reaches the API and clears
+        // it; an omitted key means "leave unchanged".
+        code: values.code?.trim() ?? '',
+        website: values.website?.trim() ?? '',
       },
     });
   } catch (error) {

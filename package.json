@@ -21,9 +21,9 @@
     "db:studio": "prisma studio --schema apps/api/prisma/schema.prisma",
     "dev": "concurrently -n api,web -c blue,green \"npm run api:dev\" \"npm run web:dev\"",
     "db:deploy": "prisma migrate deploy --schema apps/api/prisma/schema.prisma",
-    "build": "npm run db:generate && npm run api:build",
+    "build": "npm run api:build",
     "start": "node apps/api/dist/main.js",
-    "render:build": "npm install && npm run db:generate && npx prisma migrate deploy --schema apps/api/prisma/schema.prisma && npm run api:build",
+    "render:build": "npm run db:deploy && npm run db:generate && npm run db:seed && npm run api:build",
     "render:start": "node apps/api/dist/main.js"
   },
   "devDependencies": {

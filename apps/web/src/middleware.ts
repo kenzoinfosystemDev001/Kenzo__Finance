@@ -39,11 +39,24 @@ function secondsLeft(token: string | undefined): number {
   }
 }
 
+/**
+ * Link prefetches run in parallel. If each one rotated the same refresh
+ * token, every one after the first would present a revoked token and the API
+ * would treat it as theft. Prefetches skip renewal; the real navigation does it.
+ */
+function isPrefetch(request: NextRequest): boolean {
+  return (
+    request.headers.get('next-router-prefetch') === '1' ||
+    request.headers.get('purpose') === 'prefetch' ||
+    request.headers.get('sec-purpose')?.includes('prefetch') === true
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
 
-  if (!refreshToken || secondsLeft(accessToken) > RENEW_BEFORE_SECONDS) {
+  if (!refreshToken || secondsLeft(accessToken) > RENEW_BEFORE_SECONDS || isPrefetch(request)) {
     return NextResponse.next();
   }
 
@@ -53,6 +66,8 @@ export async function middleware(request: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
+      // A sleeping API must not hold every page load open.
+      signal: AbortSignal.timeout(8000),
       cache: 'no-store',
     });
   } catch {
@@ -90,6 +105,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except static assets and the public login background.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|login/background).*)'],
+  // Everything except static assets (incl. the logo and icons), the health
+  // probe and the public login background.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/health|login/background|.*\.(?:png|jpg|jpeg|gif|svg|webp|ico)$).*)'],
 };

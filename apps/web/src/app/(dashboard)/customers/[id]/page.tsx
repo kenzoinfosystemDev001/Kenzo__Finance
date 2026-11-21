@@ -5,7 +5,7 @@ import { apiFetch, ApiError, queryString } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth-actions';
 import type { ActivityEntry, CustomerAddress, CustomerDetail, CustomerPaymentHistory, EnquiryListItem, FinalInvoiceListItem, PaginatedResponse, QuotationListItem } from '@/lib/types';
 import { CUSTOMER_ADDRESS_TYPE_LABELS, CUSTOMER_TYPE_LABELS } from '@/lib/customer-labels';
-import { activityLabel, formatAddress, formatDate, formatDateTime, formatPhone } from '@/lib/vendor-labels';
+import { activityLabel, formatAddress, formatDate, formatDateTime, formatPhone, BUSINESS_TIME_ZONE } from '@/lib/vendor-labels';
 import { DefinitionList, ErrorState, Pagination, Tabs, VendorStatusBadge } from '@/components/ui';
 import { EmptyStateClient } from '@/components/panel-shared';
 import { EnquiryStatusBadge } from '@/components/enquiry-badges';
@@ -224,7 +224,7 @@ async function ActivityTab({ customerId, page }: { customerId: string; page?: st
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="font-semibold text-ink">{activityLabel(entry.action)}</p>
-                    <time dateTime={entry.createdAt} className="text-xs text-ink-subtle">{formatDate(entry.createdAt)} &middot; {new Date(entry.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</time>
+                    <time dateTime={entry.createdAt} className="text-xs text-ink-subtle">{formatDate(entry.createdAt)} &middot; {new Date(entry.createdAt).toLocaleTimeString('en-IN', { timeZone: BUSINESS_TIME_ZONE, hour: '2-digit', minute: '2-digit' })}</time>
                   </div>
                   {entry.summary && <p className="text-sm text-ink-muted">{entry.summary}</p>}
                   <p className="text-xs text-ink-subtle">by {entry.actor?.fullName ?? 'System'}</p>

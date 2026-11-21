@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Body,
   Controller,
   Get,
@@ -25,8 +26,10 @@ import { DocumentKind } from '@prisma/client';
 import type { Response } from 'express';
 import { DocumentsService } from './documents.service';
 import { sendStoredFile } from './send-stored-file';
+import { isUUID } from 'class-validator';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
-import { PERMISSIONS } from '../common/authz/permissions';
+import { PERMISSIONS, ROLE_CODES } from '../common/authz/permissions';
+import { VENDOR_DOCUMENT_KINDS } from '../vendors/dto/vendor-children.dto';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
 
 @ApiTags('Documents')
@@ -64,8 +67,18 @@ export class DocumentsController {
   ) {
     if (!file) throw new BadRequestException('No file was uploaded.');
 
-    if (kind && !Object.values(DocumentKind).includes(kind)) {
-      throw new BadRequestException('Unknown document kind.');
+    // This endpoint files vendor documents (or unattached vendor-onboarding
+    // uploads). Other kinds belong to their own module's upload endpoint,
+    // which checks that module's permissions.
+    if (kind && !(VENDOR_DOCUMENT_KINDS as readonly DocumentKind[]).includes(kind)) {
+      throw new BadRequestException('Unknown or unsupported document kind for this endpoint.');
+    }
+    if (vendorId) {
+      if (!isUUID(vendorId)) throw new BadRequestException('vendorId must be a UUID.');
+      const isSuperAdmin = user.roles.includes(ROLE_CODES.SUPER_ADMIN);
+      if (!isSuperAdmin && !user.permissions.includes(PERMISSIONS.VENDOR_MANAGE_DOCUMENTS)) {
+        throw new ForbiddenException('Attaching documents to a vendor needs the vendor.manage_documents permission.');
+      }
     }
 
     return this.documentsService.upload(
@@ -82,7 +95,12 @@ export class DocumentsController {
   @Get(':id')
   @RequirePermissions(PERMISSIONS.DOCUMENT_READ)
   @ApiOperation({ summary: 'Document metadata' })
-  async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {
+  async findOne(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    await this.assertGenericAccess(id);
+    await this.documentsService.assertGenericAccess(id, user, 'read');
     return this.documentsService.findOne(id);
   }
 
@@ -102,6 +120,7 @@ export class DocumentsController {
     @Res() response: Response,
   ): Promise<void> {
     await this.assertGenericAccess(id);
+    await this.documentsService.assertGenericAccess(id, user, 'read');
     const file = await this.documentsService.openForDownload(id, user, {
       preview: preview === 'true',
     });
@@ -117,17 +136,18 @@ export class DocumentsController {
   ) {
     const document = await this.assertGenericAccess(id);
     if (GENERATED_KINDS.includes(document.kind)) throw new BadRequestException('A generated document cannot be archived.');
+    await this.documentsService.assertGenericAccess(id, user, 'archive');
     return this.documentsService.archive(id, user);
   }
 
   /**
-   * Documents of customers, enquiries, quotations, proforma invoices and
-   * invoices are served only by their module routes, which check that
+   * Documents of customers, enquiries, quotations, proforma invoices,
+   * invoices, payments and deliveries are served only by their module routes, which check that
    * module's permissions; the generic routes must not bypass them.
    */
   private async assertGenericAccess(id: string) {
     const document = await this.documentsService.findActive(id);
-    if (document.customerId || document.enquiryId || document.quotationId || document.proformaInvoiceId || document.finalInvoiceId || document.paymentId) {
+    if (document.customerId || document.enquiryId || document.quotationId || document.proformaInvoiceId || document.finalInvoiceId || document.paymentId || document.deliveryId) {
       throw new NotFoundException(`Document ${id} was not found`);
     }
     return document;

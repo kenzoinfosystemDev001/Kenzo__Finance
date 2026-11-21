@@ -18,8 +18,15 @@ export async function GET(request: NextRequest): Promise<Response> {
 
   const upstream = await fetch(
     `${API_URL}/products/export${request.nextUrl.search}`,
-    { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' },
-  );
+    { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store', signal: AbortSignal.timeout(60_000) },
+  ).catch(() => null);
+
+  if (!upstream) {
+    return NextResponse.json(
+      { message: 'The API could not be reached. Try again shortly.' },
+      { status: 503 },
+    );
+  }
 
   if (!upstream.ok) {
     return NextResponse.json(

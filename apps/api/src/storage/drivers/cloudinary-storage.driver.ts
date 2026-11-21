@@ -69,7 +69,12 @@ export class CloudinaryStorageDriver implements StorageDriver {
         secure: true,
       });
     } else if (url) {
-      // The SDK reads CLOUDINARY_URL from the environment on its own.
+      // The SDK parses process.env.CLOUDINARY_URL itself. ConfigService
+      // holds the repaired value (quotes / `KEY=` prefix stripped), but
+      // @nestjs/config never overwrites an existing process.env entry, so
+      // the SDK would otherwise read the raw, still-broken string.
+      process.env.CLOUDINARY_URL = url;
+      cloudinary.config(true);
       cloudinary.config({ secure: true });
     } else {
       throw new Error(

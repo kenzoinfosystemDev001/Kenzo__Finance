@@ -8,7 +8,7 @@ import { EnquiriesService } from '../enquiries/enquiries.service';
 import { QuotationsService } from '../quotations/quotations.service';
 import { BRANDING_SETTING_KEYS, SETTING_KEYS, SettingsService } from '../settings/settings.service';
 import { buildPaginatedResult, type PaginationQueryDto } from '../common/dto/pagination.dto';
-import { normalizeName } from '../common/utils/normalize';
+import { normalizedNameFilter } from '../common/utils/normalize';
 import { businessToday } from '../common/utils/business-date';
 import { PERMISSIONS, type PermissionCode } from '../common/authz/permissions';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
@@ -140,7 +140,7 @@ export class ProformaInvoicesService {
     ];
     if (query.search) {
       const text = { contains: query.search, mode: 'insensitive' } as const;
-      and.push({ OR: [{ quotationNumber: text }, { customer: { OR: [{ name: text }, { customerCode: text }, { normalizedName: { contains: normalizeName(query.search) } }] } }] });
+      and.push({ OR: [{ quotationNumber: text }, { customer: { OR: [{ name: text }, { customerCode: text }, { normalizedName: normalizedNameFilter(query.search) }] } }] });
     }
     const where: Prisma.QuotationWhereInput = { AND: and };
     const [rows, totalItems] = await this.prisma.$transaction([
@@ -566,7 +566,7 @@ export class ProformaInvoicesService {
           { piNumber: text },
           { subject: text },
           { referenceNumber: text },
-          { customer: { OR: [{ name: text }, { customerCode: text }, { normalizedName: { contains: normalizeName(query.search) } }] } },
+          { customer: { OR: [{ name: text }, { customerCode: text }, { normalizedName: normalizedNameFilter(query.search) }] } },
           { quotation: { quotationNumber: text } },
           { assignedTo: { fullName: text } },
           { items: { some: { OR: [{ productName: text }, { productCode: text }, { modelName: text }, { modelNumber: text }] } } },

@@ -11,7 +11,7 @@ import { NumberingService, SEQUENCE_KEYS } from '../numbering/numbering.service'
 import { CustomersService } from '../customers/customers.service';
 import { ProductsService } from '../products/products.service';
 import { buildPaginatedResult, PaginationQueryDto } from '../common/dto/pagination.dto';
-import { cleanOptional, normalizeName } from '../common/utils/normalize';
+import { cleanMultiline, cleanOptional, normalizeName, normalizedNameFilter } from '../common/utils/normalize';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
 import type {
@@ -147,8 +147,8 @@ export class EnquiriesService {
       productModelId: item.productModelId ?? null,
       quantity: item.quantity,
       unit: cleanOptional(item.unit) ?? 'Nos',
-      technicalRequirements: cleanOptional(item.technicalRequirements) ?? null,
-      remarks: cleanOptional(item.remarks) ?? null,
+      technicalRequirements: cleanMultiline(item.technicalRequirements) ?? null,
+      remarks: cleanMultiline(item.remarks) ?? null,
       sortOrder,
     };
   }
@@ -194,14 +194,14 @@ export class EnquiriesService {
           customerContactId: dto.customerContactId ?? null,
           sourceId: dto.sourceId ?? null,
           assignedToId: dto.assignedToId ?? null,
-          description: cleanOptional(dto.description) ?? null,
-          internalRemarks: cleanOptional(dto.internalRemarks) ?? null,
+          description: cleanMultiline(dto.description) ?? null,
+          internalRemarks: cleanMultiline(dto.internalRemarks) ?? null,
           expectedDecisionDate: dto.expectedDecisionDate ? dateOnly(dto.expectedDecisionDate) : null,
           expectedBudget: dto.expectedBudget ?? null,
           currency: dto.currency ?? 'INR',
           expectedDeliveryTimeline: cleanOptional(dto.expectedDeliveryTimeline) ?? null,
           paymentPreference: cleanOptional(dto.paymentPreference) ?? null,
-          commercialNotes: cleanOptional(dto.commercialNotes) ?? null,
+          commercialNotes: cleanMultiline(dto.commercialNotes) ?? null,
           nextFollowUpDate: dto.nextFollowUpDate ? dateOnly(dto.nextFollowUpDate) : null,
           createdById: actor.id,
           updatedById: actor.id,
@@ -275,7 +275,7 @@ export class EnquiriesService {
         OR: [
           { enquiryNumber: text },
           { description: text },
-          { customer: { OR: [{ name: text }, { normalizedName: { contains: normalizeName(query.search) } }, { customerCode: text }] } },
+          { customer: { OR: [{ name: text }, { normalizedName: normalizedNameFilter(query.search) }, { customerCode: text }] } },
           { customer: { contacts: { some: { OR: [{ name: text }, { email: text }, { phone }] } } } },
           { items: { some: { OR: [{ product: { name: text } }, { product: { productCode: text } }, { productModel: { modelName: text } }, { productModel: { modelNumber: text } }] } } },
         ],
@@ -368,14 +368,14 @@ export class EnquiriesService {
     if (dto.enquiryDate) data.enquiryDate = dateOnly(dto.enquiryDate);
     if (dto.priority) data.priority = dto.priority;
     if (dto.sourceId !== undefined) data.sourceId = dto.sourceId || null;
-    if (dto.description !== undefined) data.description = cleanOptional(dto.description) ?? null;
-    if (dto.internalRemarks !== undefined) data.internalRemarks = cleanOptional(dto.internalRemarks) ?? null;
+    if (dto.description !== undefined) data.description = cleanMultiline(dto.description) ?? null;
+    if (dto.internalRemarks !== undefined) data.internalRemarks = cleanMultiline(dto.internalRemarks) ?? null;
     if (dto.expectedDecisionDate !== undefined) data.expectedDecisionDate = dto.expectedDecisionDate ? dateOnly(dto.expectedDecisionDate) : null;
     if (dto.expectedBudget !== undefined) data.expectedBudget = dto.expectedBudget ?? null;
     if (dto.currency) data.currency = dto.currency;
     if (dto.expectedDeliveryTimeline !== undefined) data.expectedDeliveryTimeline = cleanOptional(dto.expectedDeliveryTimeline) ?? null;
     if (dto.paymentPreference !== undefined) data.paymentPreference = cleanOptional(dto.paymentPreference) ?? null;
-    if (dto.commercialNotes !== undefined) data.commercialNotes = cleanOptional(dto.commercialNotes) ?? null;
+    if (dto.commercialNotes !== undefined) data.commercialNotes = cleanMultiline(dto.commercialNotes) ?? null;
     if (dto.nextFollowUpDate !== undefined) data.nextFollowUpDate = dto.nextFollowUpDate ? dateOnly(dto.nextFollowUpDate) : null;
 
     const keys = ['customerId', 'customerContactId', 'enquiryDate', 'priority', 'sourceId', 'description', 'internalRemarks', 'expectedDecisionDate', 'expectedBudget', 'currency', 'expectedDeliveryTimeline', 'paymentPreference', 'commercialNotes', 'nextFollowUpDate'] as const;
@@ -611,7 +611,7 @@ export class EnquiriesService {
     const normalizedName = normalizeName(dto.name);
     const clash = await this.prisma.enquirySource.findUnique({ where: { normalizedName } });
     if (clash) throw new ConflictException(`The source "${clash.name}" already exists.`);
-    const source = await this.prisma.enquirySource.create({ data: { name: dto.name, normalizedName, description: cleanOptional(dto.description) ?? null } });
+    const source = await this.prisma.enquirySource.create({ data: { name: dto.name, normalizedName, description: cleanMultiline(dto.description) ?? null } });
     await this.auditService.record({ actorUserId: actor.id, action: 'enquiry_source.create', entityType: 'EnquirySource', entityId: source.id, summary: `Created enquiry source ${source.name}` });
     return source;
   }
@@ -627,7 +627,7 @@ export class EnquiriesService {
       where: { id },
       data: {
         ...(dto.name ? { name: dto.name, normalizedName: normalizeName(dto.name) } : {}),
-        ...(dto.description !== undefined ? { description: cleanOptional(dto.description) ?? null } : {}),
+        ...(dto.description !== undefined ? { description: cleanMultiline(dto.description) ?? null } : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       },
     });

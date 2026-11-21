@@ -1,3 +1,4 @@
+import { businessDayEnd, businessDayStart } from '../common/utils/business-date';
 import {
   BadRequestException,
   ConflictException,
@@ -14,7 +15,7 @@ import { ProductsService } from '../products/products.service';
 import { EnquiriesService } from '../enquiries/enquiries.service';
 import { BRANDING_SETTING_KEYS, SETTING_KEYS, SettingsService } from '../settings/settings.service';
 import { buildPaginatedResult, PaginationQueryDto } from '../common/dto/pagination.dto';
-import { cleanOptional, normalizeName } from '../common/utils/normalize';
+import { cleanMultiline, cleanOptional, normalizeName, normalizedNameFilter } from '../common/utils/normalize';
 import { PERMISSIONS, type PermissionCode } from '../common/authz/permissions';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
@@ -162,7 +163,7 @@ export class QuotationsService {
         brandName: product.company.name,
         modelName: model?.modelName ?? null,
         modelNumber: model?.modelNumber ?? null,
-        description: cleanOptional(line.description) ?? model?.description ?? product.description ?? null,
+        description: cleanMultiline(line.description) ?? model?.description ?? product.description ?? null,
         specifications: specs.length ? (specs as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
         quantity: line.quantity,
         unit: cleanOptional(line.unit) ?? 'Nos',
@@ -174,19 +175,19 @@ export class QuotationsService {
         taxRate: new Prisma.Decimal(line.taxRate ?? 0),
         taxAmount: line.result.taxAmount,
         lineTotal: line.result.lineTotal,
-        remarks: cleanOptional(line.remarks) ?? null,
+        remarks: cleanMultiline(line.remarks) ?? null,
       };
     });
 
     const content = {
       quotationDate: dto.quotationDate ? dateOnly(dto.quotationDate) : todayUtc(),
       validUntil: dto.validUntil ? dateOnly(dto.validUntil) : null,
-      termsAndConditions: cleanOptional(dto.termsAndConditions) ?? null,
-      paymentTerms: cleanOptional(dto.paymentTerms) ?? null,
-      deliveryTerms: cleanOptional(dto.deliveryTerms) ?? null,
-      warrantyTerms: cleanOptional(dto.warrantyTerms) ?? null,
-      notes: cleanOptional(dto.notes) ?? null,
-      internalRemarks: cleanOptional(dto.internalRemarks) ?? null,
+      termsAndConditions: cleanMultiline(dto.termsAndConditions) ?? null,
+      paymentTerms: cleanMultiline(dto.paymentTerms) ?? null,
+      deliveryTerms: cleanMultiline(dto.deliveryTerms) ?? null,
+      warrantyTerms: cleanMultiline(dto.warrantyTerms) ?? null,
+      notes: cleanMultiline(dto.notes) ?? null,
+      internalRemarks: cleanMultiline(dto.internalRemarks) ?? null,
       otherChargesLabel: cleanOptional(dto.otherChargesLabel) ?? null,
       subtotal: totals.subtotal,
       itemDiscountTotal: totals.itemDiscountTotal,
@@ -229,6 +230,10 @@ export class QuotationsService {
   /** What the create form pre-fills from an enquiry (Module 4 hand-off). */
   async enquiryConvertData(enquiryId: string, actor: AuthenticatedUser) {
     this.require(actor, PERMISSIONS.QUOTATION_CREATE, 'create quotations');
+    // Converting is its own permission (the web shows the button only with
+    // it); without this check a user with quotation.create alone could
+    // convert any enquiry by opening the create form directly.
+    this.require(actor, PERMISSIONS.ENQUIRY_CONVERT, 'convert enquiries');
     const handoff = await this.enquiriesService.conversionHandoff(enquiryId, actor);
     const enquiry = await this.enquiriesService.findOne(enquiryId);
     const defaultTerms = await this.settingsService.get<string | null>(BRANDING_SETTING_KEYS.QUOTATION_DEFAULT_TERMS);
@@ -260,6 +265,7 @@ export class QuotationsService {
 
     if (dto.enquiryId) {
       this.require(actor, PERMISSIONS.QUOTATION_CREATE, 'create quotations');
+      this.require(actor, PERMISSIONS.ENQUIRY_CONVERT, 'convert enquiries');
       const handoff = await this.enquiriesService.conversionHandoff(dto.enquiryId, actor);
       if (!handoff.ready) {
         throw new BadRequestException({ message: 'This enquiry cannot be converted yet.', details: { problems: handoff.problems } });
@@ -326,7 +332,11 @@ export class QuotationsService {
         { after: { customerId, enquiryId: dto.enquiryId ?? null, grandTotal: content.grandTotal.toFixed(2) } });
       return quotation;
     }).catch((error) => {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      const target = error instanceof Prisma.PrismaClientKnownRequestError ? error.meta?.target : undefined;
+      const onEnquiry = Array.isArray(target) ? target.includes('enquiryId') : String(target ?? '').includes('enquiryId');
+      // Other unique keys (e.g. a quotation-number collision) fall through to
+      // the global filter's generic conflict message.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002' && onEnquiry) {
         throw new ConflictException('A quotation already exists for this enquiry.');
       }
       throw error;
@@ -518,15 +528,21 @@ export class QuotationsService {
 
   /** Delete a quotation that was never issued (single draft revision, no documents). */
   async remove(id: string, actor: AuthenticatedUser, context: RequestContext) {
-    const quotation = await this.prisma.quotation.findUnique({
-      where: { id },
-      include: { _count: { select: { revisions: true, documents: { where: { archivedAt: null } } } }, revisions: { select: { issuedAt: true, status: true } } },
-    });
-    if (!quotation) throw new NotFoundException(`Quotation ${id} was not found`);
-    if (quotation._count.revisions > 1 || quotation.revisions.some((r) => r.issuedAt || r.status !== QuotationStatus.DRAFT) || quotation._count.documents > 0) {
-      throw new ConflictException('Only a never-issued draft without documents can be deleted. Cancel this quotation instead.');
-    }
     await this.prisma.$transaction(async (tx) => {
+      // Checked under the row lock: otherwise a concurrent DRAFT -> SENT could
+      // commit between the check and the delete, removing an issued quotation.
+      await this.lockQuotation(tx, id);
+      const quotation = await tx.quotation.findUnique({
+        where: { id },
+        include: { _count: { select: { revisions: true, documents: { where: { archivedAt: null } } } }, revisions: { select: { issuedAt: true, status: true } } },
+      });
+      if (!quotation) throw new NotFoundException(`Quotation ${id} was not found`);
+      if (quotation._count.revisions > 1 || quotation.revisions.some((r) => r.issuedAt || r.status !== QuotationStatus.DRAFT) || quotation._count.documents > 0) {
+        throw new ConflictException('Only a never-issued draft without documents can be deleted. Cancel this quotation instead.');
+      }
+      // Removed (archived) attachments still reference the quotation through a
+      // RESTRICT foreign key, which made such a draft impossible to delete.
+      await tx.document.updateMany({ where: { quotationId: id, archivedAt: { not: null } }, data: { quotationId: null } });
       // The enquiry goes back to Ready for Quotation so it can be converted again.
       if (quotation.enquiryId) await this.enquiriesService.revertConversion(tx, quotation.enquiryId, quotation.quotationNumber, actor);
       await tx.quotation.delete({ where: { id } });
@@ -548,7 +564,7 @@ export class QuotationsService {
     if (query.amountMin) and.push({ currentTotal: { gte: new Prisma.Decimal(query.amountMin) } });
     if (query.amountMax) and.push({ currentTotal: { lte: new Prisma.Decimal(query.amountMax) } });
     if (query.dateFrom || query.dateTo) {
-      and.push({ createdAt: { ...(query.dateFrom ? { gte: dateOnly(query.dateFrom) } : {}), ...(query.dateTo ? { lt: new Date(dateOnly(query.dateTo).getTime() + 86_400_000) } : {}) } });
+      and.push({ createdAt: { ...(query.dateFrom ? { gte: businessDayStart(query.dateFrom) } : {}), ...(query.dateTo ? { lt: businessDayEnd(query.dateTo) } : {}) } });
     }
     if (query.validFrom || query.validTo) {
       and.push({ revisions: { some: { status: { not: QuotationStatus.SUPERSEDED }, validUntil: { ...(query.validFrom ? { gte: dateOnly(query.validFrom) } : {}), ...(query.validTo ? { lte: dateOnly(query.validTo) } : {}) } } } });
@@ -560,7 +576,7 @@ export class QuotationsService {
           { quotationNumber: text },
           { subject: text },
           { referenceNumber: text },
-          { customer: { OR: [{ name: text }, { normalizedName: { contains: normalizeName(query.search) } }, { customerCode: text }] } },
+          { customer: { OR: [{ name: text }, { normalizedName: normalizedNameFilter(query.search) }, { customerCode: text }] } },
           { enquiry: { enquiryNumber: text } },
           { assignedTo: { fullName: text } },
           { revisions: { some: { items: { some: { OR: [{ productName: text }, { productCode: text }, { modelName: text }, { modelNumber: text }] } } } } },
@@ -799,8 +815,8 @@ export class QuotationsService {
 
   async reports(query: { dateFrom?: string; dateTo?: string }) {
     const created: Prisma.DateTimeFilter = {
-      ...(query.dateFrom ? { gte: dateOnly(query.dateFrom) } : {}),
-      ...(query.dateTo ? { lt: new Date(dateOnly(query.dateTo).getTime() + 86_400_000) } : {}),
+      ...(query.dateFrom ? { gte: businessDayStart(query.dateFrom) } : {}),
+      ...(query.dateTo ? { lt: businessDayEnd(query.dateTo) } : {}),
     };
     const where: Prisma.QuotationWhereInput = Object.keys(created).length ? { createdAt: created } : {};
     const [statusRows, customerRows, employeeRows, revisionStats, enquiriesTotal, enquiriesConverted] = await Promise.all([

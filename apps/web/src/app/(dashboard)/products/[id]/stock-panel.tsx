@@ -1,5 +1,6 @@
 'use client';
 
+import { BUSINESS_TIME_ZONE } from '@/lib/vendor-labels';
 import Link from 'next/link';
 import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
@@ -55,8 +56,22 @@ export function StockPanel({
   canPost: boolean;
   canManageSettings: boolean;
 }) {
+  // Controlled, so a rejected movement (e.g. not enough stock) keeps what was
+  // typed: React 19 resets uncontrolled fields after every form action.
+  // They are cleared only once a movement has actually been posted.
+  const [quantity, setQuantity] = useState('');
+  const [locationId, setLocationId] = useState('');
+  const [reason, setReason] = useState('');
+
   const [state, formAction] = useActionState<StockFormState, FormData>(
-    postStockMovementAction.bind(null, productId),
+    async (previous, formData) => {
+      const result = await postStockMovementAction(productId, previous, formData);
+      if (result.success) {
+        setQuantity('');
+        setReason('');
+      }
+      return result;
+    },
     {},
   );
 
@@ -176,6 +191,8 @@ export function StockPanel({
                 required
                 className="field-input"
                 placeholder="Units"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
               />
               <p className="field-hint">
                 Always a positive number; the movement type sets the direction.
@@ -187,7 +204,13 @@ export function StockPanel({
                 <label htmlFor="locationId" className="field-label">
                   Location
                 </label>
-                <select id="locationId" name="locationId" className="field-input">
+                <select
+                  id="locationId"
+                  name="locationId"
+                  className="field-input"
+                  value={locationId}
+                  onChange={(e) => setLocationId(e.target.value)}
+                >
                   <option value="">Default location</option>
                   {locations.map((location) => (
                     <option key={location.id} value={location.id}>
@@ -207,6 +230,8 @@ export function StockPanel({
                 name="reason"
                 required={reasonRequired}
                 className="field-input"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
                 placeholder={
                   reasonRequired ? 'Why the count changed' : 'Optional note'
                 }
@@ -256,7 +281,7 @@ export function StockPanel({
                     {MOVEMENT_LABELS[movement.type]}
                   </p>
                   <p className="text-xs text-ink-subtle">
-                    {new Date(movement.occurredAt).toLocaleDateString('en-IN', {
+                    {new Date(movement.occurredAt).toLocaleDateString('en-IN', { timeZone: BUSINESS_TIME_ZONE,
                       day: '2-digit',
                       month: 'short',
                       year: 'numeric',

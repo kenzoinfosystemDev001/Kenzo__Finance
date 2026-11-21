@@ -5,7 +5,8 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { OcrStatus, Prisma } from '@prisma/client';
+import { DocumentKind, OcrStatus, Prisma } from '@prisma/client';
+import { VENDOR_DOCUMENT_KINDS } from '../vendors/dto/vendor-children.dto';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { StorageService } from '../storage/storage.service';
@@ -72,6 +73,7 @@ export class OcrService {
         mimeType: true,
         originalFilename: true,
         archivedAt: true,
+        kind: true,
         vendorId: true,
         productId: true,
         customerId: true,
@@ -84,13 +86,19 @@ export class OcrService {
       throw new NotFoundException(`Document ${documentId} was not found`);
     }
 
-    // Only a document uploaded for onboarding (not yet filed under any record)
-    // can feed a new vendor. Re-extracting a file that already belongs to a
-    // vendor, customer, product, enquiry or quotation would let confirming
-    // the draft move that file onto a different record.
-    if (document.vendorId || document.productId || document.customerId || document.enquiryId || document.quotationId) {
+    // Only an unattached vendor-onboarding upload may be read here. Otherwise
+    // `ocr.submit` alone would expose the text of a customer's PAN or a
+    // quotation PDF, and confirming the draft would re-home that document
+    // onto the new vendor.
+    const owned =
+      document.vendorId ||
+      document.productId ||
+      document.customerId ||
+      document.enquiryId ||
+      document.quotationId;
+    if (owned || !(VENDOR_DOCUMENT_KINDS as readonly DocumentKind[]).includes(document.kind)) {
       throw new BadRequestException(
-        'This document is already attached to a record. Upload the file again to start a new OCR draft.',
+        'Only a newly uploaded vendor document that is not yet attached to a record can be read by OCR.',
       );
     }
 
