@@ -25,6 +25,7 @@ import { FinalInvoicesModule } from './final-invoices/final-invoices.module';
 import { PaymentsModule } from './payments/payments.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { UsersModule } from './users/users.module';
 import { HealthController } from './health/health.controller';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
@@ -63,6 +64,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     PaymentsModule,
     DeliveriesModule,
     AnalyticsModule,
+    UsersModule,
   ],
   controllers: [HealthController],
   providers: [

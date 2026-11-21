@@ -166,3 +166,25 @@ export function commonUnit(items: Array<{ unit: string }>): string | null {
   const units = new Set(items.map((i) => i.unit));
   return units.size === 1 ? [...units][0] : null;
 }
+
+/** Audit actions written by DeliveriesService (and document uploads on a delivery). */
+const DELIVERY_ACTIVITY_LABELS: Record<string, string> = {
+  'delivery.create': 'Delivery created',
+  'delivery.update': 'Delivery edited',
+  'delivery.packages': 'Packages updated',
+  'delivery.schedule': 'Scheduled',
+  'delivery.reschedule': 'Rescheduled',
+  'delivery.ready_for_dispatch': 'Marked ready for dispatch',
+  'delivery.in_transit': 'Marked in transit',
+  'delivery.returned': 'Marked returned',
+  'delivery.dispatch': 'Dispatched',
+  'delivery.track': 'Tracking update',
+  'delivery.fail': 'Delivery failed',
+  'delivery.confirm': 'Delivery confirmed',
+  'delivery.pod.amend': 'Proof of delivery amended',
+  'delivery.cancel': 'Delivery cancelled',
+};
+
+export function deliveryActivityLabel(action: string, fallback: (action: string) => string): string {
+  return DELIVERY_ACTIVITY_LABELS[action] ?? fallback(action);
+}

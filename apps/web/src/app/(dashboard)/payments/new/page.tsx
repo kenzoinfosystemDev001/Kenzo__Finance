@@ -11,18 +11,26 @@ import { ErrorState } from '@/components/ui';
 
 export const metadata: Metadata = { title: 'Record Payment' };
 
-export default async function NewPaymentPage({ searchParams }: { searchParams: Promise<{ customerId?: string; invoiceId?: string }> }) {
+export default async function NewPaymentPage({ searchParams }: { searchParams: Promise<{ customerId?: string; invoiceId?: string; customerSearch?: string }> }) {
   const params = await searchParams;
   const user = await getCurrentUser();
   if (!user?.permissions.includes('payment.create')) return <ErrorState title="Not allowed" message="You do not have permission to record payments." />;
 
   let customers: Array<{ id: string; name: string; customerCode: string }> = [];
   let invoices: EligiblePaymentInvoice[] = [];
+  let customerTotal = 0;
   let settings: { methods: PaymentMethodOption[] } = { methods: [] };
   try {
-    const customerData = await apiFetch<PaginatedResponse<CustomerDetail>>('/customers?page=1&pageSize=100&status=ACTIVE');
+    // The picker lists at most 100 customers; the search narrows it server-side so every customer stays reachable.
+    const search = params.customerSearch?.trim().slice(0, 200);
+    const customerData = await apiFetch<PaginatedResponse<CustomerDetail>>(`/customers?page=1&pageSize=100&status=ACTIVE${search ? `&search=${encodeURIComponent(search)}` : ''}`);
     customers = customerData.items.map((customer) => ({ id: customer.id, name: customer.name, customerCode: customer.customerCode }));
-    [settings] = await Promise.all([apiFetch<{ methods: PaymentMethodOption[] }>('/payments/settings').catch(() => ({ methods: [] }))]);
+    customerTotal = customerData.meta.totalItems;
+    if (params.customerId && !customers.some((c) => c.id === params.customerId)) {
+      const selected = await apiFetch<CustomerDetail>(`/customers/${encodeURIComponent(params.customerId)}`);
+      customers.unshift({ id: selected.id, name: selected.name, customerCode: selected.customerCode });
+    }
+    settings = await apiFetch<{ methods: PaymentMethodOption[] }>('/payments/settings');
     if (params.customerId) invoices = await apiFetch<EligiblePaymentInvoice[]>(`/payments/eligible-invoices?customerId=${params.customerId}`);
   } catch (error) {
     const apiError = error instanceof ApiError ? error : null;
@@ -64,6 +72,11 @@ export default async function NewPaymentPage({ searchParams }: { searchParams: P
     <div className="space-y-5">
       <div><h1 className="text-xl font-bold text-ink">Record Payment</h1><p className="text-sm text-ink-muted">Allocate a payment to an eligible customer final invoice.</p></div>
       <form className="card grid gap-4 p-5 md:grid-cols-2" method="get">
+        <label className="text-sm font-medium">Find customer
+          <input name="customerSearch" defaultValue={params.customerSearch ?? ''} className="form-input mt-1 w-full" placeholder="Name, code, phone or email" maxLength={200} />
+          {customerTotal > customers.length && <span className="mt-1 block text-xs text-ink-subtle">Showing {customers.length} of {customerTotal} active customers. Search to narrow the list.</span>}
+        </label>
+        <div className="flex items-end"><button type="submit" formNoValidate className="btn-secondary">Search</button></div>
         <label className="text-sm font-medium">Customer
           <select name="customerId" defaultValue={params.customerId ?? ''} className="form-input mt-1 w-full" required>
             <option value="">Select customer</option>

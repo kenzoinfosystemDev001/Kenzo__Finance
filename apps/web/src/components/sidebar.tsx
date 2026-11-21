@@ -16,6 +16,7 @@ import {
   IconMenu,
   IconQuote,
   IconSettings,
+  IconShield,
   IconTag,
   IconTruck,
   IconUsers,
@@ -49,6 +50,7 @@ const NAV: NavItem[] = [
   { label: 'Payment Management', href: '/payments', icon: IconWallet, permission: 'payment.read' },
   { label: 'Delivery Management', href: '/deliveries', icon: IconTruck, permission: 'delivery.read' },
   { label: 'Reports & Analytics', href: '/reports', icon: IconChart, permission: 'analytics.dashboard' },
+  { label: 'Users & Roles', href: '/users', icon: IconShield, permission: 'user.read' },
   { label: 'Settings', href: '/settings', icon: IconSettings },
 ];
 

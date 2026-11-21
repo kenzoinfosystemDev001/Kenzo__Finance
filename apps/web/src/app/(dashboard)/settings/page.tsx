@@ -2,13 +2,14 @@ import type { Metadata } from 'next';
 import { apiFetch } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth-actions';
 import { setStockTrackingAction } from '@/lib/inventory-actions';
-import type { AppSetting, FinalInvoiceSettings, ProformaSettings, QuotationSettings } from '@/lib/types';
+import type { AppSetting, FinalInvoiceSettings, PaymentSettings, ProformaSettings, QuotationSettings } from '@/lib/types';
 import { PageHeader, SectionCard } from '@/components/ui';
 import { getLoginBranding, loginBackgroundUrl } from '@/lib/branding';
 import { LoginBrandingSettings } from './login-branding-settings';
 import { QuotationSettingsPanel } from './quotation-settings';
 import { ProformaSettingsPanel } from './proforma-settings';
 import { FinalInvoiceSettingsPanel } from './final-invoice-settings';
+import { PaymentSettingsPanel } from './payment-settings';
 
 export const metadata: Metadata = { title: 'Settings' };
 
@@ -42,6 +43,11 @@ export default async function SettingsPage() {
   const invoiceSettings =
     canManage || canReadInvoices
       ? await apiFetch<FinalInvoiceSettings>('/final-invoices/settings').catch(() => null)
+      : null;
+  const canReadPayments = user?.permissions.includes('payment.read') ?? false;
+  const paymentSettings =
+    canManage || canReadPayments
+      ? await apiFetch<PaymentSettings>('/payments/settings').catch(() => null)
       : null;
   const invoiceApproval =
     invoiceSettings?.approvalRequired ?? settings.find((s) => s.key === 'invoice.approvalRequired')?.value === true;
@@ -145,6 +151,15 @@ export default async function SettingsPage() {
           description="Approval before issuing, and the invoice number format allocated when an invoice is issued."
         >
           <FinalInvoiceSettingsPanel approvalRequired={invoiceApproval} settings={invoiceSettings} canManage={canManage} />
+        </SectionCard>
+      )}
+
+      {(canManage || canReadPayments) && (
+        <SectionCard
+          title="Payments"
+          description="Accepted payment methods and whether any are verified automatically when recorded."
+        >
+          <PaymentSettingsPanel settings={paymentSettings} canManage={canManage} />
         </SectionCard>
       )}
 

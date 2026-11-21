@@ -1932,3 +1932,71 @@ export interface DeliveryReports {
   partial: DeliveryListItem[];
   generatedAt: string;
 }
+
+// ---------------------------------------------------------------------------
+// Users & Roles (apps/api/src/users)
+// ---------------------------------------------------------------------------
+
+export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'LOCKED';
+
+export interface UserRoleAssignment {
+  id: string;
+  code: string;
+  name: string;
+  assignedAt: string;
+}
+
+/** A user row as GET /users returns it. Never carries a password hash. */
+export interface UserListItem {
+  id: string;
+  email: string;
+  fullName: string;
+  phone: string | null;
+  status: UserStatus;
+  lastLoginAt: string | null;
+  failedLoginAttempts: number;
+  lockedUntil: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** True while a login lockout is in force (lockedUntil in the future). */
+  locked: boolean;
+  roles: UserRoleAssignment[];
+}
+
+export interface PermissionInfo {
+  code: string;
+  module: string;
+  action: string;
+  description: string | null;
+}
+
+export interface UserDetail extends UserListItem {
+  /** Effective permissions from all of the user's roles. */
+  permissions: PermissionInfo[];
+}
+
+export interface UserSummary {
+  total: number;
+  active: number;
+  inactive: number;
+  locked: number;
+}
+
+export interface UserActivityEntry {
+  id: string;
+  action: string;
+  summary: string | null;
+  createdAt: string;
+  ipAddress: string | null;
+  actor: UserRef | null;
+}
+
+export interface RoleWithPermissions {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  isSystem: boolean;
+  userCount: number;
+  permissions: string[];
+}

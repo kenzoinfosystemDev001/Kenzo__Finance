@@ -13,9 +13,10 @@ import { EmptyStateClient, PanelHeader } from '@/components/panel-shared';
 import { FinalInvoiceStatusBadge, PastDueBadge } from '@/components/final-invoice-badges';
 import { ProformaLines } from '@/components/proforma-lines';
 import { IconChevronLeft, IconDownload, IconFile } from '@/components/icons';
+import { InvoiceDeliveriesPanel } from '@/components/delivery-history';
 import { FinalInvoiceDocumentsPanel, FinalInvoiceHeaderActions } from './final-invoice-panels';
 
-const TABS = ['overview', 'items', 'proforma', 'payments', 'documents', 'activity'] as const;
+const TABS = ['overview', 'items', 'proforma', 'payments', 'deliveries', 'documents', 'activity'] as const;
 type Tab = (typeof TABS)[number];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -119,6 +120,7 @@ export default async function FinalInvoiceProfilePage({
           { key: 'items', label: 'Items', href: href('items'), count: inv.items.length },
           { key: 'proforma', label: 'Proforma Reference', href: href('proforma') },
           { key: 'payments', label: 'Payments', href: href('payments') },
+          ...(can('delivery.read') ? [{ key: 'deliveries', label: 'Deliveries', href: href('deliveries') }] : []),
           { key: 'documents', label: 'Documents', href: href('documents'), count: uploads.length + (inv.pdfDocument ? 1 : 0) },
           { key: 'activity', label: 'Activity', href: href('activity') },
         ]}
@@ -252,6 +254,10 @@ export default async function FinalInvoiceProfilePage({
             />
           </SectionCard>
         </div>
+      )}
+
+      {tab === 'deliveries' && (
+        <InvoiceDeliveriesPanel invoiceId={inv.id} customerId={inv.customerId} invoiceDeliverable={inv.status === 'ISSUED' || inv.status === 'SENT'} permissions={permissions} />
       )}
 
       {tab === 'payments' && (

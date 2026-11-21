@@ -15,6 +15,7 @@ import { formatMoney } from '@/lib/quotation-labels';
 import { isFollowUpOverdue } from '@/lib/enquiry-labels';
 import { IconChevronLeft, IconPencil, IconPlus, IconUser, IconWarehouse } from '@/components/icons';
 import { CustomerRowActions } from '../customer-row-actions';
+import { CustomerDeliveriesPanel } from '@/components/delivery-history';
 import { CustomerAddressesPanel, CustomerContactsPanel, CustomerDocumentsPanel, CustomerProductsPanel } from './customer-panels';
 
 const TABS = ['overview', 'contacts', 'addresses', 'products', 'documents', 'activity', 'transactions'] as const;
@@ -196,6 +197,7 @@ export default async function CustomerProfilePage({
           canCreatePayment={can('payment.create')}
         />
       )}
+      {tab === 'transactions' && <CustomerDeliveriesPanel customerId={customer.id} permissions={permissions} />}
     </div>
   );
 }
