@@ -4,8 +4,6 @@ import { getCurrentUser } from '@/lib/auth-actions';
 import { setStockTrackingAction } from '@/lib/inventory-actions';
 import type { AppSetting, FinalInvoiceSettings, PaymentSettings, ProformaSettings, QuotationSettings } from '@/lib/types';
 import { PageHeader, SectionCard } from '@/components/ui';
-import { getLoginBranding, loginBackgroundUrl } from '@/lib/branding';
-import { LoginBrandingSettings } from './login-branding-settings';
 import { QuotationSettingsPanel } from './quotation-settings';
 import { ProformaSettingsPanel } from './proforma-settings';
 import { FinalInvoiceSettingsPanel } from './final-invoice-settings';
@@ -21,7 +19,6 @@ export default async function SettingsPage() {
     '/settings',
   ).catch(() => ({ settings: [] as AppSetting[] }));
 
-  const branding = await getLoginBranding();
   const canReadQuotations = user?.permissions.includes('quotation.read') ?? false;
   // The API serves these to quotation readers and to settings managers.
   const quotationSettings = canReadQuotations || canManage
@@ -58,17 +55,6 @@ export default async function SettingsPage() {
         title="Settings"
         description="Business switches that take effect immediately. Every change is recorded in the audit log."
       />
-
-      <SectionCard
-        title="Sign-in Page"
-        description="Background image and administrator contact shown on the login screen."
-      >
-        <LoginBrandingSettings
-          backgroundUrl={branding.backgroundId ? loginBackgroundUrl(branding.backgroundId) : null}
-          supportEmail={branding.supportEmail}
-          canManage={canManage}
-        />
-      </SectionCard>
 
       <SectionCard
         title="Inventory"

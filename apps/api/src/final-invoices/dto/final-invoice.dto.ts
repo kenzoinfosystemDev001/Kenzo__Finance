@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsDateString, IsEnum, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsDateString, IsEnum, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
 import { DocumentKind, FinalInvoiceStatus, InvoicePaymentState } from '@prisma/client';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { BankDetailsDto } from '../../proforma-invoices/dto/proforma.dto';
@@ -139,4 +139,12 @@ export class UploadFinalInvoiceDocumentDto {
   @IsOptional()
   @IsIn(FINAL_INVOICE_UPLOAD_KINDS)
   kind?: (typeof FINAL_INVOICE_UPLOAD_KINDS)[number];
+}
+
+/** Changes only the payment due date of an issued invoice. `null` clears it, which stops its payment alerts. */
+export class UpdateInvoiceDueDateDto {
+  @ApiProperty({ nullable: true, example: '2026-12-31', description: 'YYYY-MM-DD, or null to clear the due date.' })
+  @ValidateIf((o: UpdateInvoiceDueDateDto) => o.dueDate !== null)
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'Due date must be a calendar date in YYYY-MM-DD form.' })
+  dueDate!: string | null;
 }

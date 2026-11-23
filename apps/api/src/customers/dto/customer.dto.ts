@@ -396,6 +396,12 @@ export class UploadCustomerDocumentDto {
 export const CUSTOMER_SORT_FIELDS = ['customerCode', 'name', 'customerType', 'status', 'createdAt', 'updatedAt'] as const;
 
 export class QueryCustomersDto extends PaginationQueryDto {
+  /** csv (default) or xlsx. Same columns and filters either way. */
+  @ApiPropertyOptional({ enum: ['csv', 'xlsx'] })
+  @IsOptional()
+  @IsIn(['csv', 'xlsx'])
+  format?: 'csv' | 'xlsx';
+
   @ApiPropertyOptional({
     description: 'Name, code, contact name/phone/email, GSTIN, PAN, city or country',
   })

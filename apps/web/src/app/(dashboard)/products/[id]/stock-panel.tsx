@@ -75,8 +75,9 @@ export function StockPanel({
     {},
   );
 
-  const [type, setType] = useState<StockMovementType>('RECEIPT');
-  const reasonRequired = REASON_REQUIRED.includes(type);
+  // Starts unset: the user chooses the movement type.
+  const [type, setType] = useState<StockMovementType | ''>('');
+  const reasonRequired = type !== '' && REASON_REQUIRED.includes(type);
 
   if (!trackingEnabled) {
     return (
@@ -168,9 +169,11 @@ export function StockPanel({
                 id="type"
                 name="type"
                 value={type}
-                onChange={(e) => setType(e.target.value as StockMovementType)}
+                onChange={(e) => setType(e.target.value as StockMovementType | '')}
                 className="field-input"
+                required
               >
+                <option value="">Select movement type</option>
                 {Object.entries(MOVEMENT_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
@@ -190,7 +193,7 @@ export function StockPanel({
                 min={1}
                 required
                 className="field-input"
-                placeholder="Units"
+                placeholder="Enter quantity"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
               />

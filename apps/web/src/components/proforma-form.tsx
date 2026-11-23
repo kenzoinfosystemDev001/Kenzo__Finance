@@ -133,7 +133,7 @@ export function ProformaForm(props: ProformaFormProps) {
             options={props.assignees.map((a) => ({ value: a.id, label: a.fullName }))}
           />
           <TextField label="Subject" value={values.subject} onChange={(v) => set('subject', v)} maxLength={300} />
-          <TextField label="Customer Reference No." value={values.referenceNumber} onChange={(v) => set('referenceNumber', v)} maxLength={100} hint="e.g. the customer's purchase order number" />
+          <TextField label="Customer Reference No." value={values.referenceNumber} onChange={(v) => set('referenceNumber', v)} maxLength={100} hint="Your customer's own reference for this order (optional)" />
         </div>
       </section>
 

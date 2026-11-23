@@ -167,7 +167,7 @@ export function ReportFilters({
         >
           <label className="flex flex-col gap-1 text-sm text-ink-muted">
             Ageing buckets (days)
-            <input value={buckets} onChange={(e) => setBuckets(e.target.value)} placeholder="30,60,90" pattern="\s*\d{1,4}(\s*,\s*\d{1,4})*\s*" className="field-input h-10 w-36" />
+            <input value={buckets} onChange={(e) => setBuckets(e.target.value)} placeholder="Enter days, comma-separated" pattern="\s*\d{1,4}(\s*,\s*\d{1,4})*\s*" className="field-input h-10 w-36" />
           </label>
           <button type="submit" className="btn-secondary h-10" disabled={pending}>
             Apply

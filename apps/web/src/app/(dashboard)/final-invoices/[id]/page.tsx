@@ -15,6 +15,7 @@ import { ProformaLines } from '@/components/proforma-lines';
 import { IconChevronLeft, IconDownload, IconFile } from '@/components/icons';
 import { InvoiceDeliveriesPanel } from '@/components/delivery-history';
 import { FinalInvoiceDocumentsPanel, FinalInvoiceHeaderActions } from './final-invoice-panels';
+import { DueDateEditor } from '@/components/due-date-editor';
 
 const TABS = ['overview', 'items', 'proforma', 'payments', 'deliveries', 'documents', 'activity'] as const;
 type Tab = (typeof TABS)[number];
@@ -134,7 +135,17 @@ export default async function FinalInvoiceProfilePage({
                 { label: 'Invoice number', value: inv.invoiceNumber ? <span className="font-mono">{inv.invoiceNumber}</span> : 'Allocated when issued' },
                 { label: 'Status', value: FINAL_INVOICE_STATUS_LABELS[inv.status] },
                 { label: 'Invoice date', value: formatDate(inv.invoiceDate) },
-                { label: 'Due date', value: inv.dueDate ? `${formatDate(inv.dueDate)}${inv.pastDue ? ' (past due date)' : ''}` : null },
+                {
+                  label: 'Due date',
+                  value: ['ISSUED', 'SENT'].includes(inv.status) && can('invoice.update') ? (
+                    <DueDateEditor
+                      invoiceId={inv.id}
+                      dueDate={inv.dueDate ? inv.dueDate.slice(0, 10) : null}
+                      invoiceDate={inv.invoiceDate.slice(0, 10)}
+                      formattedDueDate={inv.dueDate ? `${formatDate(inv.dueDate)}${inv.pastDue ? ' (past due date)' : ''}` : 'Not set'}
+                    />
+                  ) : inv.dueDate ? `${formatDate(inv.dueDate)}${inv.pastDue ? ' (past due date)' : ''}` : null,
+                },
                 { label: 'Grand total', value: money(inv.grandTotal) },
                 { label: 'Tax total', value: money(inv.taxTotal) },
                 { label: 'Subject', value: inv.subject },

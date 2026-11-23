@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { DocumentKind, Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
+import { assertNotReferenced } from '../common/utils/master-delete';
 import { AuditService } from '../audit/audit.service';
 import { NumberingService, SEQUENCE_KEYS } from '../numbering/numbering.service';
 import { StockService } from '../stock/stock.service';
@@ -877,6 +878,24 @@ export class ProductsService {
   // -------------------------------------------------------------------------
   // Categories
   // -------------------------------------------------------------------------
+
+  /** Permanently deletes a product category that no product uses (archived products count too). */
+  async deleteCategory(id: string, actor: AuthenticatedUser) {
+    const existing = await this.prisma.productCategory.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Category ${id} was not found`);
+    const products = await this.prisma.product.count({ where: { categoryId: id } });
+    assertNotReferenced(`The category "${existing.name}"`, [{ label: 'product', count: products }]);
+    await this.prisma.productCategory.delete({ where: { id } });
+    await this.auditService.record({
+      actorUserId: actor.id,
+      action: 'product_category.delete',
+      entityType: 'ProductCategory',
+      entityId: id,
+      summary: `Deleted product category ${existing.name}`,
+      before: { name: existing.name },
+    });
+    return { id, deleted: true };
+  }
 
   async listCategories(includeInactive = false) {
     return this.prisma.productCategory.findMany({

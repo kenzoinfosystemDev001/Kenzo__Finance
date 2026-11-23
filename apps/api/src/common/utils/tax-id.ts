@@ -33,7 +33,7 @@ export function computeGstinChecksum(first14: string): string {
  * out of scanned text, so an OCR misread is not taken as a real number.
  */
 export function isStructuredGstin(value: string): boolean {
-  const gstin = value.replace(/s/g, "").toUpperCase();
+  const gstin = value.replace(/\s/g, '').toUpperCase();
   return GSTIN_STRUCTURE.test(gstin) && computeGstinChecksum(gstin.slice(0, 14)) === gstin[14];
 }
 

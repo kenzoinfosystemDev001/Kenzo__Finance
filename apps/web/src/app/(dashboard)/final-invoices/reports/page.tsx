@@ -185,7 +185,7 @@ export default async function InvoiceReportsPage({ searchParams }: { searchParam
       <section className="card">
         <PanelHeader
           title="Overdue"
-          description="Issued or sent invoices whose due date has passed and that are not fully paid (verified payments only; oldest first, up to 200). Filtered by customer only, not by the date range."
+          description="Issued invoices past their due date and not fully paid. Oldest first, up to 200."
         />
         {report.pastDue.length === 0 ? (
           <EmptyStateClient title="Nothing overdue" description="No unpaid issued invoice has passed its due date." />

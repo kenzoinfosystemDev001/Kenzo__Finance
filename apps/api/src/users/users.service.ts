@@ -56,7 +56,7 @@ export class UsersService {
         : {}),
     };
     const [rows, total] = await this.prisma.$transaction([
-      this.prisma.user.findMany({ where, select: USER_SELECT, orderBy: [{ [q.sortBy]: { sort: q.sortDir, nulls: 'last' } }, { id: 'asc' }], skip: q.skip, take: q.take }),
+      this.prisma.user.findMany({ where, select: USER_SELECT, orderBy: [{ [q.sortBy]: q.sortBy === 'lastLoginAt' ? { sort: q.sortDir, nulls: 'last' } : q.sortDir }, { id: 'asc' }], skip: q.skip, take: q.take }),
       this.prisma.user.count({ where }),
     ]);
     return buildPaginatedResult(rows.map((r) => this.shape(r)), total, q.page, q.pageSize);

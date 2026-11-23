@@ -3,17 +3,11 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth-actions';
 import { getLoginBranding, loginBackgroundUrl } from '@/lib/branding';
 import { ApiUnavailable } from '@/components/api-unavailable';
-import { IconChart, IconHandshake, IconShield } from '@/components/icons';
 import { BrandLogo } from '@/components/brand-logo';
+import { BackgroundImage } from '@/components/background-image';
 import { LoginForm } from './login-form';
 
 export const metadata: Metadata = { title: 'Sign in' };
-
-const FEATURES = [
-  { icon: IconHandshake, label: 'Manage Vendors & Products' },
-  { icon: IconChart, label: 'Track Business Growth' },
-  { icon: IconShield, label: 'Secure & Reliable Platform' },
-];
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ reason?: string }> }) {
   const { reason } = await searchParams;
@@ -28,83 +22,48 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const background = branding.backgroundId ? loginBackgroundUrl(branding.backgroundId) : null;
 
   return (
-    <main className="relative flex min-h-screen overflow-hidden bg-[#eef3fc]">
-      {/* Brand panel: configurable photo (Settings -> Sign-in page) under a navy overlay. */}
+    <main className="flex min-h-screen bg-canvas">
+      {/* Brand panel (desktop). Background photo is optional, set in Settings -> Sign-in page. */}
       <section
-        className="relative hidden w-[58%] flex-col justify-between overflow-hidden bg-[#0b1a3d] px-12 py-12 text-white lg:flex xl:px-16"
+        className="relative hidden w-[52%] flex-col justify-between overflow-hidden bg-sidebar px-12 py-12 text-sidebar-ink lg:flex xl:px-16"
         aria-label="Kenzo Infosystems"
       >
-        {background && (
-          // eslint-disable-next-line @next/next/no-img-element -- streamed from the API, not a static asset
-          <img src={background} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        )}
-        <div
-          aria-hidden
-          className={`absolute inset-0 ${
-            background
-              ? 'bg-gradient-to-r from-[#071434]/95 via-[#0b1f4d]/80 to-[#0b1f4d]/30'
-              : 'bg-gradient-to-br from-[#071434] via-[#0c2257] to-[#1d4fd8]'
-          }`}
-        />
-        <div
-          aria-hidden
-          className="absolute -right-24 top-0 h-full w-48 -skew-x-12 bg-gradient-to-b from-[#2563eb]/60 to-transparent"
-        />
+        {/* Admin-chosen image (Admin -> Appearance). Falls back to the plain slate panel. */}
+        <BackgroundImage src={background} overlayClassName="bg-sidebar/85" className="absolute inset-0" />
 
-        <div className="relative flex items-center gap-5">
-          <BrandLogo className="h-16 w-16" priority />
+        <div className="relative flex items-center gap-4">
+          <BrandLogo className="h-14 w-14" priority />
           <div>
-            <p className="text-4xl font-bold leading-none tracking-[0.12em]">KENZO</p>
-            <p className="mt-1 text-xs font-medium uppercase tracking-[0.42em] text-blue-100/80">Infosystems</p>
-          </div>
-          <div className="ml-4 hidden border-l border-white/30 pl-5 text-lg leading-snug text-blue-50/90 xl:block">
-            Smart Business.
-            <br />
-            Greater Growth.
+            <p className="text-xl font-bold leading-tight tracking-[0.14em]">KENZO INFOSYSTEMS</p>
+            <p className="mt-1 text-sm text-sidebar-muted">Business Management Software</p>
           </div>
         </div>
 
         <div className="relative max-w-lg">
-          <h1 className="text-5xl font-bold leading-tight xl:text-6xl">
-            Welcome <span className="text-[#5b9dff]">Back!</span>
+          <h1 className="text-4xl font-semibold leading-tight tracking-tight xl:text-5xl">
+            Welcome to Kenzo Infosystems
           </h1>
-          <p className="mt-4 text-xl leading-relaxed text-blue-50/90">
-            Sign in to access your business management portal
+          <p className="mt-4 text-lg leading-relaxed text-sidebar-ink/90">
+            Manage your business operations through one connected platform.
           </p>
-          <ul className="mt-10 space-y-4">
-            {FEATURES.map(({ icon: Icon, label }) => (
-              <li key={label} className="flex items-center gap-4 text-lg">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1d4fd8]/80 ring-1 ring-white/20">
-                  <Icon size={22} />
-                </span>
-                {label}
-              </li>
-            ))}
-          </ul>
         </div>
 
-        <p className="relative text-sm text-blue-100/60">
+        <p className="relative text-sm text-sidebar-muted">
           &copy; {new Date().getFullYear()} Kenzo Infosystems. All rights reserved.
         </p>
       </section>
 
-      {/* Sign-in card */}
-      <section className="relative flex flex-1 items-center justify-center px-4 py-10 sm:px-8">
-        <div aria-hidden className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#2563eb]/10" />
-        <div aria-hidden className="absolute -bottom-32 right-10 h-72 w-72 rounded-full bg-[#2563eb]/10" />
-
-        <div className="relative w-full max-w-md rounded-3xl border border-white bg-white/95 px-7 py-9 shadow-[0_24px_60px_-20px_rgba(15,40,100,0.25)] sm:px-10">
-          <div className="text-center">
-            <span className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#e8f0ff]">
-              <BrandLogo className="h-16 w-16" />
-            </span>
-            <h2 className="mt-5 text-3xl font-bold text-[#0d162d]">Kenzo Infosystems</h2>
-            <div className="mt-2 flex items-center justify-center gap-3 text-[#43516b]">
-              <span aria-hidden className="h-px w-10 bg-[#c7d2e4]" />
-              <span>Business Management Software</span>
-              <span aria-hidden className="h-px w-10 bg-[#c7d2e4]" />
-            </div>
+      {/* Sign-in card. On small screens the brand block inside the card stands in for the panel. */}
+      <section className="flex flex-1 items-center justify-center px-4 py-10 sm:px-8">
+        <div className="w-full max-w-md rounded-2xl bg-surface px-6 py-8 shadow-popover ring-1 ring-border sm:px-10 sm:py-10">
+          <div className="flex flex-col items-center text-center">
+            <BrandLogo className="h-16 w-16" priority />
+            <p className="mt-4 text-base font-bold tracking-[0.14em] text-ink">KENZO INFOSYSTEMS</p>
+            <p className="mt-1 text-sm text-ink-subtle">Business Management Software</p>
           </div>
+
+          <h2 className="mt-8 text-2xl font-semibold text-ink">Sign in to your account</h2>
+          <p className="mt-1 text-sm text-ink-subtle">Enter your credentials to access your workspace.</p>
 
           {reason === 'session-expired' && (
             <div role="status" className="mt-6 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2 text-sm text-warning">
@@ -117,9 +76,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             </div>
           )}
 
-          <div className="mt-7">
+          <div className="mt-6">
             <LoginForm supportEmail={branding.supportEmail} />
           </div>
+
+          <p className="mt-8 border-t border-border pt-5 text-center text-xs text-ink-subtle">
+            Authorized access only.
+          </p>
         </div>
       </section>
     </main>

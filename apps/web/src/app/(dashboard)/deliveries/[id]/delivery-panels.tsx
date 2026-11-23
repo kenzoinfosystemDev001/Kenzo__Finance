@@ -318,7 +318,7 @@ function DispatchModal({ delivery, today, onClose }: { delivery: DeliveryActionR
       onClose={onClose}
       size="lg"
       title={`Dispatch ${delivery.deliveryNumber}`}
-      description="The goods leave the premises. The delivery challan and packing list are stored now and can no longer change; the delivery can then only be delivered, fail or be returned."
+      description="Goods leave the premises. The challan and packing list are locked once stored."
       submitLabel="Dispatch"
       onSubmit={async () => {
         if (!values.dispatchDate) return { error: 'Enter the dispatch date.' };
@@ -382,7 +382,7 @@ function TrackingModal({ delivery, onClose }: { delivery: DeliveryActionRef; onC
         return addTrackingAction(delivery.id, { status, location, remarks, eventAt: when ? when.toISOString() : '', markInTransit: delivery.status === 'DISPATCHED' && markInTransit });
       }}
     >
-      <TextField label="Shipment status" required maxLength={100} value={status} onChange={setStatus} placeholder="e.g. Reached Pune hub" />
+      <TextField label="Shipment status" required maxLength={100} value={status} onChange={setStatus} placeholder="Enter status note (optional)" />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <TextField label="Location" maxLength={200} value={location} onChange={setLocation} />
         <TextField label="When" type="datetime-local" value={eventAt} onChange={setEventAt} hint="Cannot be in the future." />
@@ -507,7 +507,7 @@ function AmendPodModal({ delivery, pod, today, onClose }: { delivery: DeliveryAc
       open
       onClose={onClose}
       title={`Amend proof of delivery: ${delivery.deliveryNumber}`}
-      description="The recorded proof is kept; the correction is added as an amendment with your reason. Received quantities are not changed here."
+      description="The original proof is kept. Corrections are added as amendments with a reason."
       submitLabel="Save amendment"
       onSubmit={async () => {
         if (actualDeliveryDate > today) return { error: 'The delivery date cannot be in the future.' };
@@ -613,8 +613,8 @@ function PackagesModal({ delivery, onClose }: { delivery: DeliveryActionRef; onC
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <TextField label="Package no." required inputMode="numeric" value={p.packageNumber} onChange={(v) => update(p.key, { packageNumber: v })} />
             <TextField label="Description" maxLength={500} value={p.description} onChange={(v) => update(p.key, { description: v })} />
-            <TextField label="Weight" maxLength={50} placeholder="e.g. 12.5 kg" value={p.weight} onChange={(v) => update(p.key, { weight: v })} />
-            <TextField label="Dimensions" maxLength={100} placeholder="e.g. 60x40x40 cm" value={p.dimensions} onChange={(v) => update(p.key, { dimensions: v })} />
+            <TextField label="Weight" maxLength={50} placeholder="Enter weight" value={p.weight} onChange={(v) => update(p.key, { weight: v })} />
+            <TextField label="Dimensions" maxLength={100} placeholder="Enter dimensions" value={p.dimensions} onChange={(v) => update(p.key, { dimensions: v })} />
           </div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {delivery.items.map((i) => (
@@ -677,7 +677,7 @@ export function DeliveryDocumentsPanel({
     <section className="card">
       <PanelHeader
         title="Documents"
-        description="Proof of delivery, receiver signature, photos and supporting files. Stored privately and served through permission-checked links."
+        description="Proof of delivery, signatures, photos and files. Stored privately."
         actions={canUpload && <button type="button" className="btn-primary" onClick={() => setUploading(true)}><IconUpload size={16} /> Upload document</button>}
       />
       {removeBlockedReason && <p className="border-b border-border px-5 py-2 text-xs text-ink-subtle">{removeBlockedReason}</p>}
@@ -769,7 +769,8 @@ function UploadModal({ deliveryId, onClose }: { deliveryId: string; onClose: () 
       <div ref={boxRef} className="space-y-4">
         <div>
           <label htmlFor="delivery-doc-kind" className="field-label">Document type</label>
-          <select id="delivery-doc-kind" name="kind" defaultValue="DELIVERY_POD" className="field-input">
+          <select id="delivery-doc-kind" name="kind" defaultValue="" required className="field-input">
+            <option value="">Select document type</option>
             {DELIVERY_UPLOAD_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
           </select>
         </div>

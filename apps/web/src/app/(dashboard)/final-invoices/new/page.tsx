@@ -45,7 +45,7 @@ export default async function NewFinalInvoicePage({ searchParams }: { searchPara
         {data.items.length === 0 ? (
           <EmptyState
             title={search ? 'No issued proforma invoice matches' : 'No proforma invoices are ready for invoicing'}
-            description="Only issued or sent proforma invoices that do not already have a live final invoice are listed. Issue the proforma invoice first."
+            description="Issued proforma invoices without a final invoice. Issue the proforma first."
             action={
               search ? <Link href="/final-invoices/new" className="btn-secondary">Clear search</Link> : <Link href="/proforma-invoices?status=ISSUED,SENT" className="btn-secondary">Issued proforma invoices</Link>
             }

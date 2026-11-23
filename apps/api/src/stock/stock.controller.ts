@@ -7,6 +7,7 @@ import {
   Post,
   Query,
   Req,
+  Delete,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
@@ -67,6 +68,16 @@ export class StockController {
   @ApiOperation({ summary: 'List stock locations' })
   async locations() {
     return this.stockService.listLocations();
+  }
+
+  @Delete('locations/:id')
+  @RequirePermissions(PERMISSIONS.STOCK_MANAGE_LOCATIONS)
+  @ApiOperation({ summary: 'Permanently delete a stock location that has never held a movement' })
+  async deleteLocation(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.stockService.deleteLocation(id, user);
   }
 
   @Post('locations')

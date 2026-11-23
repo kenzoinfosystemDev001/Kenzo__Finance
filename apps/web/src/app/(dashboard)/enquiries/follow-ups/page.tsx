@@ -69,7 +69,7 @@ export default async function FollowUpsPage({ searchParams }: { searchParams: Pr
   const viewHref = (v: View) => `/enquiries/follow-ups${queryString({ ...filters, view: v, pageSize: params.pageSize })}`;
   const tiles: Array<{ key: View; label: string; count?: number; icon: React.ReactNode; color: string }> = [
     { key: 'today', label: "Today's Follow-ups", count: counts?.today, icon: <IconClock size={22} />, color: 'bg-accent' },
-    { key: 'upcoming', label: 'Upcoming', count: counts?.upcoming, icon: <IconStar size={22} />, color: 'bg-sky-600' },
+    { key: 'upcoming', label: 'Upcoming', count: counts?.upcoming, icon: <IconStar size={22} />, color: 'bg-accent-hover' },
     { key: 'overdue', label: 'Overdue', count: counts?.overdue, icon: <IconAlert size={22} />, color: 'bg-danger' },
     { key: 'completed', label: 'Completed', count: counts?.completed, icon: <IconCheckCircle size={22} />, color: 'bg-success' },
   ];

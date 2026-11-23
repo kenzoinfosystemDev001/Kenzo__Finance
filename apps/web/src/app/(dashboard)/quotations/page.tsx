@@ -117,24 +117,24 @@ export default async function QuotationsPage({ searchParams }: { searchParams: P
       {summary && (
         <section aria-label="Quotation summary" className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatCard label="Total Quotations" value={summary.total} icon={<IconQuote size={22} />} iconClassName="bg-accent" href="/quotations" />
-          <StatCard label="Draft" value={summary.draft} icon={<IconPencil size={22} />} iconClassName="bg-slate-500" href="/quotations?status=DRAFT" />
+          <StatCard label="Draft" value={summary.draft} icon={<IconPencil size={22} />} iconClassName="bg-ink-subtle" href="/quotations?status=DRAFT" />
           <StatCard
             label="Pending Approval"
             value={summary.pendingApproval}
             icon={<IconClock size={22} />}
-            iconClassName="bg-orange-500"
+            iconClassName="bg-warning"
             href="/quotations?status=PENDING_APPROVAL"
             note={summary.approvalRequired ? `${summary.approved} approved, not yet sent` : 'Approval is switched off'}
           />
-          <StatCard label="Sent" value={summary.sent} icon={<IconArrowRight size={22} />} iconClassName="bg-sky-600" href="/quotations?status=SENT" />
-          <StatCard label="Under Negotiation" value={summary.underNegotiation} icon={<IconRefresh size={22} />} iconClassName="bg-violet-600" href="/quotations?status=UNDER_NEGOTIATION" />
+          <StatCard label="Sent" value={summary.sent} icon={<IconArrowRight size={22} />} iconClassName="bg-accent-hover" href="/quotations?status=SENT" />
+          <StatCard label="Under Negotiation" value={summary.underNegotiation} icon={<IconRefresh size={22} />} iconClassName="bg-accent" href="/quotations?status=UNDER_NEGOTIATION" />
           <StatCard label="Accepted" value={summary.accepted} icon={<IconCheckCircle size={22} />} iconClassName="bg-success" href="/quotations?status=ACCEPTED" />
           <StatCard label="Rejected" value={summary.rejected} icon={<IconX size={22} />} iconClassName="bg-danger" href="/quotations?status=REJECTED" />
           <StatCard
             label="Expired"
             value={summary.expired}
             icon={<IconFile size={22} />}
-            iconClassName="bg-amber-600"
+            iconClassName="bg-warning"
             href="/quotations?status=EXPIRED"
             note={
               [summary.pastValidity > 0 ? `${summary.pastValidity} open past validity` : null, summary.cancelled > 0 ? `${summary.cancelled} cancelled` : null]

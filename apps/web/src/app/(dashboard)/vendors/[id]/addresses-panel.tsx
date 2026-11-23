@@ -190,7 +190,7 @@ function AddressModal({
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <SelectField label="Address Type" value={form.addressType} onChange={(v) => set('addressType', v as VendorAddressType)} options={ADDRESS_TYPES} />
-        <TextField label="Label" value={form.label} onChange={(v) => set('label', v)} placeholder="e.g. Nehru Place branch" />
+        <TextField label="Label" value={form.label} onChange={(v) => set('label', v)} placeholder="Enter branch name" />
         <TextField className="sm:col-span-2" label="Address Line 1" required value={form.addressLine1} onChange={(v) => set('addressLine1', v)} error={errors.addressLine1} />
         <TextField className="sm:col-span-2" label="Address Line 2" value={form.addressLine2} onChange={(v) => set('addressLine2', v)} />
         <TextField label="City" value={form.city} onChange={(v) => set('city', v)} />

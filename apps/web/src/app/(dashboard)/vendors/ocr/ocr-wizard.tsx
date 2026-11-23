@@ -139,7 +139,8 @@ export function OcrVendorWizard({
             <label htmlFor="ocr-kind" className="field-label">
               Document type
             </label>
-            <select id="ocr-kind" name="kind" defaultValue="VENDOR_VISITING_CARD" className="field-input">
+            <select id="ocr-kind" name="kind" defaultValue="" required className="field-input">
+              <option value="">Select document type</option>
               {UPLOADABLE_DOCUMENT_KINDS.map((kind) => (
                 <option key={kind} value={kind}>
                   {DOCUMENT_KIND_LABELS[kind]}

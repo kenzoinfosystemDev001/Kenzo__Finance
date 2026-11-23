@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CustomerRankingsService } from './customer-rankings.service';
 import { CustomerRowsController, CustomersController } from './customers.controller';
 import { CustomersService } from './customers.service';
 import { CustomerChildrenService } from './customer-children.service';
@@ -14,7 +15,7 @@ import { DocumentsModule } from '../documents/documents.module';
 @Module({
   imports: [NumberingModule, DocumentsModule],
   controllers: [CustomersController, CustomerRowsController],
-  providers: [CustomersService, CustomerChildrenService],
+  providers: [CustomersService, CustomerChildrenService, CustomerRankingsService],
   exports: [CustomersService],
 })
 export class CustomersModule {}

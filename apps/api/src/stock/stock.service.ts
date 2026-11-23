@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Prisma, StockMovementType } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
+import { assertNotReferenced } from '../common/utils/master-delete';
 import { AuditService } from '../audit/audit.service';
 import { SettingsService, SETTING_KEYS } from '../settings/settings.service';
 import {
@@ -81,6 +82,24 @@ export class StockService {
   // -------------------------------------------------------------------------
   // Locations
   // -------------------------------------------------------------------------
+
+  /** Permanently deletes a stock location that has never held a movement. */
+  async deleteLocation(id: string, actor: AuthenticatedUser) {
+    const existing = await this.prisma.stockLocation.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Stock location ${id} was not found`);
+    const movements = await this.prisma.stockMovement.count({ where: { locationId: id } });
+    assertNotReferenced(`The location "${existing.name}"`, [{ label: 'stock movement', count: movements }]);
+    await this.prisma.stockLocation.delete({ where: { id } });
+    await this.auditService.record({
+      actorUserId: actor.id,
+      action: 'stock_location.delete',
+      entityType: 'StockLocation',
+      entityId: id,
+      summary: `Deleted stock location ${existing.name}`,
+      before: { name: existing.name },
+    });
+    return { id, deleted: true };
+  }
 
   async listLocations() {
     return this.prisma.stockLocation.findMany({

@@ -145,6 +145,13 @@ export class ProductsController {
     return this.productsService.updateCategory(id, dto, user);
   }
 
+  @Delete('categories/:id')
+  @RequirePermissions(PERMISSIONS.PRODUCT_UPDATE)
+  @ApiOperation({ summary: 'Permanently delete a product category that no product uses' })
+  deleteCategory(@Param('id', uuid()) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.productsService.deleteCategory(id, user);
+  }
+
   @Post()
   @RequirePermissions(PERMISSIONS.PRODUCT_CREATE)
   @ApiOperation({

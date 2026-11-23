@@ -162,7 +162,7 @@ function HeaderFields({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <TextField label="Delivery date" type="date" value={values.deliveryDate} onChange={(v) => set('deliveryDate', v)} hint={dateHint ?? `Defaults to today (${formatDate(today)}).`} />
+        <TextField label="Delivery date" type="date" value={values.deliveryDate} onChange={(v) => set('deliveryDate', v)} hint={dateHint ?? `Leave blank to use today's date (${formatDate(today)}).`} />
         <TextField label="Expected delivery date" type="date" value={values.expectedDate} onChange={(v) => set('expectedDate', v)} hint="Not before the delivery date. Used to flag delays." />
       </div>
       <div>
@@ -254,7 +254,7 @@ export function CreateDeliveryForm({
   const [infoError, setInfoError] = useState('');
   const [lines, setLines] = useState<Record<string, LineDraft>>({});
   const [header, setHeader] = useState<DeliveryHeaderPayload>({
-    deliveryDate: today,
+    deliveryDate: '',
     expectedDate: '',
     deliveryAddress: redelivery?.deliveryAddress ?? '',
     contactPerson: redelivery?.contactPerson ?? '',

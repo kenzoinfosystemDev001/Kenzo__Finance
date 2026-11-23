@@ -74,7 +74,7 @@ export function PaymentSettingsPanel({ settings, canManage }: { settings: Paymen
                 <tr key={r.key}>
                   <td>
                     {canManage && !existing ? (
-                      <input aria-label="Method code" className="form-input w-40 font-mono uppercase" value={r.code} maxLength={30} onChange={(e) => update(r.key, { code: e.target.value.toUpperCase() })} placeholder="E.G. NEFT" />
+                      <input aria-label="Method code" className="form-input w-40 font-mono uppercase" value={r.code} maxLength={30} onChange={(e) => update(r.key, { code: e.target.value.toUpperCase() })} placeholder="Enter payment method name" />
                     ) : (
                       <span className="font-mono text-sm">{r.code}</span>
                     )}

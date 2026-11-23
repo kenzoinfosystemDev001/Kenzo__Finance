@@ -164,13 +164,13 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
             label="Total Brands"
             value={summary.brandsCovered}
             icon={<IconTag size={22} />}
-            iconClassName="bg-violet-600"
+            iconClassName="bg-accent"
           />
           <StatCard
             label="Product Mappings"
             value={summary.productMappings.total}
             icon={<IconBox size={22} />}
-            iconClassName="bg-orange-500"
+            iconClassName="bg-warning"
           />
         </section>
       )}
