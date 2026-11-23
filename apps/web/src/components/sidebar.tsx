@@ -53,7 +53,6 @@ const NAV: NavItem[] = [
   { label: 'Delivery Management', href: '/deliveries', icon: IconTruck, permission: 'delivery.read' },
   { label: 'Reports & Analytics', href: '/reports', icon: IconChart, permission: 'analytics.dashboard' },
   { label: 'Sales History', href: '/sales-history', icon: IconChart, permission: 'analytics.products' },
-  { label: 'Users & Roles', href: '/users', icon: IconShield, permission: 'user.read' },
   { label: 'Admin Console', href: '/admin', icon: IconShield, permission: 'settings.manage' },
   { label: 'Appearance', href: '/appearance', icon: IconImage, permission: 'settings.manage' },
   { label: 'Settings', href: '/settings', icon: IconSettings },

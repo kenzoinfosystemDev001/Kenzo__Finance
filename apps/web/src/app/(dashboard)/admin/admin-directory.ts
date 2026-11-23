@@ -131,15 +131,6 @@ export const MODULE_DIRECTORY: DirectoryModule[] = [
     ],
   },
   {
-    title: 'User Management',
-    description: 'User accounts, roles and permissions.',
-    links: [
-      { label: 'Users', href: '/users' },
-      { label: 'Add user', href: '/users/new' },
-      { label: 'Roles and permissions', href: '/users/roles' },
-    ],
-  },
-  {
     title: 'Settings and appearance',
     description: 'Business settings, appearance images and your account.',
     links: [
