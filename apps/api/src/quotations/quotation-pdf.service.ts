@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnprocessableEntityException } from '@nestjs/common';
 import { DocumentKind, Prisma } from '@prisma/client';
 import { PassThrough, type Readable } from 'node:stream';
 import { PrismaService } from '../database/prisma.service';
@@ -13,6 +13,12 @@ import {
 } from '../common/pdf/commercial-pdf';
 
 export { formatMoney } from '../common/pdf/commercial-pdf';
+
+/** Filename for a quotation revision's PDF, used by both the download and the email attachment. */
+export function quotationPdfFilename(quotationNumber: string, revisionNumber: number, draft: boolean): string {
+  const safeNumber = quotationNumber.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'quotation';
+  return `Quotation-${safeNumber}-R${revisionNumber}${draft ? '-DRAFT' : ''}.pdf`;
+}
 
 const revisionForPdf = {
   items: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
@@ -42,7 +48,7 @@ export class QuotationPdfService {
 
   async open(quotationId: string, revisionNumber: number, actor: AuthenticatedUser): Promise<{ stream: Readable; filename: string; mimeType: string; sizeBytes: number; inline: boolean }> {
     const revision = await this.load(quotationId, revisionNumber);
-    const filename = `${revision.quotation.quotationNumber.replace(/[\\/]/g, '-')}-R${revision.revisionNumber}${revision.issuedAt ? '' : '-DRAFT'}.pdf`;
+    const filename = quotationPdfFilename(revision.quotation.quotationNumber, revision.revisionNumber, !revision.issuedAt);
 
     if (revision.issuedAt) {
       const documentId = revision.pdfDocumentId ?? (await this.storeIssued(revision, actor));
@@ -54,6 +60,24 @@ export class QuotationPdfService {
     const stream = new PassThrough();
     stream.end(buffer);
     return { stream, filename, mimeType: 'application/pdf', sizeBytes: buffer.length, inline: false };
+  }
+
+  /**
+   * The exact stored PDF of an issued revision, as bytes. The email attachment
+   * uses this, so the attached file is the same document as the download.
+   */
+  async issuedBuffer(quotationId: string, revisionNumber: number, actor: AuthenticatedUser): Promise<Buffer> {
+    const revision = await this.load(quotationId, revisionNumber);
+    if (!revision.issuedAt) {
+      throw new UnprocessableEntityException('Only issued quotation revisions have a stored PDF.');
+    }
+    const documentId = revision.pdfDocumentId ?? (await this.storeIssued(revision, actor));
+    const file = await this.documentsService.openForDownload(documentId, actor, { preview: false });
+    const chunks: Buffer[] = [];
+    for await (const chunk of file.stream) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
   }
 
   /** Stores the PDF of an issued revision; safe to call more than once. */
