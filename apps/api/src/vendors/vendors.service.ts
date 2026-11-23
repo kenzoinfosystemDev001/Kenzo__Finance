@@ -21,7 +21,6 @@ import {
   normalizePhone,
   normalizeTaxId,
 } from '../common/utils/normalize';
-import { panFromGstin } from '../common/utils/tax-id';
 import { PERMISSIONS } from '../common/authz/permissions';
 import type { CreateVendorDto } from './dto/create-vendor.dto';
 import type { UpdateVendorDto, UpdateVendorStatusDto } from './dto/update-vendor.dto';
@@ -272,8 +271,6 @@ export class VendorsService {
     actor: AuthenticatedUser,
     context: RequestContext,
   ) {
-    this.assertGstinMatchesPan(dto.gstin, dto.pan);
-
     // Validate nested primaries before any database round trip.
     const contacts = resolveContactPrimaries((dto.contacts ?? []).map(contactData));
     const addresses = resolveAddressPrimaries((dto.addresses ?? []).map(addressData));
@@ -861,7 +858,6 @@ export class VendorsService {
     const nextGstin =
       dto.gstin !== undefined ? normalizeTaxId(dto.gstin) : existing.gstin;
     const nextPan = dto.pan !== undefined ? normalizeTaxId(dto.pan) : existing.pan;
-    this.assertGstinMatchesPan(nextGstin ?? undefined, nextPan ?? undefined);
 
     if (nextGstin && nextGstin !== existing.gstin) {
       const clash = await this.prisma.vendor.findFirst({
@@ -1556,23 +1552,6 @@ export class VendorsService {
   // -------------------------------------------------------------------------
   // Helpers
   // -------------------------------------------------------------------------
-
-  /**
-   * Characters 3-12 of a GSTIN are the holder's PAN. If both are supplied and
-   * disagree, one of them is a typo.
-   */
-  private assertGstinMatchesPan(gstin?: string | null, pan?: string | null): void {
-    const normalizedGstin = normalizeTaxId(gstin);
-    const normalizedPan = normalizeTaxId(pan);
-    if (!normalizedGstin || !normalizedPan) return;
-
-    const embedded = panFromGstin(normalizedGstin);
-    if (embedded && embedded !== normalizedPan) {
-      throw new BadRequestException(
-        `PAN does not match the GSTIN. The GSTIN contains PAN ${embedded}.`,
-      );
-    }
-  }
 
   async assertVendorExists(vendorId: string): Promise<void> {
     const vendor = await this.prisma.vendor.findUnique({

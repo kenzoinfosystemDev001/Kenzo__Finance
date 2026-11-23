@@ -11,7 +11,6 @@ import { AuditService } from '../audit/audit.service';
 import { NumberingService, SEQUENCE_KEYS } from '../numbering/numbering.service';
 import { buildPaginatedResult, PaginationQueryDto } from '../common/dto/pagination.dto';
 import { cleanOptional, normalizeEmail, normalizeName, normalizedNameFilter, normalizePhone, normalizeTaxId } from '../common/utils/normalize';
-import { panFromGstin } from '../common/utils/tax-id';
 import { PERMISSIONS } from '../common/authz/permissions';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
@@ -636,12 +635,6 @@ export class CustomersService {
     }
     if (cin && customerType === CustomerType.INDIVIDUAL) {
       throw new BadRequestException('A CIN identifies a company; it does not apply to an individual customer.');
-    }
-    if (gstin && pan) {
-      const embedded = panFromGstin(gstin);
-      if (embedded && embedded !== pan) {
-        throw new BadRequestException(`PAN does not match the GSTIN. The GSTIN contains PAN ${embedded}.`);
-      }
     }
     return {
       taxCountry: country,

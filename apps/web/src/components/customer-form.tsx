@@ -59,12 +59,8 @@ function validateBasics(b: CustomerBasicsPayload): Record<string, string> {
   if (b.name.trim().length < 2) e.name = 'Customer name is required (at least 2 characters).';
   if (b.website.trim() && !isWebsite(b.website)) e.website = 'Enter a valid website, e.g. www.example.com.';
   if (isIndia(b.taxCountry)) {
-    if (b.gstin.trim() && !isGstinFormat(b.gstin)) e.gstin = 'GSTIN must be 15 characters, e.g. 07ABCDE1234F1Z5.';
+    if (b.gstin.trim() && !isGstinFormat(b.gstin)) e.gstin = 'GSTIN must be 15 letters or digits.';
     if (b.pan.trim() && !isPanFormat(b.pan)) e.pan = 'PAN must look like ABCDE1234F.';
-    if (b.gstin.trim() && b.pan.trim() && isGstinFormat(b.gstin) && isPanFormat(b.pan)) {
-      const embedded = b.gstin.replace(/\s/g, '').toUpperCase().slice(2, 12);
-      if (embedded !== b.pan.replace(/\s/g, '').toUpperCase()) e.pan = `PAN does not match the GSTIN (expected ${embedded}).`;
-    }
     if (b.cin.trim() && !CIN.test(b.cin.replace(/\s/g, '').toUpperCase())) e.cin = 'CIN must be 21 characters, e.g. U72200DL2010PTC123456.';
   }
   if (b.employeeCount.trim() && !/^\d{1,8}$/.test(b.employeeCount.trim())) e.employeeCount = 'Enter a whole number.';

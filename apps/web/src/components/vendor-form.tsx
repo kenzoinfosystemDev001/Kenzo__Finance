@@ -124,12 +124,8 @@ function validate(
   if (!name) errors.businessName = 'Vendor name is required.';
   else if (name.length < 2) errors.businessName = 'Vendor name must be at least 2 characters.';
 
-  if (basics.gstin.trim() && !isGstinFormat(basics.gstin)) errors.gstin = 'GSTIN must be 15 characters, e.g. 07ABCDE1234F1Z5.';
+  if (basics.gstin.trim() && !isGstinFormat(basics.gstin)) errors.gstin = 'GSTIN must be 15 letters or digits.';
   if (basics.pan.trim() && !isPanFormat(basics.pan)) errors.pan = 'PAN must look like ABCDE1234F.';
-  if (basics.gstin.trim() && basics.pan.trim() && isGstinFormat(basics.gstin) && isPanFormat(basics.pan)) {
-    const embedded = basics.gstin.replace(/\s/g, '').toUpperCase().slice(2, 12);
-    if (embedded !== basics.pan.replace(/\s/g, '').toUpperCase()) errors.pan = `PAN does not match the GSTIN (expected ${embedded}).`;
-  }
   if (basics.website.trim() && !isWebsite(basics.website)) errors.website = 'Enter a valid website, e.g. www.example.com.';
   if (basics.email.trim() && !isEmail(basics.email)) errors.email = 'Enter a valid email address.';
   if (basics.alternateEmail.trim() && !isEmail(basics.alternateEmail)) errors.alternateEmail = 'Enter a valid email address.';

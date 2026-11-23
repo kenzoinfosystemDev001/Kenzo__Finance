@@ -442,7 +442,7 @@ export const isWebsite = (value: string) =>
 
 export const isPostalCode = (value: string) => /^[A-Za-z0-9][A-Za-z0-9 -]{1,8}[A-Za-z0-9]$/.test(value.trim());
 
-export const isGstinFormat = (value: string) =>
-  /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(value.replace(/\s/g, '').toUpperCase());
+/** Any 15 letters or digits: GSTINs are entered from documents that are not always clean. */
+export const isGstinFormat = (value: string) => /^[0-9A-Z]{15}$/.test(value.replace(/\s/g, '').toUpperCase());
 
 export const isPanFormat = (value: string) => /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(value.replace(/\s/g, '').toUpperCase());
