@@ -14,6 +14,13 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+/**
+ * Every page depends on the signed-in user and on live appearance settings.
+ * Rendering them at build time baked in the state of the build machine, so
+ * each route is rendered per request.
+ */
+export const dynamic = 'force-dynamic';
+
 export default function RootLayout({
   children,
 }: {
