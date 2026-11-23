@@ -213,7 +213,7 @@ export class CreateCustomerDto {
   @Transform(blank)
   taxCountry?: string;
 
-  @ApiPropertyOptional({ description: 'Indian GSTIN (checksum verified)' })
+  @ApiPropertyOptional({ description: '15 letters or digits (GSTIN)' })
   @IsOptional()
   @IsGstin()
   @Transform(upperNoSpace)

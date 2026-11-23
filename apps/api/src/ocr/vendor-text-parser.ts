@@ -2,7 +2,7 @@ import {
   emptyVendorDraft,
   type VendorOcrDraft,
 } from './ocr-provider.interface';
-import { isValidGstin, isValidPan } from '../common/utils/tax-id';
+import { isStructuredGstin, isValidPan } from '../common/utils/tax-id';
 
 /**
  * Turns plain text (from a text file, or from an OCR provider's text layer)
@@ -43,7 +43,7 @@ export function parseVendorText(text: string): ParsedVendorText {
 
   // --- Identifiers: verified by checksum / format ----------------------------
   const gstinMatch = /\b[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]\b/i.exec(text);
-  if (gstinMatch && isValidGstin(gstinMatch[0])) {
+  if (gstinMatch && isStructuredGstin(gstinMatch[0])) {
     setField('gstin', gstinMatch[0].toUpperCase(), 0.95);
   }
 

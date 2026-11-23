@@ -205,7 +205,7 @@ export class CreateVendorDto {
 
   @ApiPropertyOptional({
     example: '07ABCDE1234F1Z5',
-    description: '15-character GSTIN. Checksum is verified.',
+    description: '15 letters or digits, as printed on the GST certificate.',
   })
   @IsOptional()
   @IsGstin()
