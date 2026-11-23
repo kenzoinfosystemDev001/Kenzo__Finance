@@ -137,6 +137,20 @@ export const PERMISSIONS = {
   DELIVERY_EXPORT: 'delivery.export',
   DELIVERY_REPORTS: 'delivery.reports',
 
+  // Reports & Analytics (Module 10)
+  ANALYTICS_DASHBOARD: 'analytics.dashboard',
+  ANALYTICS_VENDORS: 'analytics.vendors',
+  ANALYTICS_PRODUCTS: 'analytics.products',
+  ANALYTICS_CUSTOMERS: 'analytics.customers',
+  ANALYTICS_ENQUIRIES: 'analytics.enquiries',
+  ANALYTICS_QUOTATIONS: 'analytics.quotations',
+  ANALYTICS_PROFORMA: 'analytics.proforma',
+  ANALYTICS_INVOICES: 'analytics.invoices',
+  ANALYTICS_PAYMENTS: 'analytics.payments',
+  ANALYTICS_DELIVERIES: 'analytics.deliveries',
+  ANALYTICS_EXPORT: 'analytics.export',
+  ANALYTICS_FINANCIAL: 'analytics.financial',
+
   // Stock / inventory
   STOCK_READ: 'stock.read',
   // Posting a movement changes recorded inventory, so it is separate from
@@ -290,6 +304,19 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   { code: PERMISSIONS.DELIVERY_EXPORT, module: 'delivery', action: 'export', description: 'Export delivery registers and reports' },
   { code: PERMISSIONS.DELIVERY_REPORTS, module: 'delivery', action: 'reports', description: 'View delivery reports' },
 
+  { code: PERMISSIONS.ANALYTICS_DASHBOARD, module: 'analytics', action: 'dashboard', description: 'View the executive analytics dashboard and summary' },
+  { code: PERMISSIONS.ANALYTICS_VENDORS, module: 'analytics', action: 'vendors', description: 'View vendor reports' },
+  { code: PERMISSIONS.ANALYTICS_PRODUCTS, module: 'analytics', action: 'products', description: 'View product reports' },
+  { code: PERMISSIONS.ANALYTICS_CUSTOMERS, module: 'analytics', action: 'customers', description: 'View customer reports' },
+  { code: PERMISSIONS.ANALYTICS_ENQUIRIES, module: 'analytics', action: 'enquiries', description: 'View enquiry reports' },
+  { code: PERMISSIONS.ANALYTICS_QUOTATIONS, module: 'analytics', action: 'quotations', description: 'View quotation reports' },
+  { code: PERMISSIONS.ANALYTICS_PROFORMA, module: 'analytics', action: 'proforma', description: 'View proforma invoice reports' },
+  { code: PERMISSIONS.ANALYTICS_INVOICES, module: 'analytics', action: 'invoices', description: 'View final invoice and sales reports' },
+  { code: PERMISSIONS.ANALYTICS_PAYMENTS, module: 'analytics', action: 'payments', description: 'View payment and collection reports' },
+  { code: PERMISSIONS.ANALYTICS_DELIVERIES, module: 'analytics', action: 'deliveries', description: 'View delivery reports' },
+  { code: PERMISSIONS.ANALYTICS_EXPORT, module: 'analytics', action: 'export', description: 'Export analytics reports (Excel, CSV, PDF)' },
+  { code: PERMISSIONS.ANALYTICS_FINANCIAL, module: 'analytics', action: 'financial', description: 'See monetary figures in analytics' },
+
   { code: PERMISSIONS.STOCK_READ, module: 'stock', action: 'read', description: 'View stock balances and the movement ledger' },
   { code: PERMISSIONS.STOCK_POST, module: 'stock', action: 'post', description: 'Post stock movements (opening balance, receipt, issue, adjustment, return)' },
   { code: PERMISSIONS.STOCK_MANAGE_LOCATIONS, module: 'stock', action: 'manage_locations', description: 'Create and edit stock locations' },
@@ -373,6 +400,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERMISSIONS.PAYMENT_READ, PERMISSIONS.PAYMENT_CREATE, PERMISSIONS.PAYMENT_UPDATE, PERMISSIONS.PAYMENT_VERIFY,
     PERMISSIONS.PAYMENT_REJECT, PERMISSIONS.PAYMENT_REVERSE, PERMISSIONS.PAYMENT_DOWNLOAD, PERMISSIONS.PAYMENT_EXPORT,
     PERMISSIONS.PAYMENT_REPORTS,
+    PERMISSIONS.ANALYTICS_DASHBOARD, PERMISSIONS.ANALYTICS_VENDORS, PERMISSIONS.ANALYTICS_PRODUCTS, PERMISSIONS.ANALYTICS_CUSTOMERS, PERMISSIONS.ANALYTICS_ENQUIRIES, PERMISSIONS.ANALYTICS_QUOTATIONS, PERMISSIONS.ANALYTICS_PROFORMA, PERMISSIONS.ANALYTICS_INVOICES, PERMISSIONS.ANALYTICS_PAYMENTS, PERMISSIONS.ANALYTICS_DELIVERIES, PERMISSIONS.ANALYTICS_EXPORT, PERMISSIONS.ANALYTICS_FINANCIAL,
   ],
 
   [ROLE_CODES.VENDOR_MANAGER]: [
@@ -421,6 +449,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERMISSIONS.PROFORMA_DOWNLOAD, PERMISSIONS.PROFORMA_EXPORT,
     PERMISSIONS.INVOICE_READ, PERMISSIONS.INVOICE_DOWNLOAD, PERMISSIONS.INVOICE_REPORTS,
     PERMISSIONS.PAYMENT_READ, PERMISSIONS.PAYMENT_DOWNLOAD, PERMISSIONS.PAYMENT_REPORTS,
+    PERMISSIONS.ANALYTICS_DASHBOARD, PERMISSIONS.ANALYTICS_CUSTOMERS, PERMISSIONS.ANALYTICS_PRODUCTS, PERMISSIONS.ANALYTICS_VENDORS,
+    PERMISSIONS.ANALYTICS_ENQUIRIES, PERMISSIONS.ANALYTICS_QUOTATIONS, PERMISSIONS.ANALYTICS_PROFORMA, PERMISSIONS.ANALYTICS_EXPORT,
   ],
   [ROLE_CODES.SALES_EXECUTIVE]: [
     PERMISSIONS.VENDOR_READ, PERMISSIONS.COMPANY_READ, PERMISSIONS.PRODUCT_READ,
@@ -452,6 +482,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERMISSIONS.PAYMENT_READ, PERMISSIONS.PAYMENT_CREATE, PERMISSIONS.PAYMENT_UPDATE, PERMISSIONS.PAYMENT_VERIFY,
     PERMISSIONS.PAYMENT_REJECT, PERMISSIONS.PAYMENT_REVERSE, PERMISSIONS.PAYMENT_DOWNLOAD, PERMISSIONS.PAYMENT_EXPORT,
     PERMISSIONS.PAYMENT_REPORTS,
+    PERMISSIONS.ANALYTICS_DASHBOARD, PERMISSIONS.ANALYTICS_CUSTOMERS, PERMISSIONS.ANALYTICS_PROFORMA, PERMISSIONS.ANALYTICS_INVOICES,
+    PERMISSIONS.ANALYTICS_PAYMENTS, PERMISSIONS.ANALYTICS_DELIVERIES, PERMISSIONS.ANALYTICS_EXPORT, PERMISSIONS.ANALYTICS_FINANCIAL,
   ],
   // Dispatch reduces stock, so this role may post movements.
   [ROLE_CODES.DELIVERY_MANAGER]: [
@@ -463,6 +495,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERMISSIONS.DELIVERY_SCHEDULE, PERMISSIONS.DELIVERY_DISPATCH, PERMISSIONS.DELIVERY_TRACK,
     PERMISSIONS.DELIVERY_CONFIRM, PERMISSIONS.DELIVERY_CANCEL, PERMISSIONS.DELIVERY_UPLOAD_POD,
     PERMISSIONS.DELIVERY_DOWNLOAD, PERMISSIONS.DELIVERY_EXPORT, PERMISSIONS.DELIVERY_REPORTS,
+    PERMISSIONS.ANALYTICS_DASHBOARD, PERMISSIONS.ANALYTICS_DELIVERIES, PERMISSIONS.ANALYTICS_EXPORT,
   ],
 };
 

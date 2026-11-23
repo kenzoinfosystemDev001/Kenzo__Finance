@@ -1264,7 +1264,11 @@ export interface FinalInvoiceListItem {
   proformaInvoice: { id: string; piNumber: string };
   quotation: { id: string; quotationNumber: string };
   assignedTo: UserRef | null;
-  /** Issued / sent and the due date has passed (payment is not tracked yet). */
+  /** Verified payments received (Payment Management is the source of truth). */
+  amountReceived: string;
+  paymentState: InvoicePaymentState;
+  outstanding: string;
+  /** Overdue: issued / sent, due date passed and not fully paid. */
   pastDue: boolean;
 }
 
@@ -1277,7 +1281,10 @@ export interface FinalInvoiceSummary {
   sent: number;
   cancelled: number;
   pastDue: number;
-  invoicedValue: Array<{ currency: string; count: number; total: string }>;
+  unpaid: number;
+  partiallyPaid: number;
+  fullyPaid: number;
+  invoicedValue: Array<{ currency: string; count: number; total: string; received: string; outstanding: string }>;
   approvalRequired: boolean;
   paymentTrackingAvailable: boolean;
   generatedAt: string;
@@ -1402,8 +1409,28 @@ export interface FinalInvoiceDetail extends ProformaTotals {
   }>;
   approvalRequired: boolean;
   deletable: boolean;
-  /** Payment Management is not available yet: no figures exist. */
-  payments: { available: boolean; received: string | null; outstanding: string | null; transactions: unknown[] };
+  amountReceived: string;
+  paymentState: InvoicePaymentState;
+  outstanding: string;
+  /** Derived from verified payments by Payment Management. */
+  payments: {
+    available: boolean;
+    received: string;
+    outstanding: string;
+    pendingVerification: string;
+    state: InvoicePaymentState;
+    transactions: Array<{
+      id: string;
+      receiptNumber: string;
+      paymentDate: string;
+      amount: string;
+      method: string;
+      transactionReference: string | null;
+      status: PaymentStatus;
+      verifiedAt: string | null;
+      allocated: string;
+    }>;
+  };
 }
 
 export interface InvoiceNumbering {
@@ -1431,4 +1458,545 @@ export interface FinalInvoiceReports {
   pastDue: FinalInvoiceListItem[];
   paymentTrackingAvailable: boolean;
   generatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Module 8 - Payment Management
+// ---------------------------------------------------------------------------
+
+export type PaymentStatus = 'PENDING_VERIFICATION' | 'VERIFIED' | 'REJECTED' | 'REVERSED';
+
+export interface PaymentMethodOption {
+  code: string;
+  label: string;
+  active: boolean;
+}
+
+export interface PaymentListItem {
+  id: string;
+  receiptNumber: string;
+  paymentDate: string;
+  amount: string;
+  currency: string;
+  method: string;
+  transactionReference: string | null;
+  status: PaymentStatus;
+  duplicateReferenceConfirmed: boolean;
+  createdAt: string;
+  verifiedAt: string | null;
+  customer: { id: string; name: string; customerCode: string };
+  receivedBy: UserRef | null;
+  allocations: Array<{
+    amount: string;
+    finalInvoice: { id: string; invoiceNumber: string | null; grandTotal: string; paymentState: InvoicePaymentState };
+  }>;
+}
+
+export type InvoicePaymentState = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
+
+export interface EligiblePaymentInvoice {
+  id: string;
+  invoiceNumber: string | null;
+  invoiceDate: string;
+  dueDate: string | null;
+  currency: string;
+  grandTotal: string;
+  amountReceived: string;
+  paymentState: InvoicePaymentState;
+  outstanding: string;
+  pendingVerification: string;
+  available: string;
+  overdue: boolean;
+}
+
+export interface PaymentSettings {
+  methods: PaymentMethodOption[];
+  autoVerifyMethods: string[];
+  /** False while the methods are still the untouched defaults. */
+  methodsConfirmed: boolean;
+}
+
+export interface PaymentDuplicate {
+  id: string;
+  receiptNumber: string;
+  amount: string;
+  status: PaymentStatus;
+  customer: string;
+}
+
+type PaymentReportRow = { key: string; currency: string; count: number; total: string };
+
+export interface PaymentOpenInvoice {
+  id: string;
+  invoiceNumber: string | null;
+  invoiceDate: string;
+  dueDate: string | null;
+  currency: string;
+  grandTotal: string;
+  amountReceived: string;
+  paymentState: InvoicePaymentState;
+  customer: { id: string; name: string };
+  outstanding: string;
+  overdue: boolean;
+}
+
+export interface PaymentReports {
+  filters: { dateFrom: string | null; dateTo: string | null; customerId: string | null; method: string | null };
+  daily: PaymentReportRow[];
+  monthly: PaymentReportRow[];
+  byCustomer: Array<PaymentReportRow & { customer: { id: string; name: string; customerCode: string } }>;
+  byMethod: Array<PaymentReportRow & { label: string }>;
+  byInvoice: Array<PaymentReportRow & { invoiceNumber: string | null }>;
+  pendingVerification: PaymentListItem[];
+  rejectedOrReversed: Array<PaymentListItem & { rejectionReason: string | null; reversalReason: string | null }>;
+  outstandingInvoices: PaymentOpenInvoice[];
+  overdueInvoices: PaymentOpenInvoice[];
+  generatedAt: string;
+}
+
+export interface PaymentSummary {
+  totalReceived: Array<{ currency: string; count: number; total: string }>;
+  receivedToday: Array<{ currency: string; count: number; total: string }>;
+  receivedThisMonth: Array<{ currency: string; count: number; total: string }>;
+  pendingVerification: Array<{ currency: string; count: number; total: string }>;
+  outstanding: Array<{ currency: string; invoices: number; total: string }>;
+  partiallyPaidInvoices: number;
+  fullyPaidInvoices: number;
+  overdueInvoices: number;
+  generatedAt: string;
+}
+
+export interface PaymentDetail extends PaymentListItem {
+  bankReference: string | null;
+  notes: string | null;
+  receivedBy: UserRef | null;
+  verifiedBy: UserRef | null;
+  rejectedBy: UserRef | null;
+  reversedBy: UserRef | null;
+  createdBy: UserRef | null;
+  updatedBy: UserRef | null;
+  methodLabel: string;
+  allocations: Array<{
+    amount: string;
+    finalInvoice: {
+      id: string;
+      invoiceNumber: string | null;
+      invoiceDate: string;
+      dueDate: string | null;
+      currency: string;
+      grandTotal: string;
+      amountReceived: string;
+      paymentState: InvoicePaymentState;
+      status: FinalInvoiceStatus;
+      proformaInvoice: { id: string; piNumber: string } | null;
+    };
+  }>;
+  statusHistory: Array<{
+    id: string;
+    previousStatus: PaymentStatus | null;
+    newStatus: PaymentStatus;
+    remarks: string | null;
+    changedAt: string;
+    changedBy: UserRef | null;
+  }>;
+  receiptDocument: { id: string; originalFilename: string; sizeBytes: number; createdAt: string } | null;
+  receivedById: string | null;
+  rejectionReason: string | null;
+  reversalReason: string | null;
+  rejectedAt: string | null;
+  reversedAt: string | null;
+  updatedAt: string;
+  documents: Array<{
+    id: string;
+    kind: 'PAYMENT_RECEIPT' | 'PAYMENT_PROOF';
+    originalFilename: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: string;
+    replacesDocumentId: string | null;
+    uploadedBy: UserRef | null;
+  }>;
+  invoiceSummary: {
+    invoiceTotal: string;
+    otherVerifiedPayments: string;
+    thisPayment: string;
+    totalVerified: string;
+    pendingVerification: string;
+    outstanding: string;
+    paymentState: InvoicePaymentState;
+  };
+}
+
+export interface InvoicePaymentHistory {
+  invoice: {
+    id: string;
+    invoiceNumber: string | null;
+    currency: string;
+    grandTotal: string;
+    amountReceived: string;
+    paymentState: InvoicePaymentState;
+    dueDate: string | null;
+    outstanding: string;
+    pendingVerification: string;
+  };
+  payments: PaymentListItem[];
+}
+
+export interface CustomerPaymentHistory {
+  customer: { id: string; name: string; customerCode: string };
+  totals: Array<{ currency: string; invoiced: string; verifiedPayments: string; outstanding: string }>;
+  paymentCount: number;
+  lastPaymentDate: string | null;
+  invoices: Array<{
+    id: string;
+    invoiceNumber: string | null;
+    invoiceDate: string;
+    dueDate: string | null;
+    currency: string;
+    grandTotal: string;
+    amountReceived: string;
+    paymentState: InvoicePaymentState;
+    outstanding: string;
+    overdue: boolean;
+  }>;
+  payments: PaymentListItem[];
+}
+
+// ---------------------------------------------------------------------------
+// Delivery Management (Module 9) - shapes returned by apps/api/src/deliveries
+// ---------------------------------------------------------------------------
+
+export type DeliveryStatus =
+  | 'DRAFT'
+  | 'SCHEDULED'
+  | 'READY_FOR_DISPATCH'
+  | 'DISPATCHED'
+  | 'IN_TRANSIT'
+  | 'PARTIALLY_DELIVERED'
+  | 'DELIVERED'
+  | 'DELIVERY_FAILED'
+  | 'RETURNED'
+  | 'CANCELLED';
+
+export type TransportMode = 'DIRECT' | 'OWN_VEHICLE' | 'TRANSPORT' | 'COURIER';
+
+export type InvoiceDeliveryState = 'NOT_DELIVERED' | 'PARTIALLY_DELIVERED' | 'DELIVERED';
+
+export type DeliveryUploadKind = 'DELIVERY_POD' | 'DELIVERY_SIGNATURE' | 'DELIVERY_PHOTO' | 'DELIVERY_ATTACHMENT';
+
+/** Row of the register, invoice / customer history and report lists (listSelect + withFlags). */
+export interface DeliveryListItem {
+  id: string;
+  deliveryNumber: string;
+  status: DeliveryStatus;
+  deliveryDate: string;
+  expectedDate: string | null;
+  dispatchDate: string | null;
+  actualDeliveryDate: string | null;
+  transportMode: TransportMode | null;
+  transporterName: string | null;
+  courierCompany: string | null;
+  trackingNumber: string | null;
+  deliveryAddress: string;
+  createdAt: string;
+  customer: { id: string; name: string; customerCode: string };
+  finalInvoice: { id: string; invoiceNumber: string | null };
+  items: Array<{ quantity: number; deliveredQuantity: number | null; unit: string }>;
+  totalQuantity: number;
+  delayed: boolean;
+}
+
+export interface DeliverySummary {
+  total: number;
+  draft: number;
+  scheduled: number;
+  readyForDispatch: number;
+  dispatched: number;
+  inTransit: number;
+  delivered: number;
+  partiallyDelivered: number;
+  failed: number;
+  returned: number;
+  cancelled: number;
+  delayed: number;
+  generatedAt: string;
+}
+
+/** GET /deliveries/eligible-invoices?customerId= */
+export interface EligibleDeliveryInvoice {
+  id: string;
+  invoiceNumber: string | null;
+  invoiceDate: string;
+  currency: string;
+  grandTotal: string;
+  customerSnapshot: QuotationCustomerSnapshot | null;
+  invoicedQuantity: number;
+  allocatedQuantity: number;
+  deliveredQuantity: number;
+  remainingQuantity: number;
+  deliveryState: InvoiceDeliveryState;
+}
+
+/** GET /deliveries/invoices/:id/items (also `invoicePositions` on a delivery). */
+export interface DeliveryInvoiceItem {
+  invoiceItemId: string;
+  productId: string;
+  productModelId: string | null;
+  productName: string;
+  productCode: string;
+  brandName: string;
+  modelName: string | null;
+  modelNumber: string | null;
+  description: string | null;
+  unit: string;
+  invoicedQuantity: number;
+  allocatedQuantity: number;
+  confirmedDeliveredQuantity: number;
+  remainingQuantity: number;
+}
+
+export interface DeliveryItemDetail {
+  id: string;
+  deliveryId: string;
+  invoiceItemId: string;
+  productId: string;
+  productModelId: string | null;
+  productName: string;
+  productCode: string;
+  brandName: string;
+  modelName: string | null;
+  modelNumber: string | null;
+  description: string | null;
+  quantity: number;
+  /** Null until the delivery is confirmed with proof of delivery. */
+  deliveredQuantity: number | null;
+  unit: string;
+  packageCount: number | null;
+  remarks: string | null;
+  packingItems: Array<{ quantity: number; packingList: { packageNumber: number } }>;
+}
+
+export interface DeliveryPackage {
+  id: string;
+  deliveryId: string;
+  packingNumber: string;
+  packageNumber: number;
+  description: string | null;
+  weight: string | null;
+  dimensions: string | null;
+  remarks: string | null;
+  createdAt: string;
+  items: Array<{
+    id: string;
+    packingListId: string;
+    deliveryItemId: string;
+    quantity: number;
+    deliveryItem: { productName: string; modelName: string | null; unit: string };
+  }>;
+}
+
+export interface DeliveryTrackingEvent {
+  id: string;
+  status: string;
+  location: string | null;
+  remarks: string | null;
+  source: 'MANUAL' | 'EXTERNAL';
+  provider: string | null;
+  externalReference: string | null;
+  eventAt: string;
+  createdAt: string;
+  recordedBy: { id: string; fullName: string } | null;
+}
+
+export interface DeliveryStatusHistoryEntry {
+  id: string;
+  previousStatus: DeliveryStatus | null;
+  newStatus: DeliveryStatus;
+  remarks: string | null;
+  changedAt: string;
+  changedBy: { id: string; fullName: string } | null;
+}
+
+export interface ProofOfDeliveryRecord {
+  id: string;
+  receiverName: string;
+  receiverContact: string | null;
+  actualDeliveryDate: string;
+  deliveryConfirmation: boolean;
+  remarks: string | null;
+  confirmedAt: string;
+  amendsId: string | null;
+  amendmentReason: string | null;
+  confirmedBy: { id: string; fullName: string } | null;
+}
+
+export interface DeliveryStoredDocument {
+  id: string;
+  originalFilename: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface DeliveryDocument {
+  id: string;
+  kind: string;
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+  replacesDocumentId: string | null;
+  uploadedBy: { id: string; fullName: string } | null;
+}
+
+/** GET /deliveries/:id */
+export interface DeliveryDetail extends Omit<DeliveryListItem, 'items' | 'finalInvoice'> {
+  customerId: string;
+  finalInvoiceId: string;
+  contactPerson: string | null;
+  contactNumber: string | null;
+  internalRemarks: string | null;
+  dispatchTime: string | null;
+  vehicleNumber: string | null;
+  driverName: string | null;
+  driverContact: string | null;
+  lrGrNumber: string | null;
+  dispatchRemarks: string | null;
+  failureDate: string | null;
+  failureReason: string | null;
+  failureRemarks: string | null;
+  nextAttemptDate: string | null;
+  dispatchedAt: string | null;
+  returnReason: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
+  redeliveryOfId: string | null;
+  challanDocumentId: string | null;
+  packingDocumentId: string | null;
+  updatedAt: string;
+  finalInvoice: { id: string; invoiceNumber: string | null; invoiceDate: string; status: FinalInvoiceStatus; proformaInvoiceId: string; quotationId: string };
+  items: DeliveryItemDetail[];
+  statusHistory: DeliveryStatusHistoryEntry[];
+  trackingEvents: DeliveryTrackingEvent[];
+  packingLists: DeliveryPackage[];
+  proofsOfDelivery: ProofOfDeliveryRecord[];
+  redeliveryOf: { id: string; deliveryNumber: string; status: DeliveryStatus } | null;
+  redeliveries: Array<{ id: string; deliveryNumber: string; status: DeliveryStatus }>;
+  challanDocument: DeliveryStoredDocument | null;
+  packingDocument: DeliveryStoredDocument | null;
+  documents: DeliveryDocument[];
+  createdBy: { id: string; fullName: string } | null;
+  updatedBy: { id: string; fullName: string } | null;
+  invoicePositions: DeliveryInvoiceItem[];
+  canEditItems: boolean;
+}
+
+/** GET /deliveries/invoices/:id/history */
+export interface InvoiceDeliveryHistory {
+  finalInvoiceId: string;
+  invoicedQuantity: number;
+  dispatchedQuantity: number;
+  confirmedDeliveredQuantity: number;
+  remainingQuantity: number;
+  unallocatedQuantity: number;
+  numberOfDeliveries: number;
+  deliveryState: InvoiceDeliveryState;
+  items: DeliveryInvoiceItem[];
+  deliveries: DeliveryListItem[];
+}
+
+/** GET /deliveries/customers/:id/history */
+export interface CustomerDeliveryHistory {
+  total: number;
+  scheduled: number;
+  inTransit: number;
+  completed: number;
+  partiallyDelivered: number;
+  failed: number;
+  delayed: number;
+  deliveries: DeliveryListItem[];
+}
+
+/** GET /deliveries/reports */
+export interface DeliveryReports {
+  filters: { dateFrom: string | null; dateTo: string | null; customerId: string | null; transporter: string | null };
+  dailyDispatch: Array<{ date: string; deliveries: number; quantity: number }>;
+  monthly: Array<{ month: string; deliveries: number; delivered: number }>;
+  byCustomer: Array<{ customer: { id: string; name: string }; deliveries: number; delivered: number }>;
+  byInvoice: Array<{ invoice: { id: string; invoiceNumber: string | null }; deliveries: number; dispatchedQuantity: number; deliveredQuantity: number }>;
+  byTransporter: Array<{ transporter: string; deliveries: number; delivered: number; failed: number }>;
+  scheduled: DeliveryListItem[];
+  inTransit: DeliveryListItem[];
+  delivered: DeliveryListItem[];
+  delayed: DeliveryListItem[];
+  failed: DeliveryListItem[];
+  partial: DeliveryListItem[];
+  generatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Users & Roles (apps/api/src/users)
+// ---------------------------------------------------------------------------
+
+export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'LOCKED';
+
+export interface UserRoleAssignment {
+  id: string;
+  code: string;
+  name: string;
+  assignedAt: string;
+}
+
+/** A user row as GET /users returns it. Never carries a password hash. */
+export interface UserListItem {
+  id: string;
+  email: string;
+  fullName: string;
+  phone: string | null;
+  status: UserStatus;
+  lastLoginAt: string | null;
+  failedLoginAttempts: number;
+  lockedUntil: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** True while a login lockout is in force (lockedUntil in the future). */
+  locked: boolean;
+  roles: UserRoleAssignment[];
+}
+
+export interface PermissionInfo {
+  code: string;
+  module: string;
+  action: string;
+  description: string | null;
+}
+
+export interface UserDetail extends UserListItem {
+  /** Effective permissions from all of the user's roles. */
+  permissions: PermissionInfo[];
+}
+
+export interface UserSummary {
+  total: number;
+  active: number;
+  inactive: number;
+  locked: number;
+}
+
+export interface UserActivityEntry {
+  id: string;
+  action: string;
+  summary: string | null;
+  createdAt: string;
+  ipAddress: string | null;
+  actor: UserRef | null;
+}
+
+export interface RoleWithPermissions {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  isSystem: boolean;
+  userCount: number;
+  permissions: string[];
 }

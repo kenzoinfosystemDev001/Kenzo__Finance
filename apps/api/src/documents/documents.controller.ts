@@ -154,4 +154,4 @@ export class DocumentsController {
   }
 }
 
-const GENERATED_KINDS: DocumentKind[] = [DocumentKind.QUOTATION_PDF, DocumentKind.PROFORMA_PDF, DocumentKind.FINAL_INVOICE_PDF, DocumentKind.PAYMENT_RECEIPT];
+const GENERATED_KINDS: DocumentKind[] = [DocumentKind.QUOTATION_PDF, DocumentKind.PROFORMA_PDF, DocumentKind.FINAL_INVOICE_PDF, DocumentKind.PAYMENT_RECEIPT, DocumentKind.DELIVERY_CHALLAN, DocumentKind.PACKING_LIST];

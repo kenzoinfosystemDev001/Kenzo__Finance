@@ -31,6 +31,12 @@ describe('validateEnv', () => {
     ).toThrow(/must be different/i);
   });
 
+  it('rejects the .env.example placeholder secrets in production only', () => {
+    const placeholder = { AUTH_ACCESS_SECRET: 'replace-with-a-long-random-secret', AUTH_REFRESH_SECRET: 'replace-with-a-different-long-random-secret' };
+    expect(() => validateEnv({ ...base, ...placeholder, NODE_ENV: 'production', WEB_URL: 'https://app.example.org' })).toThrow(/placeholder/i);
+    expect(() => validateEnv({ ...base, ...placeholder })).not.toThrow();
+  });
+
   describe('cloudinary storage', () => {
     it('accepts CLOUDINARY_URL on its own', () => {
       const env = validateEnv({

@@ -92,8 +92,9 @@ model User {
   paymentStatusLogs      PaymentStatusHistory[]         @relation("PaymentStatusChangedBy")
   createdDeliveries      Delivery[]                     @relation("DeliveryCreatedBy")
   updatedDeliveries      Delivery[]                     @relation("DeliveryUpdatedBy")
-  deliveryStatusLogs     DeliveryStatusHistory[]         @relation("DeliveryStatusChangedBy")
+  deliveryStatusLogs     DeliveryStatusHistory[]        @relation("DeliveryStatusChangedBy")
   deliveryConfirmations  ProofOfDelivery[]              @relation("DeliveryConfirmedBy")
+  deliveryTrackingEvents ShipmentTrackingEvent[]        @relation("DeliveryTrackingRecordedBy")
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -660,10 +661,10 @@ model Document {
   paymentId         String?          @db.Uuid
   payment           Payment?         @relation("PaymentDocuments", fields: [paymentId], references: [id], onDelete: Restrict)
   receiptOf         Payment?         @relation("PaymentReceipt")
-  deliveryId        String?        @db.Uuid
-  delivery          Delivery?      @relation("DeliveryDocuments", fields: [deliveryId], references: [id], onDelete: Restrict)
-  challanOf         Delivery?      @relation("DeliveryChallan")
-  packingListOf     Delivery?      @relation("DeliveryPackingList")
+  deliveryId        String?          @db.Uuid
+  delivery          Delivery?        @relation("DeliveryDocuments", fields: [deliveryId], references: [id], onDelete: Restrict)
+  challanOf         Delivery?        @relation("DeliveryChallan")
+  packingListOf     Delivery?        @relation("DeliveryPackingList")
 
   // Back-references for the product / model using this file as its image.
   primaryImageOf Product?      @relation("ProductPrimaryImage")
@@ -2012,41 +2013,53 @@ model Delivery {
   contactNumber      String?
   internalRemarks    String?
 
-  dispatchDate   DateTime? @db.Date
-  dispatchTime   String?
+  dispatchDate    DateTime?      @db.Date
+  dispatchTime    String?
   transporterName String?
-  transportMode  TransportMode?
-  vehicleNumber  String?
-  driverName     String?
-  driverContact  String?
-  courierCompany String?
-  trackingNumber String?
-  lrGrNumber     String?
+  transportMode   TransportMode?
+  vehicleNumber   String?
+  driverName      String?
+  driverContact   String?
+  courierCompany  String?
+  trackingNumber  String?
+  lrGrNumber      String?
   dispatchRemarks String?
 
-  failureDate  DateTime? @db.Date
-  failureReason String?
+  failureDate     DateTime? @db.Date
+  failureReason   String?
+  failureRemarks  String?
   nextAttemptDate DateTime? @db.Date
+
+  dispatchedAt       DateTime?
+  returnReason       String?
+  cancelledAt        DateTime?
+  cancellationReason String?
+
+  // A new delivery raised for goods of a RETURNED delivery points at it.
+  redeliveryOfId String?    @db.Uuid
+  redeliveryOf   Delivery?  @relation("DeliveryRedelivery", fields: [redeliveryOfId], references: [id], onDelete: Restrict)
+  redeliveries   Delivery[] @relation("DeliveryRedelivery")
 
   customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
   finalInvoice FinalInvoice @relation(fields: [finalInvoiceId], references: [id], onDelete: Restrict)
 
-  items          DeliveryItem[]
-  statusHistory  DeliveryStatusHistory[]
-  trackingEvents ShipmentTrackingEvent[]
-  packingLists   PackingList[]
-  proofOfDelivery ProofOfDelivery?
+  items            DeliveryItem[]
+  statusHistory    DeliveryStatusHistory[]
+  trackingEvents   ShipmentTrackingEvent[]
+  packingLists     PackingList[]
+  // Immutable: the original confirmation plus any amendments (never overwritten).
+  proofsOfDelivery ProofOfDelivery[]
 
-  challanDocumentId String?   @unique @db.Uuid
-  packingDocumentId String?   @unique @db.Uuid
-  challanDocument   Document? @relation("DeliveryChallan", fields: [challanDocumentId], references: [id], onDelete: SetNull)
-  packingDocument   Document? @relation("DeliveryPackingList", fields: [packingDocumentId], references: [id], onDelete: SetNull)
+  challanDocumentId String?    @unique @db.Uuid
+  packingDocumentId String?    @unique @db.Uuid
+  challanDocument   Document?  @relation("DeliveryChallan", fields: [challanDocumentId], references: [id], onDelete: SetNull)
+  packingDocument   Document?  @relation("DeliveryPackingList", fields: [packingDocumentId], references: [id], onDelete: SetNull)
   documents         Document[] @relation("DeliveryDocuments")
 
   createdById String? @db.Uuid
   updatedById String? @db.Uuid
-  createdBy   User? @relation("DeliveryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  updatedBy   User? @relation("DeliveryUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdBy   User?   @relation("DeliveryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?   @relation("DeliveryUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2058,29 +2071,33 @@ model Delivery {
   @@index([expectedDate])
   @@index([dispatchDate])
   @@index([actualDeliveryDate])
+  @@index([redeliveryOfId])
   @@map("deliveries")
 }
 
 model DeliveryItem {
-  id         String @id @default(uuid()) @db.Uuid
-  deliveryId String @db.Uuid
-  invoiceItemId String @db.Uuid
-  productId  String @db.Uuid
+  id             String  @id @default(uuid()) @db.Uuid
+  deliveryId     String  @db.Uuid
+  invoiceItemId  String  @db.Uuid
+  productId      String  @db.Uuid
   productModelId String? @db.Uuid
 
-  productName String
-  productCode String
-  brandName String
-  modelName String?
-  modelNumber String?
-  description String?
-  quantity Int
-  unit String
-  packageCount Int?
-  remarks String?
+  productName       String
+  productCode       String
+  brandName         String
+  modelName         String?
+  modelNumber       String?
+  description       String?
+  quantity          Int
+  // Set on confirmation: what the customer actually received (<= quantity).
+  deliveredQuantity Int?
+  unit              String
+  packageCount      Int?
+  remarks           String?
 
-  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
-  invoiceItem FinalInvoiceItem @relation(fields: [invoiceItemId], references: [id], onDelete: Restrict)
+  delivery     Delivery          @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  invoiceItem  FinalInvoiceItem  @relation(fields: [invoiceItemId], references: [id], onDelete: Restrict)
+  packingItems PackingListItem[]
 
   @@unique([deliveryId, invoiceItemId])
   @@index([deliveryId])
@@ -2089,75 +2106,92 @@ model DeliveryItem {
 }
 
 model DeliveryStatusHistory {
-  id         String         @id @default(uuid()) @db.Uuid
-  deliveryId String         @db.Uuid
+  id             String          @id @default(uuid()) @db.Uuid
+  deliveryId     String          @db.Uuid
   previousStatus DeliveryStatus?
-  newStatus DeliveryStatus
-  remarks String?
-  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
-  changedById String? @db.Uuid
-  changedBy User? @relation("DeliveryStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
-  changedAt DateTime @default(now())
+  newStatus      DeliveryStatus
+  remarks        String?
+  delivery       Delivery        @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  changedById    String?         @db.Uuid
+  changedBy      User?           @relation("DeliveryStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt      DateTime        @default(now())
 
   @@index([deliveryId, changedAt])
   @@map("delivery_status_history")
 }
 
 model ShipmentTrackingEvent {
-  id         String @id @default(uuid()) @db.Uuid
-  deliveryId String @db.Uuid
-  status String
-  location String?
-  remarks String?
-  source DeliveryTrackingSource @default(MANUAL)
+  id                String                 @id @default(uuid()) @db.Uuid
+  deliveryId        String                 @db.Uuid
+  status            String
+  location          String?
+  remarks           String?
+  source            DeliveryTrackingSource @default(MANUAL)
+  // Courier integration that supplied an EXTERNAL event (null for manual ones).
+  provider          String?
   externalReference String?
-  eventAt DateTime @default(now())
-  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  eventAt           DateTime               @default(now())
+  recordedById      String?                @db.Uuid
+  recordedBy        User?                  @relation("DeliveryTrackingRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+  createdAt         DateTime               @default(now())
+  delivery          Delivery               @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
 
+  @@unique([deliveryId, provider, externalReference])
   @@index([deliveryId, eventAt])
   @@map("shipment_tracking_events")
 }
 
 model PackingList {
-  id         String @id @default(uuid()) @db.Uuid
-  deliveryId String @db.Uuid
-  packingNumber String @unique
+  id            String            @id @default(uuid()) @db.Uuid
+  deliveryId    String            @db.Uuid
+  packingNumber String            @unique
   packageNumber Int
-  description String?
-  weight String?
-  dimensions String?
-  remarks String?
-  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
-  items PackingListItem[]
+  description   String?
+  weight        String?
+  dimensions    String?
+  remarks       String?
+  delivery      Delivery          @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  items         PackingListItem[]
 
   createdAt DateTime @default(now())
+
+  @@unique([deliveryId, packageNumber])
   @@index([deliveryId])
   @@map("packing_lists")
 }
 
 model PackingListItem {
-  id String @id @default(uuid()) @db.Uuid
-  packingListId String @db.Uuid
-  deliveryItemId String @db.Uuid
-  quantity Int
-  packingList PackingList @relation(fields: [packingListId], references: [id], onDelete: Cascade)
+  id             String       @id @default(uuid()) @db.Uuid
+  packingListId  String       @db.Uuid
+  deliveryItemId String       @db.Uuid
+  quantity       Int
+  packingList    PackingList  @relation(fields: [packingListId], references: [id], onDelete: Cascade)
+  deliveryItem   DeliveryItem @relation(fields: [deliveryItemId], references: [id], onDelete: Cascade)
 
+  @@unique([packingListId, deliveryItemId])
   @@index([packingListId])
+  @@index([deliveryItemId])
   @@map("packing_list_items")
 }
 
 model ProofOfDelivery {
-  id String @id @default(uuid()) @db.Uuid
-  deliveryId String @db.Uuid @unique
-  receiverName String
-  receiverContact String?
-  actualDeliveryDate DateTime @db.Date
-  deliveryConfirmation Boolean @default(false)
-  remarks String?
-  confirmedById String? @db.Uuid
-  confirmedAt DateTime @default(now())
-  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
-  confirmedBy User? @relation("DeliveryConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+  id                   String           @id @default(uuid()) @db.Uuid
+  deliveryId           String           @db.Uuid
+  receiverName         String
+  receiverContact      String?
+  actualDeliveryDate   DateTime         @db.Date
+  deliveryConfirmation Boolean          @default(false)
+  remarks              String?
+  confirmedById        String?          @db.Uuid
+  confirmedAt          DateTime         @default(now())
+  // An amendment is a new row pointing at the record it corrects; rows are never updated.
+  amendsId             String?          @unique @db.Uuid
+  amends               ProofOfDelivery? @relation("PodAmendment", fields: [amendsId], references: [id], onDelete: Restrict)
+  amendedBy            ProofOfDelivery? @relation("PodAmendment")
+  amendmentReason      String?
+  delivery             Delivery         @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+  confirmedBy          User?            @relation("DeliveryConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
 
+  @@index([deliveryId])
   @@map("proof_of_delivery")
 }

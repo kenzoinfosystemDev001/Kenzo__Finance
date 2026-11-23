@@ -9,6 +9,7 @@ import { formatDate } from '@/lib/vendor-labels';
 import { ErrorState, PageHeader } from '@/components/ui';
 import { EmptyStateClient, PanelHeader } from '@/components/panel-shared';
 import { FinalInvoiceStatusBadge } from '@/components/final-invoice-badges';
+import { PaymentStateBadge } from '@/components/payment-badges';
 import { IconChevronLeft, IconDownload } from '@/components/icons';
 import { InvoiceReportFilters } from './report-filters';
 
@@ -77,9 +78,6 @@ export default async function InvoiceReportsPage({ searchParams }: { searchParam
 
       <InvoiceReportFilters customer={customer ? { id: customer.id, label: customer.name, detail: customer.customerCode } : null} />
 
-      {!report.paymentTrackingAvailable && (
-        <p className="text-sm text-ink-muted">Payment figures (received, outstanding, paid) will appear once Payment Management is in use; none are shown here.</p>
-      )}
 
       <section className="card">
         <PanelHeader title="By month" description="Invoices issued per month of invoice date." />
@@ -186,11 +184,11 @@ export default async function InvoiceReportsPage({ searchParams }: { searchParam
 
       <section className="card">
         <PanelHeader
-          title="Past due date"
-          description="Issued or sent invoices whose due date has passed (oldest first, up to 200). Filtered by customer only, not by the date range. Payment is not tracked yet, so this does not mean unpaid."
+          title="Overdue"
+          description="Issued or sent invoices whose due date has passed and that are not fully paid (verified payments only; oldest first, up to 200). Filtered by customer only, not by the date range."
         />
         {report.pastDue.length === 0 ? (
-          <EmptyStateClient title="Nothing past its due date" description="No issued invoice has passed its due date." />
+          <EmptyStateClient title="Nothing overdue" description="No unpaid issued invoice has passed its due date." />
         ) : (
           <div className="overflow-x-auto">
             <table className="data-table">
@@ -201,6 +199,8 @@ export default async function InvoiceReportsPage({ searchParams }: { searchParam
                   <th scope="col">Due Date</th>
                   <th scope="col">Customer</th>
                   <th scope="col" className="text-right">Total</th>
+                  <th scope="col" className="text-right">Received</th>
+                  <th scope="col" className="text-right">Outstanding</th>
                   <th scope="col">Status</th>
                 </tr>
               </thead>
@@ -217,7 +217,9 @@ export default async function InvoiceReportsPage({ searchParams }: { searchParam
                       <p className="font-mono text-xs text-ink-subtle">{inv.customer.customerCode}</p>
                     </td>
                     <td className="whitespace-nowrap text-right tabular-nums">{formatMoney(inv.grandTotal, inv.currency)}</td>
-                    <td><FinalInvoiceStatusBadge status={inv.status} /></td>
+                    <td className="whitespace-nowrap text-right tabular-nums">{formatMoney(inv.amountReceived, inv.currency)}</td>
+                    <td className="whitespace-nowrap text-right font-semibold tabular-nums">{formatMoney(inv.outstanding, inv.currency)}</td>
+                    <td><FinalInvoiceStatusBadge status={inv.status} /> <PaymentStateBadge state={inv.paymentState} /></td>
                   </tr>
                 ))}
               </tbody>
