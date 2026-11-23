@@ -90,7 +90,14 @@ export class PaymentReceiptService {
     // Verified payments on this invoice other than this one, as of now (or as of
     // verification when the receipt is stored at that moment).
     const others = await this.prisma.paymentAllocation.aggregate({
-      where: { finalInvoiceId: invoice.id, paymentId: { not: payment.id }, payment: { status: PaymentStatus.VERIFIED } },
+      where: {
+        finalInvoiceId: invoice.id,
+        paymentId: { not: payment.id },
+        payment: {
+          status: PaymentStatus.VERIFIED,
+          createdAt: { lt: payment.createdAt },
+        },
+      },
       _sum: { amount: true },
     });
     const previous = others._sum.amount ?? new Prisma.Decimal(0);

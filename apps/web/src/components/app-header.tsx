@@ -1,8 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { IconChevronDown, IconLogout, IconSearch } from './icons';
+import { IconChevronDown, IconLogout, IconSearch, IconUser } from './icons';
 
 /**
  * Top bar: vendor search and the user menu.
@@ -111,7 +112,16 @@ export function AppHeader({
                 </p>
               )}
             </div>
-            <form action={logoutAction}>
+            <Link
+              href="/account"
+              role="menuitem"
+              onClick={() => setMenuOpen(false)}
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-ink hover:bg-surface-muted"
+            >
+              <IconUser size={16} />
+              My account
+            </Link>
+            <form action={logoutAction} className="border-t border-border">
               <button
                 type="submit"
                 role="menuitem"

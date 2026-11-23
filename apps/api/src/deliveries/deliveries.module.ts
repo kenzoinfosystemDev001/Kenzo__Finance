@@ -6,7 +6,7 @@ import { NumberingModule } from '../numbering/numbering.module';
 import { DocumentsModule } from '../documents/documents.module';
 
 @Module({
-  imports:[NumberingModule,DocumentsModule],
+  imports: [NumberingModule, DocumentsModule],
   controllers:[DeliveriesController],
   providers:[DeliveriesService,DeliveryPdfService],
   exports:[DeliveriesService],

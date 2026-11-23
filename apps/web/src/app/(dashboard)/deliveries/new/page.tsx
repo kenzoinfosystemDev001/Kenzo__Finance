@@ -1,54 +1,86 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, ApiError } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth-actions';
+import type { CustomerDetail, DeliveryDetail, FinalInvoiceDetail } from '@/lib/types';
+import { DELIVERY_STATUS_LABELS } from '@/lib/delivery-labels';
+import { todayIso } from '@/lib/enquiry-labels';
 import { ErrorState } from '@/components/ui';
+import type { SearchOption } from '@/components/search-select';
+import { IconChevronLeft } from '@/components/icons';
+import { CreateDeliveryForm, type RedeliveryPrefill } from '../delivery-form';
 
-export const metadata: Metadata={title:'Create Delivery'};
+export const metadata: Metadata = { title: 'Create Delivery' };
 
-export default async function NewDeliveryPage({searchParams}:{searchParams:Promise<{customerId?:string}>}){
-  const params=await searchParams;
-  const user=await getCurrentUser();
-  if(!user?.permissions.includes('delivery.create')) return <ErrorState title="Not allowed" message="You do not have permission to create deliveries."/>;
-  let customers:any[]=[]; let invoices:any[]=[];
-  try{
-    const customerData=await apiFetch<any>(`/customers?page=1&pageSize=100`);
-    customers=customerData.items??[];
-    if(params.customerId) invoices=await apiFetch<any[]>(`/deliveries/eligible-invoices?customerId=${params.customerId}`);
-  }catch(error){ return <ErrorState title="Could not load delivery form" message={error instanceof Error?error.message:'The server could not be reached.'}/>;}
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const valid = (v: string | undefined) => (v && UUID.test(v) ? v : null);
 
-  async function createDelivery(formData:FormData){
-    'use server';
-    const items=String(formData.get('items')??'').split(';').map((entry)=>entry.trim()).filter(Boolean).map((entry)=>{const [invoiceItemId,quantity]=entry.split(':');return {invoiceItemId,quantity:Number(quantity)}}).filter((i)=>i.invoiceItemId&&i.quantity>0);
-    const customerId=String(formData.get('customerId'));
-    const finalInvoiceId=String(formData.get('finalInvoiceId'));
-    const delivery=await apiFetch<any>('/deliveries',{method:'POST',body:{
-      customerId,finalInvoiceId,
-      deliveryDate:String(formData.get('deliveryDate')),
-      expectedDate:String(formData.get('expectedDate')||'')||undefined,
-      deliveryAddress:String(formData.get('deliveryAddress')),
-      contactPerson:String(formData.get('contactPerson')||'')||null,
-      contactNumber:String(formData.get('contactNumber')||'')||null,
-      internalRemarks:String(formData.get('internalRemarks')||'')||null,
-      items,
-    }});
-    revalidatePath('/deliveries');
-    redirect(`/deliveries/${delivery.id}`);
+export default async function NewDeliveryPage({ searchParams }: { searchParams: Promise<{ customerId?: string; invoiceId?: string; redeliveryOf?: string }> }) {
+  const params = await searchParams;
+  const user = await getCurrentUser();
+  const can = (p: string) => user?.permissions.includes(p) ?? false;
+  if (!can('delivery.create')) return <ErrorState title="Not allowed" message="You do not have permission to create deliveries." />;
+
+  let customer: SearchOption | null = null;
+  let invoiceId = valid(params.invoiceId);
+  let redelivery: RedeliveryPrefill | null = null;
+  let notice: string | null = null;
+
+  const redeliveryOf = valid(params.redeliveryOf);
+  if (redeliveryOf) {
+    let original: DeliveryDetail;
+    try {
+      original = await apiFetch<DeliveryDetail>(`/deliveries/${redeliveryOf}`);
+    } catch (error) {
+      return <ErrorState title="Could not load the returned delivery" message={error instanceof ApiError ? error.messages[0] : 'The server could not be reached.'} />;
+    }
+    if (original.status !== 'RETURNED') {
+      return (
+        <ErrorState
+          title="Cannot redeliver"
+          message={`Delivery ${original.deliveryNumber} is ${DELIVERY_STATUS_LABELS[original.status].toLowerCase()}. Only a returned delivery can be redelivered; reschedule a failed delivery instead.`}
+        />
+      );
+    }
+    customer = { id: original.customer.id, label: original.customer.name, detail: original.customer.customerCode };
+    invoiceId = original.finalInvoice.id;
+    redelivery = {
+      id: original.id,
+      deliveryNumber: original.deliveryNumber,
+      deliveryAddress: original.deliveryAddress,
+      contactPerson: original.contactPerson,
+      contactNumber: original.contactNumber,
+      quantities: Object.fromEntries(original.items.map((i) => [i.invoiceItemId, i.quantity])),
+    };
+  } else {
+    const customerId = valid(params.customerId);
+    // Lookups below only preselect the customer; on failure the user picks it.
+    if (customerId) {
+      try {
+        const c = await apiFetch<CustomerDetail>(`/customers/${customerId}`);
+        customer = { id: c.id, label: c.name, detail: c.customerCode };
+      } catch (error) {
+        notice = `The customer could not be preselected (${error instanceof ApiError ? error.messages[0] : 'server unreachable'}). Search for it below.`;
+      }
+    } else if (invoiceId) {
+      try {
+        const inv = await apiFetch<FinalInvoiceDetail>(`/final-invoices/${invoiceId}`);
+        customer = { id: inv.customer.id, label: inv.customer.name, detail: inv.customer.customerCode };
+      } catch (error) {
+        notice = `The invoice's customer could not be preselected (${error instanceof ApiError ? error.messages[0] : 'server unreachable'}). Search for the customer below.`;
+      }
+    }
   }
 
-  return <div className="space-y-5"><div><h1 className="text-xl font-bold text-ink">Create Delivery</h1><p className="text-sm text-ink-muted">Select an issued final invoice and enter current dispatch quantities.</p></div>
-    <form className="card space-y-4 p-5" method="get"><label className="block text-sm font-medium">Customer<select name="customerId" defaultValue={params.customerId??''} className="form-input mt-1 w-full" required><option value="">Select customer</option>{customers.map((c:any)=><option key={c.id} value={c.id}>{c.name} — {c.customerCode}</option>)}</select></label><button className="btn-secondary" type="submit">Load eligible invoices</button></form>
-    {params.customerId&&<form action={createDelivery} className="card space-y-4 p-5">
-      <input type="hidden" name="customerId" value={params.customerId}/>
-      <label className="block text-sm font-medium">Final Invoice<select name="finalInvoiceId" className="form-input mt-1 w-full" required><option value="">Select invoice</option>{invoices.map((i:any)=><option key={i.id} value={i.id}>{i.invoiceNumber} — {i.remainingQuantity} remaining</option>)}</select></label>
-      <div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-medium">Delivery Date<input name="deliveryDate" type="date" className="form-input mt-1 w-full" required/></label><label className="text-sm font-medium">Expected Delivery Date<input name="expectedDate" type="date" className="form-input mt-1 w-full"/></label></div>
-      <label className="block text-sm font-medium">Delivery Address<textarea name="deliveryAddress" className="form-input mt-1 w-full" rows={3} required/></label>
-      <div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-medium">Contact Person<input name="contactPerson" className="form-input mt-1 w-full"/></label><label className="text-sm font-medium">Contact Number<input name="contactNumber" className="form-input mt-1 w-full"/></label></div>
-      <label className="block text-sm font-medium">Internal Remarks<textarea name="internalRemarks" className="form-input mt-1 w-full" rows={2}/></label>
-      <label className="block text-sm font-medium">Delivery Items <span className="font-normal text-ink-muted">(format: invoiceItemId:quantity;invoiceItemId:quantity)</span><textarea name="items" className="form-input mt-1 w-full" rows={4} required/></label>
-      <div className="flex gap-3"><button className="btn-primary" type="submit">Create Delivery</button><Link className="btn-secondary" href="/deliveries">Cancel</Link></div>
-    </form>}
-  </div>;
+  return (
+    <div className="space-y-5">
+      <Link href="/deliveries" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent"><IconChevronLeft size={16} /> All deliveries</Link>
+      <div>
+        <h1 className="text-xl font-bold text-ink">{redelivery ? 'Create Redelivery' : 'Create Delivery'}</h1>
+        <p className="text-sm text-ink-muted">Choose an issued final invoice and the quantities to send. Nothing here changes the invoice amount or its payments.</p>
+      </div>
+      {notice && <p role="status" className="rounded-lg border border-warning/30 bg-warning-subtle px-4 py-2.5 text-sm text-warning">{notice}</p>}
+      <CreateDeliveryForm today={todayIso()} initialCustomer={customer} initialInvoiceId={invoiceId} redelivery={redelivery} canReadCustomers={can('customer.read')} />
+    </div>
+  );
 }

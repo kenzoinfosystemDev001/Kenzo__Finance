@@ -170,6 +170,17 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     );
   }
 
+  // The .env.example placeholders are long enough to pass the length rule;
+  // a production deployment copied from the template would sign tokens with
+  // a publicly known secret.
+  if (parsed.data.NODE_ENV === 'production') {
+    for (const key of ['AUTH_ACCESS_SECRET', 'AUTH_REFRESH_SECRET'] as const) {
+      if (/replace-with|changeme|change-me|example|placeholder/i.test(parsed.data[key])) {
+        throw new Error(`${key} still holds the .env.example placeholder. Generate a random secret (e.g. openssl rand -base64 48).`);
+      }
+    }
+  }
+
   // Both checks fail at startup rather than on the user's first upload, when
   // they would surface as an opaque 500 after a file had been chosen.
   if (parsed.data.STORAGE_DRIVER === 'cloudinary') {

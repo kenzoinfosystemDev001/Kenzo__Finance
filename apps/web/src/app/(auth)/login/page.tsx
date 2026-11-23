@@ -111,6 +111,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               Your session expired. Please sign in again.
             </div>
           )}
+          {reason === 'password-changed' && (
+            <div role="status" className="mt-6 rounded-lg border border-success/30 bg-success-subtle px-3 py-2 text-sm text-success">
+              Your password was changed and every session was signed out. Sign in with your new password.
+            </div>
+          )}
 
           <div className="mt-7">
             <LoginForm supportEmail={branding.supportEmail} />

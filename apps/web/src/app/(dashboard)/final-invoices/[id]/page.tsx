@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiFetch, ApiError, queryString } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth-actions';
-import type { ActivityEntry, FinalInvoiceDetail, PaginatedResponse } from '@/lib/types';
+import type { ActivityEntry, FinalInvoiceDetail, InvoicePaymentHistory, PaginatedResponse } from '@/lib/types';
 import { formatMoney } from '@/lib/quotation-labels';
 import { PROFORMA_STATUS_LABELS } from '@/lib/proforma-labels';
 import { asLineItems, FINAL_INVOICE_STATUS_LABELS } from '@/lib/final-invoice-labels';
@@ -13,9 +13,10 @@ import { EmptyStateClient, PanelHeader } from '@/components/panel-shared';
 import { FinalInvoiceStatusBadge, PastDueBadge } from '@/components/final-invoice-badges';
 import { ProformaLines } from '@/components/proforma-lines';
 import { IconChevronLeft, IconDownload, IconFile } from '@/components/icons';
+import { InvoiceDeliveriesPanel } from '@/components/delivery-history';
 import { FinalInvoiceDocumentsPanel, FinalInvoiceHeaderActions } from './final-invoice-panels';
 
-const TABS = ['overview', 'items', 'proforma', 'payments', 'documents', 'activity'] as const;
+const TABS = ['overview', 'items', 'proforma', 'payments', 'deliveries', 'documents', 'activity'] as const;
 type Tab = (typeof TABS)[number];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -119,6 +120,7 @@ export default async function FinalInvoiceProfilePage({
           { key: 'items', label: 'Items', href: href('items'), count: inv.items.length },
           { key: 'proforma', label: 'Proforma Reference', href: href('proforma') },
           { key: 'payments', label: 'Payments', href: href('payments') },
+          ...(can('delivery.read') ? [{ key: 'deliveries', label: 'Deliveries', href: href('deliveries') }] : []),
           { key: 'documents', label: 'Documents', href: href('documents'), count: uploads.length + (inv.pdfDocument ? 1 : 0) },
           { key: 'activity', label: 'Activity', href: href('activity') },
         ]}
@@ -254,14 +256,12 @@ export default async function FinalInvoiceProfilePage({
         </div>
       )}
 
+      {tab === 'deliveries' && (
+        <InvoiceDeliveriesPanel invoiceId={inv.id} customerId={inv.customerId} invoiceDeliverable={inv.status === 'ISSUED' || inv.status === 'SENT'} permissions={permissions} />
+      )}
+
       {tab === 'payments' && (
-        <SectionCard title="Payments" description="Payment tracking belongs to Payment Management.">
-          <DefinitionList items={[{ label: 'Invoice total', value: money(inv.grandTotal) }]} />
-          <p className="mt-4 text-sm text-ink-muted">
-            Payment Management is not part of the application yet, so no payments are recorded against this invoice and no amount received, outstanding
-            balance or paid status is shown. These figures will appear here once Payment Management is in use; they are never entered by hand.
-          </p>
-        </SectionCard>
+        <InvoicePaymentsTab invoiceId={inv.id} customerId={inv.customerId} currency={inv.currency} canReadPayments={can('payment.read')} canCreatePayment={can('payment.create') && inv.status !== 'CANCELLED' && inv.status !== 'DRAFT'} />
       )}
 
       {tab === 'documents' && (
@@ -289,6 +289,40 @@ export default async function FinalInvoiceProfilePage({
       )}
 
       {tab === 'activity' && <ActivityTab invoiceId={inv.id} page={query.page} reference={ref} />}
+    </div>
+  );
+}
+
+async function InvoicePaymentsTab({ invoiceId, customerId, currency, canReadPayments, canCreatePayment }: { invoiceId: string; customerId: string; currency: string; canReadPayments: boolean; canCreatePayment: boolean }) {
+  if (!canReadPayments) return <ErrorState title="Not allowed" message="You do not have permission to view payments." />;
+  let history: InvoicePaymentHistory;
+  try {
+    history = await apiFetch<InvoicePaymentHistory>(`/payments/invoices/${invoiceId}/history`);
+  } catch (error) {
+    return <ErrorState title="Could not load payments" message={error instanceof ApiError ? error.messages[0] : 'The server could not be reached.'} />;
+  }
+  return (
+    <div className="space-y-5">
+      <SectionCard title="Payment Position" description="Calculated from verified payment allocations.">
+        <DefinitionList items={[
+          { label: 'Invoice total', value: formatMoney(history.invoice.grandTotal, currency) },
+          { label: 'Total verified payments', value: formatMoney(history.invoice.amountReceived, currency) },
+          { label: 'Pending verification', value: formatMoney(history.invoice.pendingVerification, currency) },
+          { label: 'Outstanding', value: formatMoney(history.invoice.outstanding, currency) },
+          { label: 'Payment status', value: history.invoice.paymentState.replace(/_/g, ' ') },
+        ]} />
+        {canCreatePayment && <Link href={`/payments/new?customerId=${encodeURIComponent(customerId)}&invoiceId=${encodeURIComponent(invoiceId)}`} className="btn-primary mt-4 inline-flex">Record Payment</Link>}
+      </SectionCard>
+      <section className="card overflow-hidden">
+        <PanelHeader title="Payment history" description="Every recorded transaction, including pending, rejected and reversed records." />
+        {history.payments.length === 0 ? (
+          <EmptyStateClient title="No payments yet" description="Payments recorded against this invoice will appear here." />
+        ) : (
+          <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Receipt</th><th>Payment Date</th><th>Amount</th><th>Method</th><th>Status</th></tr></thead><tbody>{history.payments.map((payment) => (
+            <tr key={payment.id}><td><Link href={`/payments/${payment.id}`} className="font-mono font-semibold text-accent hover:underline">{payment.receiptNumber}</Link></td><td>{formatDate(payment.paymentDate)}</td><td className="font-semibold tabular-nums">{formatMoney(payment.amount, payment.currency)}</td><td>{payment.method.replace(/_/g, ' ')}</td><td>{payment.status.replace(/_/g, ' ')}</td></tr>
+          ))}</tbody></table></div>
+        )}
+      </section>
     </div>
   );
 }
