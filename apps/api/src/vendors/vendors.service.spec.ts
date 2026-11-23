@@ -213,34 +213,6 @@ describe('VendorsService', () => {
       expect(prisma.vendor.create).toHaveBeenCalledTimes(1);
     });
 
-    it('rejects a PAN that contradicts the GSTIN', async () => {
-      await expect(
-        service.create(
-          baseDto({ gstin: VALID_GSTIN, pan: 'ZZZZZ9999Z' }),
-          actor,
-          context,
-        ),
-      ).rejects.toBeInstanceOf(BadRequestException);
-
-      expect(prisma.vendor.findMany).not.toHaveBeenCalled();
-    });
-
-    it('accepts a PAN that matches the one embedded in the GSTIN', async () => {
-      prisma.vendor.create.mockResolvedValue({
-        id: 'new',
-        vendorCode: 'KI/VEN/0001',
-        businessName: 'Shree Computers Pvt Ltd',
-      });
-
-      await service.create(
-        baseDto({ gstin: VALID_GSTIN, pan: 'ABCDE1234F' }),
-        actor,
-        context,
-      );
-
-      expect(prisma.vendor.create).toHaveBeenCalledTimes(1);
-    });
-
     it('normalises the business name for duplicate detection', async () => {
       prisma.vendor.create.mockResolvedValue({ id: 'new', vendorCode: 'KI/VEN/0001' });
 

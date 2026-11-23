@@ -18,7 +18,7 @@ export function IsGstin(validationOptions?: ValidationOptions) {
           return typeof value === 'string' && isValidGstin(value);
         },
         defaultMessage(args: ValidationArguments): string {
-          return `${args.property} must be a valid 15-character GSTIN with a correct checksum`;
+          return `${args.property} must be 15 letters or digits (GSTIN)`;
         },
       },
     });
