@@ -23,7 +23,7 @@ type Outcome = ActionResult & { success?: string };
 interface ImageCardProps {
   kind: AppearanceKind;
   title: string;
-  description: string;
+  description?: string;
   /** What the surface looks like with no image. Shown as a colour swatch, never as a fake picture. */
   defaultDescription: string;
   defaultSwatchClass: string;
@@ -125,7 +125,7 @@ export function AppearanceImageCard({
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-6 py-5">
         <div className="min-w-0">
           <h2 id={`${kind}-title`} className="text-lg font-bold text-ink">{title}</h2>
-          <p className="mt-1 max-w-2xl text-sm text-ink-muted">{description}</p>
+          {description && <p className="mt-1 max-w-2xl text-sm text-ink-muted">{description}</p>}
         </div>
         <StatusBadge state={state} />
       </header>
@@ -280,9 +280,6 @@ export function SupportEmailForm({ supportEmail, canManage }: { supportEmail: st
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start">
       <div>
         <h3 className="text-base font-bold text-ink">Administrator contact</h3>
-        <p className="mt-1 text-sm text-ink-muted">
-          Shown on the sign-in page as &ldquo;Contact administrator&rdquo;. Leave it empty to hide the link.
-        </p>
         <div className="mt-4 rounded-lg border border-border bg-surface px-4 py-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">Saved address</p>
           {saved ? (

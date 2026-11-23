@@ -10,15 +10,14 @@ export interface DirectoryLink {
 
 export interface DirectoryModule {
   title: string;
-  description: string;
   links: DirectoryLink[];
 }
 
 export const MODULE_DIRECTORY: DirectoryModule[] = [
-  { title: 'Dashboard', description: 'Overview of vendors, catalogue, sales and payment alerts.', links: [{ label: 'Dashboard', href: '/dashboard' }] },
+  { title: 'Dashboard', links: [{ label: 'Dashboard', href: '/dashboard' }] },
   {
     title: 'Vendor Management',
-    description: 'Vendor master records, documents and product mappings.',
+   
     links: [
       { label: 'All vendors', href: '/vendors' },
       { label: 'Add vendor', href: '/vendors/new' },
@@ -27,7 +26,7 @@ export const MODULE_DIRECTORY: DirectoryModule[] = [
   },
   {
     title: 'Product Management',
-    description: 'Product catalogue, categories and brands.',
+   
     links: [
       { label: 'All products', href: '/products' },
       { label: 'Add product', href: '/products/new' },
@@ -37,7 +36,7 @@ export const MODULE_DIRECTORY: DirectoryModule[] = [
   },
   {
     title: 'Inventory',
-    description: 'Stock locations and the movement ledger (when stock tracking is enabled).',
+   
     links: [
       { label: 'Inventory', href: '/inventory' },
       { label: 'Stock locations', href: '/inventory/locations' },
@@ -46,7 +45,7 @@ export const MODULE_DIRECTORY: DirectoryModule[] = [
   },
   {
     title: 'Customer Management',
-    description: 'Customer records, categories, and top and favourite customers.',
+   
     links: [
       { label: 'All customers', href: '/customers' },
       { label: 'Top customers', href: '/customers?view=top' },
@@ -57,7 +56,7 @@ export const MODULE_DIRECTORY: DirectoryModule[] = [
   },
   {
     title: 'Enquiry Management',
-    description: 'Enquiries, follow-ups and sources.',
+   
     links: [
       { label: 'All enquiries', href: '/enquiries' },
       { label: 'Add enquiry', href: '/enquiries/new' },
@@ -67,7 +66,7 @@ export const MODULE_DIRECTORY: DirectoryModule[] = [
   },
   {
     title: 'Quotation Management',
-    description: 'Quotations, revisions and quotation reports.',
+   
     links: [
       { label: 'All quotations', href: '/quotations' },
       { label: 'New quotation', href: '/quotations/new' },
@@ -76,7 +75,7 @@ export const MODULE_DIRECTORY: DirectoryModule[] = [
   },
   {
     title: 'Proforma Invoice',
-    description: 'Proforma invoices raised from accepted quotations.',
+   
     links: [
       { label: 'All proforma invoices', href: '/proforma-invoices' },
       { label: 'New proforma invoice', href: '/proforma-invoices/new' },
@@ -84,7 +83,7 @@ export const MODULE_DIRECTORY: DirectoryModule[] = [
   },
   {
     title: 'Final Invoice',
-    description: 'Final invoices, their reports and payment due dates.',
+   
     links: [
       { label: 'All final invoices', href: '/final-invoices' },
       { label: 'New final invoice', href: '/final-invoices/new' },
@@ -94,7 +93,7 @@ export const MODULE_DIRECTORY: DirectoryModule[] = [
   },
   {
     title: 'Payment Management',
-    description: 'Recorded payments, verification and payment reports.',
+   
     links: [
       { label: 'All payments', href: '/payments' },
       { label: 'Record payment', href: '/payments/new' },
@@ -103,7 +102,7 @@ export const MODULE_DIRECTORY: DirectoryModule[] = [
   },
   {
     title: 'Delivery Management',
-    description: 'Deliveries, challans and delivery reports.',
+   
     links: [
       { label: 'All deliveries', href: '/deliveries' },
       { label: 'New delivery', href: '/deliveries/new' },
@@ -112,7 +111,7 @@ export const MODULE_DIRECTORY: DirectoryModule[] = [
   },
   {
     title: 'Reports & Analytics',
-    description: 'Business reports, analytics and sales history.',
+   
     links: [
       { label: 'Reports overview', href: '/reports' },
       { label: 'Executive overview', href: '/reports/overview' },
@@ -132,7 +131,7 @@ export const MODULE_DIRECTORY: DirectoryModule[] = [
   },
   {
     title: 'Settings and appearance',
-    description: 'Business settings, appearance images and your account.',
+   
     links: [
       { label: 'Settings', href: '/settings' },
       { label: 'Appearance', href: '/appearance' },

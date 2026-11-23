@@ -154,7 +154,7 @@ export default async function FinalInvoicesPage({ searchParams }: { searchParams
         {data.items.length === 0 ? (
           <EmptyState
             title={hasFilters ? 'No invoices match these filters' : 'No invoices yet'}
-            description={hasFilters ? 'Try another invoice number, PI number, customer or product, or clear the filters.' : 'A final invoice is raised from an issued proforma invoice.'}
+            description={hasFilters ? 'Try another invoice number, PI number, customer or product, or clear the filters.' : undefined}
             action={
               hasFilters ? (
                 <Link href="/final-invoices" className="btn-secondary">Clear filters</Link>
@@ -246,10 +246,8 @@ function InvoiceHeader({ canCreate, canReports }: { canCreate: boolean; canRepor
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-4">
-        <span aria-hidden className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent-subtle text-accent"><IconFile size={26} /></span>
         <div>
           <h1 className="text-2xl font-bold text-ink">Final Invoices</h1>
-          <p className="text-base text-ink-muted">Raise, issue and track customer invoices from issued proforma invoices.</p>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">

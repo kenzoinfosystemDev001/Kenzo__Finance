@@ -217,10 +217,8 @@ function EnquiryHeader({ canCreate, canManageSources = false }: { canCreate: boo
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-4">
-        <span aria-hidden className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent-subtle text-accent"><IconInbox size={26} /></span>
         <div>
           <h1 className="text-2xl font-bold text-ink">Enquiry Management</h1>
-          <p className="text-base text-ink-muted">Track customer enquiries, requirements and follow-ups.</p>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">

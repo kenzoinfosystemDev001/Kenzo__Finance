@@ -144,7 +144,6 @@ export default async function DashboardPage() {
         <div className="mt-4">
           <SectionCard
             title="Payment due alerts"
-            description="Invoices due within five days, due today, or overdue. An alert clears when the invoice is fully paid."
             padded={false}
             actions={
               <Link href="/final-invoices?pastDueOnly=true" className="text-sm text-accent hover:underline">
@@ -182,7 +181,6 @@ export default async function DashboardPage() {
         <div className="mt-4">
           <SectionCard
             title="Top-selling products this month"
-            description="By sales value, from issued and sent final invoices."
             padded={false}
             actions={<Link href="/sales-history" className="text-sm text-accent hover:underline">Sales history</Link>}
           >

@@ -43,7 +43,6 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
       permissions={permissions}
       filters={filters}
       period={overview.ok ? overview.data.period : undefined}
-      description="Executive KPIs computed live from the business records. Money is shown per currency and never added across currencies."
     >
       {!overview.ok ? (
         <LoadError result={overview} what="the overview" />

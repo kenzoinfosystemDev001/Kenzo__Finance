@@ -132,7 +132,6 @@ export default async function SalesHistoryPage({
     <div className="w-full space-y-6">
       <PageHeader
         title="Sales history"
-        description="Sales from issued and sent final invoices. Cancelled and replaced invoices are excluded."
         actions={
           <div className="flex flex-wrap gap-2">
             <a href={exportLink('xlsx', 'history')} className="btn-secondary">Excel</a>
@@ -200,7 +199,7 @@ export default async function SalesHistoryPage({
         {historyError ? (
           <div className="p-4"><ErrorState title="Sales history unavailable" message={historyError} /></div>
         ) : !history || history.items.length === 0 ? (
-          <EmptyState title="No sales in this selection" description="Change the period or filters. Sales appear once a final invoice is issued." />
+          <EmptyState title="No sales in this selection" />
         ) : (
           <>
             <div className="overflow-x-auto">

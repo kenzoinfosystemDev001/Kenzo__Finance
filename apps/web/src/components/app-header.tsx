@@ -76,7 +76,6 @@ export function AppHeader({
             ref={inputRef}
             type="search"
             aria-label="Search vendors"
-            placeholder="Search vendors by name, phone, brand, product..."
             className="field-input h-10 rounded-lg bg-surface-muted pl-10"
           />
         </form>

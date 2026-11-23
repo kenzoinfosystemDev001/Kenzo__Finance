@@ -68,7 +68,6 @@ export default async function AdminConsolePage({
     <div className="w-full space-y-6">
       <PageHeader
         title="Admin Console"
-        description="Open any module, or manage customer and vendor records. Changes here are the same records the modules use."
       />
 
       <nav aria-label="Admin sections" className="inline-flex max-w-full flex-wrap gap-1 rounded-xl border border-border bg-surface p-1 shadow-card">
@@ -89,7 +88,7 @@ export default async function AdminConsolePage({
       {section === 'modules' && (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
           {MODULE_DIRECTORY.map((module) => (
-            <SectionCard key={module.title} title={module.title} description={module.description}>
+            <SectionCard key={module.title} title={module.title}>
               <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
                 {module.links.map((link) => (
                   <li key={link.href + link.label}>

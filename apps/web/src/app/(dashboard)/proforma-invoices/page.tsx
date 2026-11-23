@@ -110,11 +110,6 @@ export default async function ProformaInvoicesPage({ searchParams }: { searchPar
           <StatCard label="Cancelled" value={summary.cancelled} icon={<IconX size={22} />} iconClassName="bg-danger" href="/proforma-invoices?status=CANCELLED" />
         </section>
       )}
-      {summary && !summary.paymentTrackingAvailable && (
-        <p className="text-sm text-ink-muted">
-          Payment status (pending, partially paid, fully paid) will appear once Payment Management is in use. Until then no payment figures are shown, and a PI never counts as paid.
-        </p>
-      )}
 
       <ProformaToolbar
         assignees={assignees}
@@ -128,9 +123,7 @@ export default async function ProformaInvoicesPage({ searchParams }: { searchPar
           <EmptyState
             title={hasFilters ? 'No proforma invoices match these filters' : 'No proforma invoices yet'}
             description={
-              hasFilters
-                ? 'Try another PI number, quotation number, customer or product, or clear the filters.'
-                : 'A proforma invoice is raised from a quotation the customer accepted.'
+              hasFilters ? 'Try another PI number, quotation number, customer or product, or clear the filters.' : undefined
             }
             action={
               hasFilters ? (
@@ -216,10 +209,8 @@ function ProformaHeader({ canCreate }: { canCreate: boolean }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-4">
-        <span aria-hidden className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent-subtle text-accent"><IconInvoice size={26} /></span>
         <div>
           <h1 className="text-2xl font-bold text-ink">Proforma Invoices</h1>
-          <p className="text-base text-ink-muted">Raise, issue and track proforma invoices from accepted quotations.</p>
         </div>
       </div>
       {canCreate && <Link href="/proforma-invoices/new" className="btn-primary h-11 px-5 text-base"><IconPlus size={18} /> New Proforma Invoice</Link>}

@@ -70,7 +70,6 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-ink">Delivery Management</h1>
-          <p className="text-sm text-ink-muted">Plan, dispatch, track and confirm deliveries of invoiced goods. Delivery never changes invoice amounts or payments.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {can('delivery.reports') && <Link href="/deliveries/reports" className="btn-secondary"><IconChart size={16} /> Reports</Link>}
@@ -102,7 +101,7 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
         {data.items.length === 0 ? (
           <EmptyState
             title={filterKey ? 'No deliveries match' : 'No deliveries yet'}
-            description={filterKey ? 'Change or clear the filters.' : 'Create a delivery from an issued final invoice.'}
+            description={filterKey ? 'Change or clear the filters.' : undefined}
             action={!filterKey && can('delivery.create') ? <Link href="/deliveries/new" className="btn-primary"><IconPlus size={16} /> Create Delivery</Link> : undefined}
           />
         ) : (

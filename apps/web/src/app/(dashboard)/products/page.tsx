@@ -215,12 +215,8 @@ function ProductHeader({ canCreate }: { canCreate: boolean }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-4">
-        <span aria-hidden className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent-subtle text-accent">
-          <IconBox size={26} />
-        </span>
         <div>
           <h1 className="text-2xl font-bold text-ink">Product Management</h1>
-          <p className="text-base text-ink-muted">Manage your product catalogue, brands and vendor mappings</p>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
