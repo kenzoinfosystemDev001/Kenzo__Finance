@@ -65,20 +65,20 @@ export default async function AdminConsolePage({
   const q = p.q?.trim() || undefined;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div className="w-full space-y-6">
       <PageHeader
         title="Admin Console"
         description="Open any module, or manage customer and vendor records. Changes here are the same records the modules use."
       />
 
-      <nav aria-label="Admin sections" className="flex flex-wrap gap-2">
+      <nav aria-label="Admin sections" className="inline-flex max-w-full flex-wrap gap-1 rounded-xl border border-border bg-surface p-1 shadow-card">
         {SECTIONS.map((s) => (
           <Link
             key={s.key}
             href={s.key === 'modules' ? '/admin' : `/admin?s=${s.key}`}
             aria-current={section === s.key ? 'page' : undefined}
-            className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
-              section === s.key ? 'border-accent bg-accent text-white' : 'border-border-strong bg-surface text-ink-muted hover:bg-surface-muted'
+            className={`rounded-lg px-4 py-2 text-base font-semibold transition-colors ${
+              section === s.key ? 'bg-sidebar text-white shadow-card' : 'text-ink-muted hover:bg-surface-muted hover:text-ink'
             }`}
           >
             {s.label}
@@ -87,14 +87,18 @@ export default async function AdminConsolePage({
       </nav>
 
       {section === 'modules' && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
           {MODULE_DIRECTORY.map((module) => (
             <SectionCard key={module.title} title={module.title} description={module.description}>
-              <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+              <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
                 {module.links.map((link) => (
                   <li key={link.href + link.label}>
-                    <Link href={link.href} className="block rounded-md px-2.5 py-1.5 text-sm text-accent hover:bg-surface-muted hover:underline">
-                      {link.label}
+                    <Link
+                      href={link.href}
+                      className="group flex items-center justify-between rounded-lg px-3 py-2 text-base font-medium text-accent transition-colors hover:bg-surface-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                    >
+                      <span>{link.label}</span>
+                      <span aria-hidden className="text-ink-subtle opacity-0 transition-opacity group-hover:opacity-100">&rarr;</span>
                     </Link>
                   </li>
                 ))}

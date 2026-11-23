@@ -129,7 +129,7 @@ export default async function SalesHistoryPage({
     `/sales-history/export${queryString({ ...scope, view, report, format })}`;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div className="w-full space-y-6">
       <PageHeader
         title="Sales history"
         description="Sales from issued and sent final invoices. Cancelled and replaced invoices are excluded."
@@ -214,6 +214,7 @@ export default async function SalesHistoryPage({
                       <th scope="col" className="text-right">Quantity</th>
                       <th scope="col" className="text-right">Sale amount</th>
                       <th scope="col">Invoice date</th>
+                      <th scope="col" className="text-right">Actions</th>
                     </tr>
                   ) : history.view === 'product' ? (
                     <tr>
@@ -258,6 +259,16 @@ export default async function SalesHistoryPage({
                           <td className="text-right tabular-nums">{Number(item.quantity)}</td>
                           <td className="text-right tabular-nums">{formatMoney(String(item.saleAmount), String(item.currency))}</td>
                           <td className="whitespace-nowrap">{formatDate(String(item.invoiceDate))}</td>
+                          <td className="whitespace-nowrap text-right">
+                            {item.finalInvoiceId ? (
+                              <span className="inline-flex items-center gap-3 text-sm">
+                                <Link href={`/final-invoices/${String(item.finalInvoiceId)}`} className="text-accent hover:underline">View</Link>
+                                <a href={`/final-invoices/${String(item.finalInvoiceId)}/pdf`} className="text-accent hover:underline">Download PDF</a>
+                              </span>
+                            ) : (
+                              <span className="text-ink-subtle">—</span>
+                            )}
+                          </td>
                         </tr>
                       );
                     }
@@ -423,12 +434,19 @@ function TopList({ title, rows, metric }: { title: string; rows: Row[]; metric: 
       ) : (
         <ol className="divide-y divide-border rounded-lg border border-border">
           {rows.map((r, i) => (
-            <li key={`${r.productId}-${r.currency}`} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-              <span className="min-w-0 truncate">
-                <span className="mr-2 tabular-nums text-ink-subtle">{i + 1}.</span>
-                <span className="font-medium">{r.name}</span>
+            <li key={`${r.productId}-${r.currency}`} className="flex items-center justify-between gap-3 px-3 py-2.5 text-base">
+              <span className="flex min-w-0 items-center gap-3">
+                <span
+                  aria-hidden
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums ${
+                    i === 0 ? 'bg-sidebar text-white' : 'bg-surface-muted text-ink-muted'
+                  }`}
+                >
+                  {i + 1}
+                </span>
+                <span className="min-w-0 truncate font-medium text-ink">{r.name}</span>
               </span>
-              <span className="shrink-0 tabular-nums text-ink-muted">{metric(r)}</span>
+              <span className="shrink-0 font-semibold tabular-nums text-ink">{metric(r)}</span>
             </li>
           ))}
         </ol>
