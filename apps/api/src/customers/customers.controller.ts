@@ -19,6 +19,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { CustomersService } from './customers.service';
+import { CustomerRankingsService } from './customer-rankings.service';
+import { CustomerRankingsQueryDto, SetFavouriteDto } from './dto/customer-rankings.dto';
 import { CustomerChildrenService } from './customer-children.service';
 import {
   AddProductInterestDto,
@@ -42,6 +44,8 @@ import { CurrentUser, RequirePermissions } from '../common/decorators';
 import { PERMISSIONS } from '../common/authz/permissions';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
 import { toCsv } from '../common/utils/csv';
+import { buildXlsx } from '../common/export/xlsx';
+import { recordsToSheet, requestedFormat, XLSX_CONTENT_TYPE } from '../common/export/records-sheet';
 import { sendStoredFile } from '../documents/send-stored-file';
 import { contextOf } from '../vendors/vendor-shared';
 
@@ -61,6 +65,7 @@ export class CustomersController {
   constructor(
     private readonly customersService: CustomersService,
     private readonly children: CustomerChildrenService,
+    private readonly rankings: CustomerRankingsService,
   ) {}
 
   // --- Collection routes (before :id) ---------------------------------------
@@ -113,11 +118,10 @@ export class CustomersController {
 
   @Get('export')
   @RequirePermissions(PERMISSIONS.CUSTOMER_EXPORT)
-  @ApiOperation({ summary: 'Export the filtered customer list as CSV' })
-  async export(@Query() query: QueryCustomersDto, @Res() response: Response): Promise<void> {
+  @ApiOperation({ summary: 'Export the filtered customer list as CSV or Excel (format=xlsx)' })
+  async export(@Query() query: QueryCustomersDto, @Query('format') format: string | undefined, @Res() response: Response): Promise<void> {
     const rows = await this.customersService.findAllForExport(query);
-    const csv = toCsv(
-      rows.map((c) => ({
+    const records = rows.map((c) => ({
         'Customer ID': c.customerCode,
         'Customer Name': c.name,
         Type: c.customerType === 'BUSINESS' ? 'Business' : 'Individual',
@@ -137,11 +141,17 @@ export class CustomersController {
         Website: c.website ?? '',
         Status: c.status,
         'Created At': c.createdAt.toISOString(),
-      })),
-    );
+    }));
+    const today = new Date().toISOString().slice(0, 10);
+    if (requestedFormat(format) === 'xlsx') {
+      response.setHeader('Content-Type', XLSX_CONTENT_TYPE);
+      response.setHeader('Content-Disposition', `attachment; filename="customers-${today}.xlsx"`);
+      response.send(buildXlsx([recordsToSheet('Customers', records)]));
+      return;
+    }
     response.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    response.setHeader('Content-Disposition', `attachment; filename="customers-${new Date().toISOString().slice(0, 10)}.csv"`);
-    response.send('﻿' + csv);
+    response.setHeader('Content-Disposition', `attachment; filename="customers-${today}.csv"`);
+    response.send('﻿' + toCsv(records));
   }
 
   @Get('categories')
@@ -165,6 +175,13 @@ export class CustomersController {
     return this.customersService.updateCategory(id, dto, user);
   }
 
+  @Delete('categories/:id')
+  @RequirePermissions(PERMISSIONS.SETTINGS_MANAGE)
+  @ApiOperation({ summary: 'Permanently delete a customer category that no customer uses' })
+  deleteCategory(@Param('id', uuid()) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.customersService.deleteCategory(id, user);
+  }
+
   @Post()
   @RequirePermissions(PERMISSIONS.CUSTOMER_CREATE)
   @ApiOperation({
@@ -178,6 +195,22 @@ export class CustomersController {
   }
 
   // --- Single customer ----------------------------------------------------------
+
+  /** Top Customers: ranked by issued final invoices. view = all | top | favourite. */
+  @Get('rankings')
+  @RequirePermissions(PERMISSIONS.CUSTOMER_READ)
+  @ApiOperation({ summary: 'Customer rankings by purchase history (issued and sent final invoices only)' })
+  customerRankings(@Query() query: CustomerRankingsQueryDto) {
+    return this.rankings.list(query);
+  }
+
+  /** Admin-only: marks or unmarks a favourite customer. */
+  @Patch(':id/favourite')
+  @RequirePermissions(PERMISSIONS.SETTINGS_MANAGE)
+  @ApiOperation({ summary: 'Mark or unmark a customer as a favourite (administrators only)' })
+  setFavourite(@Param('id', uuid()) id: string, @Body() dto: SetFavouriteDto, @CurrentUser() user: AuthenticatedUser, @Req() request: Request) {
+    return this.rankings.setFavourite(id, dto.isFavourite, user, contextOf(request));
+  }
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS.CUSTOMER_READ)

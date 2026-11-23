@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  Delete,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CompaniesService } from './companies.service';
@@ -37,6 +38,16 @@ export class CompaniesController {
   @ApiOperation({ summary: 'Brand detail' })
   async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {
     return this.companiesService.findOne(id);
+  }
+
+  @Delete(':id')
+  @RequirePermissions(PERMISSIONS.COMPANY_ARCHIVE)
+  @ApiOperation({ summary: 'Permanently delete a brand that no product or vendor mapping uses' })
+  async remove(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.companiesService.remove(id, user);
   }
 
   @Post()

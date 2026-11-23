@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { EnquiryStatus, Prisma, UserStatus } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
+import { assertNotReferenced } from '../common/utils/master-delete';
 import { AuditService } from '../audit/audit.service';
 import { NumberingService, SEQUENCE_KEYS } from '../numbering/numbering.service';
 import { CustomersService } from '../customers/customers.service';
@@ -605,6 +606,24 @@ export class EnquiriesService {
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       include: { _count: { select: { enquiries: true } } },
     });
+  }
+
+  /** Permanently deletes an enquiry source that no enquiry uses. */
+  async deleteSource(id: string, actor: AuthenticatedUser) {
+    const existing = await this.prisma.enquirySource.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Enquiry source ${id} was not found`);
+    const enquiries = await this.prisma.enquiry.count({ where: { sourceId: id } });
+    assertNotReferenced(`The source "${existing.name}"`, [{ label: 'enquiry', count: enquiries }]);
+    await this.prisma.enquirySource.delete({ where: { id } });
+    await this.auditService.record({
+      actorUserId: actor.id,
+      action: 'enquiry_source.delete',
+      entityType: 'EnquirySource',
+      entityId: id,
+      summary: `Deleted enquiry source ${existing.name}`,
+      before: { name: existing.name },
+    });
+    return { id, deleted: true };
   }
 
   async createSource(dto: EnquirySourceDto, actor: AuthenticatedUser) {

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { CustomerStatus, CustomerType, Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
+import { assertNotReferenced } from '../common/utils/master-delete';
 import { AuditService } from '../audit/audit.service';
 import { NumberingService, SEQUENCE_KEYS } from '../numbering/numbering.service';
 import { buildPaginatedResult, PaginationQueryDto } from '../common/dto/pagination.dto';
@@ -576,6 +577,24 @@ export class CustomersService {
       summary: `Created customer category ${category.name}`,
     });
     return category;
+  }
+
+  /** Permanently deletes a customer category that no customer uses. */
+  async deleteCategory(id: string, actor: AuthenticatedUser) {
+    const existing = await this.prisma.customerCategory.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Category ${id} was not found`);
+    const customers = await this.prisma.customer.count({ where: { categoryId: id } });
+    assertNotReferenced(`The category "${existing.name}"`, [{ label: 'customer', count: customers }]);
+    await this.prisma.customerCategory.delete({ where: { id } });
+    await this.auditService.record({
+      actorUserId: actor.id,
+      action: 'customer_category.delete',
+      entityType: 'CustomerCategory',
+      entityId: id,
+      summary: `Deleted customer category ${existing.name}`,
+      before: { name: existing.name },
+    });
+    return { id, deleted: true };
   }
 
   async updateCategory(id: string, dto: UpdateCustomerCategoryDto, actor: AuthenticatedUser) {

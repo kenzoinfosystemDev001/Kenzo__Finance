@@ -1,6 +1,8 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { FinalInvoiceStatus, InvoicePaymentState, PaymentStatus, Prisma, ProformaStatus } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
+import { assertDueDateChangeAllowed } from '../payment-alerts/payment-alert.rules';
+import { UpdateInvoiceDueDateDto } from './dto/final-invoice.dto';
 import { AuditService } from '../audit/audit.service';
 import { NumberingService } from '../numbering/numbering.service';
 import { CustomersService } from '../customers/customers.service';
@@ -392,6 +394,36 @@ export class FinalInvoicesService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Changes only the payment due date of an issued invoice. Everything else on an
+   * issued invoice stays fixed. Payment due alerts are computed from the stored
+   * date, so they recalculate on the next read.
+   */
+  async updateDueDate(id: string, dto: UpdateInvoiceDueDateDto, actor: AuthenticatedUser, context: RequestContext) {
+    this.require(actor, PERMISSIONS.INVOICE_UPDATE, 'change payment due dates');
+    const dueDate = dto.dueDate ? dateOnly(dto.dueDate) : null;
+    return this.prisma.$transaction(async (tx) => {
+      await this.lock(tx, id);
+      const current = await tx.finalInvoice.findUniqueOrThrow({ where: { id } });
+      // Checked against the locked row, so a concurrent cancellation cannot slip through.
+      assertDueDateChangeAllowed({ status: current.status, invoiceDate: current.invoiceDate, dueDate });
+      const before = current.dueDate ? current.dueDate.toISOString().slice(0, 10) : null;
+      const after = dueDate ? dueDate.toISOString().slice(0, 10) : null;
+      if (before === after) return current;
+      const updated = await tx.finalInvoice.update({ where: { id }, data: { dueDate, updatedById: actor.id } });
+      await this.audit(
+        tx,
+        actor,
+        context,
+        id,
+        'final_invoice.due_date_change',
+        `Changed payment due date of ${current.invoiceNumber ?? 'invoice'} from ${before ?? 'none'} to ${after ?? 'none'}`,
+        { before: { dueDate: before }, after: { dueDate: after } },
+      );
+      return updated;
+    });
   }
 
   async update(id: string, dto: UpdateFinalInvoiceDto, actor: AuthenticatedUser, context: RequestContext) {

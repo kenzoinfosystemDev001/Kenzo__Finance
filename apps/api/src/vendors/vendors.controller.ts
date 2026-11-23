@@ -40,6 +40,8 @@ import { CurrentUser, RequirePermissions } from '../common/decorators';
 import { PERMISSIONS } from '../common/authz/permissions';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
 import { toCsv } from '../common/utils/csv';
+import { buildXlsx } from '../common/export/xlsx';
+import { recordsToSheet, requestedFormat, XLSX_CONTENT_TYPE } from '../common/export/records-sheet';
 import { contextOf } from './vendor-shared';
 
 const uuid = () => new ParseUUIDPipe({ version: '4' });
@@ -85,15 +87,15 @@ export class VendorsController {
 
   @Get('export')
   @RequirePermissions(PERMISSIONS.VENDOR_EXPORT)
-  @ApiOperation({ summary: 'Export the filtered vendor list as CSV' })
+  @ApiOperation({ summary: 'Export the filtered vendor list as CSV or Excel (format=xlsx)' })
   async export(
     @Query() query: QueryVendorsDto,
+    @Query('format') format: string | undefined,
     @Res() response: Response,
   ): Promise<void> {
     const rows = await this.vendorsService.findAllForExport(query);
 
-    const csv = toCsv(
-      rows.map((row) => {
+    const records = rows.map((row) => {
         const primary = row.contacts[0];
         return {
           'Vendor Code': row.vendorCode,
@@ -119,14 +121,20 @@ export class VendorsController {
           Status: row.archivedAt ? 'ARCHIVED' : row.status,
           'Created At': row.createdAt.toISOString(),
         };
-      }),
-    );
+    });
 
-    const filename = `vendors-${new Date().toISOString().slice(0, 10)}.csv`;
+    const today = new Date().toISOString().slice(0, 10);
+    if (requestedFormat(format) === 'xlsx') {
+      response.setHeader('Content-Type', XLSX_CONTENT_TYPE);
+      response.setHeader('Content-Disposition', `attachment; filename="vendors-${today}.xlsx"`);
+      response.send(buildXlsx([recordsToSheet('Vendors', records)]));
+      return;
+    }
+    const filename = `vendors-${today}.csv`;
     response.setHeader('Content-Type', 'text/csv; charset=utf-8');
     response.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     // BOM so Excel opens UTF-8 names correctly.
-    response.send('﻿' + csv);
+    response.send('﻿' + toCsv(records));
   }
 
   @Get('check-duplicates')

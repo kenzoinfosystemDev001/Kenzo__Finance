@@ -23,6 +23,14 @@ async function bootstrap(): Promise<void> {
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site' } }));
 
+  // Business data is never cached by browsers or shared caches. Routes that
+  // may be cached (e.g. the public login background) set their own header,
+  // which overrides this default.
+  app.use((_request: unknown, response: { setHeader(name: string, value: string): void }, next: () => void) => {
+    response.setHeader('Cache-Control', 'no-store');
+    next();
+  });
+
   app.enableCors({
     origin: webUrl,
     credentials: true,

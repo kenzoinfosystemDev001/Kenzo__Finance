@@ -149,6 +149,13 @@ export class EnquiriesController {
     return this.enquiries.updateSource(id, dto, user);
   }
 
+  @Delete('sources/:id')
+  @RequirePermissions(PERMISSIONS.SETTINGS_MANAGE)
+  @ApiOperation({ summary: 'Permanently delete an enquiry source that no enquiry uses' })
+  deleteSource(@Param('id', uuid()) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.enquiries.deleteSource(id, user);
+  }
+
   @Post()
   @RequirePermissions(PERMISSIONS.ENQUIRY_CREATE)
   @ApiOperation({

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
+import { assertNotReferenced } from '../common/utils/master-delete';
 import { AuditService } from '../audit/audit.service';
 import {
   buildPaginatedResult,
@@ -141,6 +142,30 @@ export class CompaniesService {
    * Archiving a brand is refused while active products still reference it -
    * otherwise the catalogue would show products under an archived brand.
    */
+  /** Permanently deletes a brand that no product or vendor mapping uses. */
+  async remove(id: string, actor: AuthenticatedUser) {
+    const existing = await this.prisma.company.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Brand ${id} was not found`);
+    const [products, vendorLinks] = await Promise.all([
+      this.prisma.product.count({ where: { companyId: id } }),
+      this.prisma.vendorCompany.count({ where: { companyId: id } }),
+    ]);
+    assertNotReferenced(`The brand "${existing.name}"`, [
+      { label: 'product', count: products },
+      { label: 'vendor mapping', count: vendorLinks },
+    ]);
+    await this.prisma.company.delete({ where: { id } });
+    await this.auditService.record({
+      actorUserId: actor.id,
+      action: 'company.delete',
+      entityType: 'Company',
+      entityId: id,
+      summary: `Deleted brand ${existing.name}`,
+      before: { name: existing.name },
+    });
+    return { id, deleted: true };
+  }
+
   async archive(id: string, actor: AuthenticatedUser) {
     const existing = await this.prisma.company.findUnique({
       where: { id },

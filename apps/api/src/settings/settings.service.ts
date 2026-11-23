@@ -54,6 +54,10 @@ export const SETTING_KEYS = {
 export const BRANDING_SETTING_KEYS = {
   /** Document id of the login-page background image, or null for none. */
   LOGIN_BACKGROUND_DOCUMENT_ID: 'branding.loginBackgroundDocumentId',
+  /** Document id of the sidebar background image, or null for the default colour. */
+  SIDEBAR_BACKGROUND_DOCUMENT_ID: 'branding.sidebarBackgroundDocumentId',
+  /** Document id of the main workspace background image, or null for the default colour. */
+  WORKSPACE_BACKGROUND_DOCUMENT_ID: 'branding.workspaceBackgroundDocumentId',
   /** Address behind the login page's "Contact Administrator", or null. */
   SUPPORT_EMAIL: 'branding.supportEmail',
   /** Company details printed on quotation PDFs: { name, address, phone, email, website, gstin, pan }. */
@@ -77,6 +81,8 @@ export const SETTING_DEFAULTS: Record<string, unknown> = {
   [SETTING_KEYS.ALLOW_NEGATIVE_STOCK]: false,
   [BRANDING_SETTING_KEYS.LOGIN_BACKGROUND_DOCUMENT_ID]: null,
   [BRANDING_SETTING_KEYS.SUPPORT_EMAIL]: null,
+  [BRANDING_SETTING_KEYS.SIDEBAR_BACKGROUND_DOCUMENT_ID]: null,
+  [BRANDING_SETTING_KEYS.WORKSPACE_BACKGROUND_DOCUMENT_ID]: null,
   [SETTING_KEYS.QUOTATION_APPROVAL_REQUIRED]: false,
   [BRANDING_SETTING_KEYS.COMPANY_PROFILE]: null,
   [BRANDING_SETTING_KEYS.QUOTATION_DEFAULT_TERMS]: null,
@@ -96,6 +102,8 @@ export const SETTING_DESCRIPTIONS: Record<string, string> = {
     'Allow stock movements that take on-hand quantity below zero.',
   [BRANDING_SETTING_KEYS.LOGIN_BACKGROUND_DOCUMENT_ID]:
     'Image shown behind the sign-in page. Empty uses the plain navy background.',
+  [BRANDING_SETTING_KEYS.SIDEBAR_BACKGROUND_DOCUMENT_ID]: 'Image behind the navigation sidebar. Empty uses the default slate colour.',
+  [BRANDING_SETTING_KEYS.WORKSPACE_BACKGROUND_DOCUMENT_ID]: 'Image behind the main workspace of every module. Empty uses the default off-white.',
   [BRANDING_SETTING_KEYS.SUPPORT_EMAIL]:
     'Email address users are directed to from the sign-in page for access or password help.',
   [SETTING_KEYS.QUOTATION_APPROVAL_REQUIRED]:
