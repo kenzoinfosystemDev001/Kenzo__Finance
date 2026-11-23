@@ -157,9 +157,7 @@ export default async function QuotationsPage({ searchParams }: { searchParams: P
           <EmptyState
             title={hasFilters ? 'No quotations match these filters' : 'No quotations yet'}
             description={
-              hasFilters
-                ? 'Try another quotation number, enquiry number, customer or product, or clear the filters.'
-                : 'Quotations are created from an enquiry that is ready for quotation (Convert to Quotation on the enquiry), or manually.'
+              hasFilters ? 'Try another quotation number, enquiry number, customer or product, or clear the filters.' : undefined
             }
             action={
               hasFilters ? (
@@ -246,10 +244,8 @@ function QuotationHeader({ canCreate, canReports }: { canCreate: boolean; canRep
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-4">
-        <span aria-hidden className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent-subtle text-accent"><IconQuote size={26} /></span>
         <div>
           <h1 className="text-2xl font-bold text-ink">Quotation Management</h1>
-          <p className="text-base text-ink-muted">Prepare, revise and track quotations from enquiry to acceptance.</p>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">

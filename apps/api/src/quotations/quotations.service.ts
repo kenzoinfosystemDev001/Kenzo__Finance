@@ -15,7 +15,7 @@ import { ProductsService } from '../products/products.service';
 import { EnquiriesService } from '../enquiries/enquiries.service';
 import { BRANDING_SETTING_KEYS, SETTING_KEYS, SettingsService } from '../settings/settings.service';
 import { buildPaginatedResult, PaginationQueryDto } from '../common/dto/pagination.dto';
-import { cleanMultiline, cleanOptional, normalizeName, normalizedNameFilter } from '../common/utils/normalize';
+import { cleanMultiline, cleanOptional, normalizedNameFilter } from '../common/utils/normalize';
 import { PERMISSIONS, type PermissionCode } from '../common/authz/permissions';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';

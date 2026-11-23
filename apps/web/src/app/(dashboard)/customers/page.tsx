@@ -177,10 +177,8 @@ function CustomerHeader({ canCreate, canManageCategories }: { canCreate: boolean
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-4">
-        <span aria-hidden className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent-subtle text-accent"><IconUsers size={26} /></span>
         <div>
           <h1 className="text-2xl font-bold text-ink">Customer Management</h1>
-          <p className="text-base text-ink-muted">Manage customers, contacts, business details and relationships.</p>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">

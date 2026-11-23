@@ -61,7 +61,6 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-ink">Payment Management</h1>
-          <p className="text-sm text-ink-muted">Record, verify and track customer payments.</p>
         </div>
         <div className="flex gap-2">
           {can('payment.reports') && <Link href="/payments/reports" className="btn-secondary">Reports</Link>}
@@ -92,7 +91,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
 
       <div className="card overflow-hidden">
         {data.items.length === 0 ? (
-          <EmptyState title="No payments" description="Record a payment against an issued final invoice." />
+          <EmptyState title="No payments" />
         ) : (
           <div className="overflow-x-auto">
             <table className="data-table">

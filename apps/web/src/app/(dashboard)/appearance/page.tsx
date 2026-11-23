@@ -32,7 +32,6 @@ export default async function AppearancePage() {
     <div className="w-full space-y-6">
       <PageHeader
         title="Appearance"
-        description="Choose the background images used across the application. Every change is recorded in the audit log."
       />
 
       {!appearance && (
@@ -46,7 +45,6 @@ export default async function AppearancePage() {
           <AppearanceImageCard
             kind="login"
             title="Login page background"
-            description="Shown behind the sign-in panel for everyone who is not signed in yet."
             defaultDescription="The plain slate panel is shown."
             defaultSwatchClass="bg-sidebar"
             summary={appearance?.login ?? null}
@@ -58,7 +56,6 @@ export default async function AppearancePage() {
         <AppearanceImageCard
           kind="sidebar"
           title="Sidebar background"
-          description="Behind the navigation sidebar on desktop, tablet and mobile. A dark tint keeps the menu readable."
           defaultDescription="The default slate colour is used."
           defaultSwatchClass="bg-sidebar"
           summary={appearance?.sidebar ?? null}
@@ -68,7 +65,6 @@ export default async function AppearancePage() {
         <AppearanceImageCard
           kind="workspace"
           title="Main workspace background"
-          description="Behind every module page. Cards, tables and forms sit on white surfaces, so content stays readable."
           defaultDescription="The default off-white is used."
           defaultSwatchClass="bg-canvas"
           summary={appearance?.workspace ?? null}

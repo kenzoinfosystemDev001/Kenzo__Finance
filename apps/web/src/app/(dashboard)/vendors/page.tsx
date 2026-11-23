@@ -333,26 +333,20 @@ function QuickActions({ permissions }: { permissions: string[] }) {
     {
       show: permissions.includes('vendor.create') && permissions.includes('ocr.submit'),
       title: 'OCR Import',
-      text: 'Extract vendor details from visiting cards or documents, then review before saving.',
       href: '/vendors/ocr',
       cta: 'Import with OCR',
-      icon: <IconScan size={20} />,
     },
     {
       show: permissions.includes('company.read'),
       title: 'Brand Master',
-      text: 'Shared brands used by vendor mapping and the product catalogue.',
       href: '/companies',
       cta: 'Manage Brands',
-      icon: <IconTag size={20} />,
     },
     {
       show: permissions.includes('product.read'),
       title: 'Product Catalogue',
-      text: 'Shared products and models that vendors are mapped to.',
       href: '/products',
       cta: 'Manage Products',
-      icon: <IconBox size={20} />,
     },
   ].filter((card) => card.show);
 
@@ -363,10 +357,8 @@ function QuickActions({ permissions }: { permissions: string[] }) {
       {cards.map((card) => (
         <div key={card.title} className="card flex flex-col p-5">
           <div className="flex items-center gap-2.5 text-ink">
-            <span className="text-accent">{card.icon}</span>
             <h2 className="text-lg font-semibold">{card.title}</h2>
           </div>
-          <p className="mt-1.5 flex-1 text-sm text-ink-muted">{card.text}</p>
           <Link href={card.href} className="btn-secondary mt-4 self-start border-accent/30 bg-accent-subtle text-accent hover:bg-accent/10">
             {card.cta}
             <IconArrowRight size={14} />
