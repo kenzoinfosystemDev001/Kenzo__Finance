@@ -55,7 +55,6 @@ export default async function DashboardPage() {
     <>
       <PageHeader
         title={`Welcome, ${user?.fullName.split(' ')[0] ?? 'there'}`}
-        description="Overview of vendors, catalogue, sales and delivery activity. Modules you have access to are listed in the sidebar."
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
