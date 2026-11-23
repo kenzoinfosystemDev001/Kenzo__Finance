@@ -189,10 +189,11 @@ export function VendorForm({
 
   const [basics, setBasics] = useState<VendorBasicsPayload>({ ...emptyBasics, ...initial.basics });
   const [contacts, setContacts] = useState<ContactRow[]>(() =>
-    (initial.contacts?.length ? initial.contacts : creating ? [emptyContact({ isPrimary: true })] : []).map((c) => ({ ...c, key: newKey() })),
+    // New vendors start with no contact or address rows: they are optional, and an empty row would fail validation.
+    (initial.contacts ?? []).map((c) => ({ ...c, key: newKey() })),
   );
   const [addresses, setAddresses] = useState<AddressRow[]>(() =>
-    (initial.addresses?.length ? initial.addresses : creating ? [emptyAddress({ isPrimary: true })] : []).map((a) => ({ ...a, key: newKey() })),
+    (initial.addresses ?? []).map((a) => ({ ...a, key: newKey() })),
   );
   const [brands, setBrands] = useState<SearchOption[]>(initial.brands ?? []);
   const [products, setProducts] = useState<SearchOption[]>([]);

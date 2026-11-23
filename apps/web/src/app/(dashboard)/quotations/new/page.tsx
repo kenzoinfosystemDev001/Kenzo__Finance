@@ -112,7 +112,7 @@ export default async function NewQuotationPage({ searchParams }: { searchParams:
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader title="New Quotation" description="A manual quotation, not linked to an enquiry. Choose the customer and the products, then enter prices, discounts and tax per line." />
+      <PageHeader title="New Quotation" description="Not linked to an enquiry. Enter prices, discounts and tax per line." />
       <QuotationForm
         mode="create"
         initialCustomer={customer && customer.status === 'ACTIVE' ? customer : null}

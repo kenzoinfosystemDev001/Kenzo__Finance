@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { apiFetch } from './api';
 import type { AppearanceConfig } from './appearance-types';
 
@@ -38,7 +39,7 @@ export function loginBackgroundUrl(backgroundId: string): string {
  * is logged and returns null, so every surface falls back to its default
  * colour instead of breaking the page.
  */
-export async function getAppearanceConfig(): Promise<AppearanceConfig | null> {
+async function loadAppearanceConfig(): Promise<AppearanceConfig | null> {
   try {
     return await apiFetch<AppearanceConfig>('/branding/appearance');
   } catch (error) {
@@ -46,3 +47,6 @@ export async function getAppearanceConfig(): Promise<AppearanceConfig | null> {
     return null;
   }
 }
+
+/** Once per request: the layout and pages can both ask for it. */
+export const getAppearanceConfig = cache(loadAppearanceConfig);

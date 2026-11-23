@@ -1,69 +1,88 @@
 # Security and Performance Report
 
-Status: **partial.** This pass completed the vendor and customer Excel export and verified it. The wider security and performance work below was **not** carried out in this pass; this report records the state of the application as measured, so the next pass starts from facts.
+Scope: the `updates` branch. Tests ran against an isolated test database (see `docs/TEST_REPORT.md`). Nothing here was run against production.
 
-## What was verified in this pass
+## Security
 
-| Area | Check | Result |
-|---|---|---|
-| Vendor export | `GET /vendors/export?format=xlsx` returns a real Excel file | Pass (valid `.xlsx`, correct content type and filename) |
-| Customer export | `GET /customers/export?format=xlsx` | Pass (same) |
-| CSV export | Existing CSV output unchanged | Pass (BOM and columns unchanged) |
-| Export data | Excel rows with real records | **Not verified**: the test database has no vendors or customers. The sheet builder is unit-tested (4 tests) with record-shaped data. |
-| Export access | Anonymous request | 401 |
-| Export validation | `format=bogus` | 400 (allow-list enforced by the global validator) |
-| Web download | Export routes through the Next proxy | Pass (200, correct type, filename) |
-| API tests | Full unit suite | 225 tests across 22 suites (new export spec included) |
+### Checks run (test API and test web app)
 
-## Security: current state
+| Check | Result |
+|---|---|
+| Restricted user (SALES_EXECUTIVE) refused on admin-only endpoints: users, roles, settings writes, branding writes, appearance upload, admin-only favourite toggle, alert sweep | 403 on all |
+| Anonymous access to protected data (vendors, customers, final invoices, sales history, vendor export) | 401 on all |
+| SQL-like input in search fields | Handled as text; table intact afterwards |
+| NUL character in a search | **Was a 500. Now a 400.** Fixed in this pass. |
+| Script-like text in a vendor name | Stored as text, returned unchanged; rendered as text |
+| Frame and content-type headers on the web app | `X-Frame-Options: DENY`, `nosniff` |
+| Authorisation declaration on every route | Every route declares a permission or is public; the guard refuses undeclared routes |
+| Upload validation | Type checked from bytes; size limits enforced before storage (tested in an earlier pass) |
+| Credentials in the repository | None (scanned) |
 
-**Dependency audit (`npm audit --omit=dev`), measured now:**
+Result: **22 of 22** security checks pass after the fixes.
 
-| Advisory | Severity | Fix | Note |
+### Dependency audit (production dependencies, measured now)
+
+| Advisory | Severity | Fix | Status |
 |---|---|---|---|
-| `prisma` / `@prisma/config` 6.19.3 | high | Prisma 7 (major) | Runtime dependency; upgrade needs a planned migration |
-| `next` 15.5.29 (bundled PostCSS) | moderate / high | Next 16 (major) | Build-time PostCSS exposure; upgrade needs a full retest |
-| `zod` 3.25.76 (API) | high | Zod 4 (major) | Only used for startup environment validation; not attacker-reachable |
-| `effect`, `deepmerge-ts` | high | Via Prisma upgrade | Transitive |
+| `prisma` / `@prisma/config` 6.19.3 | high | Prisma 7 (major) | Open. Needs a planned upgrade. `npm audit fix` would downgrade Prisma and was not applied. |
+| `next` 15.5.29 (bundled PostCSS) | moderate, high | Next 16 (major) | Open. Needs a full retest. |
+| `zod` 3.25.76 (API) | high | Zod 4 (major) | Open. Used only for startup environment validation; not reachable from user input. |
+| `effect`, `deepmerge-ts` | high | Via Prisma upgrade | Open (transitive). |
 
-The `npm audit fix` suggestion for Prisma downgrades to 6.12.0. It was **not** applied.
+The unused `zod` dependency in the web app was removed in an earlier pass.
 
-**Earlier fixes (documented in `docs/COMPLETE_PROJECT_FAULT_REPORT.md`):** the Users list sort, the appearance permission declaration, the cache directive on API responses, and removal of an unused vulnerable dependency.
+### Reviewed, intentional, to confirm
 
-**Authorisation:** every route must declare a permission or `@Public()`, and the guard refuses anything undeclared. Confirmed at runtime: every GET route answered, and every write route rejected invalid input with 400 or 404 without a 500. The JWT is required on every non-public route.
+- `GET /settings` is readable by any signed-in user. It returns business switches and company profile values; bank details are excluded. If the business wants these hidden from staff, this endpoint should require `settings.manage` or a narrower permission.
 
-**Uploads:** the file type is checked from its bytes, not its name, and size limits are enforced before storage. Confirmed with negative tests (wrong content with an image extension, oversized file, missing file, unknown kind).
+### Not yet reviewed
 
-**Sessions:** access and refresh tokens are httpOnly cookies set by the Next server; the browser never receives the API token. Authenticated pages send `Cache-Control: private, no-store`.
+- CSRF on cookie-backed server actions (the API itself uses bearer tokens).
+- A full review of every rendered user field for XSS (React escapes text by default; no `dangerouslySetInnerHTML` was found in the web app).
+- A Content-Security-Policy. The web app sends only the framing directive; a full policy needs per-request nonces.
+- Rate limits under load. The throttler exists; its limits were not tested.
 
-**Headers:** helmet is enabled on the API. The web app sends `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, a referrer policy, a permissions policy, and HSTS in production. A full Content-Security-Policy needs per-request nonces and is **not** in place.
+## Performance
 
-**Credentials:** no `.env` file is tracked by git. A scan of the repository for the test credential found none.
+### Measured baseline (test stack, small dataset)
 
-**Not yet reviewed:** CSRF on state-changing routes (the API uses bearer tokens, so the risk is lower than with cookies, but the cookie-backed Next actions were not reviewed in detail); the throttler's limits under load; a full XSS review of every rendered user field; the SQL in the raw-query modules, reviewed by reading only.
+These numbers describe the test database only. They are not a production benchmark.
 
-## Performance: current state
+| Measure | Result (p50) |
+|---|---|
+| Server render of the main pages (dashboard, vendors, customers, final invoices, sales history, admin) | 50 to 85 ms |
+| API: vendors list, customer rankings (top), sales history, top sellers, final invoices, payment alerts | 13 to 17 ms |
+| Browser time to network idle on the same pages | About 0.8 to 1.1 s |
 
-**Not measured in this pass.** No before-and-after timings were taken, so no improvement is claimed.
+The browser figure is mostly the fixed quiet period that the measurement waits for (about half a second), plus client work. The server is not the bottleneck at this data size.
 
-Known characteristics from the code:
+### Change made, and its measured effect
 
-- Each authenticated page render makes several API calls: the session check, the appearance settings, the payment alerts (for users who can read invoices), and the page's own data. The layout's calls run on every navigation.
-- The customer rankings, sales history, monthly summary and comparison are computed with live aggregate queries over invoice line items. They have no pre-computed tables and no indexes added for them in this pass. They will slow as the invoice history grows.
-- Export endpoints build the whole file in memory. The sales history export is capped at 5,000 lines; the vendor and customer exports are not capped.
-- The payment-alert sweep runs hourly and reads every open alert.
+- The session check and the payment-alert lookup were running twice per page render (once in the layout, once in the page). They are now cached per request, and the layout runs its two independent lookups together.
+- **Measured effect: none that could be distinguished from noise** on this dataset (before and after were within about 50 ms). The change removes duplicate work and should matter more as pages make more calls, but this pass does not claim a speed-up.
+
+### Known characteristics (not measured at scale)
+
+- Customer rankings, sales history, the monthly summary and the comparison are computed live from invoice line items. No pre-computed tables and no additional indexes were added. They will slow as history grows; the index plan should be checked against real volume.
+- Export endpoints build the whole file in memory. The sales-history export is capped at 5,000 lines; the vendor and customer exports are not capped.
+- The payment-alert sweep reads every open alert, once an hour.
+- The dashboard and layout make several API calls per navigation. Each call is short, so this matters less than the client-side wait.
+
+### Not done
+
+- Load testing at production volume.
+- Index review against production query plans.
+- Image and asset optimisation review.
+- Lazy loading of heavy report components.
 
 ## Unresolved
 
-1. Major-version upgrades for Next, Prisma and Zod (see the audit table).
-2. Index review for the aggregate queries once real data exists.
-3. Measured load times for the dashboard, lists and reports, before and after any change.
-4. A review of CSRF, XSS and raw SQL, with tests.
-5. A test database. Several results above are limited because the shared database holds no transactional records.
+1. Major-version upgrades: Next, Prisma, Zod (see the audit table).
+2. Index review and load testing at real data volume.
+3. The two migrations need approval before they can be applied; until then the payment-alert sweep fails when an open alert exists (see `docs/MIGRATION_REVIEW.md`).
+4. Reviews listed under "Not yet reviewed".
+5. The `GET /settings` scope decision.
 
 ## Deployment note
 
-The deploy configuration (`render.yaml`) follows the `main` branch, and its build runs `prisma migrate deploy` and the seed. Two migrations in this branch are **not approved** and must not be merged to `main` until they are:
-
-- `20261130090000_payment_reminders` (payment due alerts)
-- `20261201090000_customer_favourites` (favourite customers)
+`render.yaml` deploys the `main` branch and runs `prisma migrate deploy` at build time. Nothing on `updates` has been merged, pushed to `main`, or deployed.

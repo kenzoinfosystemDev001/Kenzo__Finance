@@ -127,7 +127,7 @@ async function CustomersSection({ page, pageSize, q, permissions }: { page: numb
   return (
     <SectionCard
       title="Customers"
-      description="Search, open, edit, mark favourites, or delete. Deletion is refused, with the reason, while a customer has invoices or other records."
+      description="Deletion is refused while a customer has invoices or other records."
       padded={false}
       actions={canCreate ? <Link href="/customers/new" className="btn-primary">Add customer</Link> : undefined}
     >
@@ -207,7 +207,7 @@ async function VendorsSection({ page, pageSize, q, permissions }: { page: number
   return (
     <SectionCard
       title="Vendors"
-      description="Search, open, edit, deactivate, or delete. Deletion is refused, with the reason, while a vendor is in use."
+      description="Deletion is refused while a vendor is in use."
       padded={false}
       actions={canCreate ? <Link href="/vendors/new" className="btn-primary">Add vendor</Link> : undefined}
     >

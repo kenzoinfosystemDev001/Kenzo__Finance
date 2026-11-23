@@ -28,11 +28,14 @@ export default async function DashboardLayout({
   const user = session.user;
 
   // Admin-chosen images. A failed lookup falls back to the default colours.
-  const appearance = await getAppearanceConfig();
+  // Independent lookups run together.
+  const [appearance, paymentAlerts] = await Promise.all([
+    getAppearanceConfig(),
+    user.permissions.includes('invoice.read') ? getPaymentAlerts() : Promise.resolve(null),
+  ]);
   const sidebarUrl = appearance?.sidebar ? appearanceImageUrl('sidebar', appearance.sidebar.documentId) : null;
   const workspaceUrl = appearance?.workspace ? appearanceImageUrl('workspace', appearance.workspace.documentId) : null;
   // Payment due alerts are shown to anyone who can read invoices.
-  const paymentAlerts = user.permissions.includes('invoice.read') ? await getPaymentAlerts() : null;
 
   return (
     <div className="flex min-h-screen">

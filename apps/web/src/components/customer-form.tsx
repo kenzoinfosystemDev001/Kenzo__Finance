@@ -91,7 +91,8 @@ export function CustomerForm({
     creating ? [{ ...emptyCustomerContact({ isPrimary: true }), key: key() }] : [],
   );
   const [addresses, setAddresses] = useState<Array<CustomerAddressPayload & { key: string }>>(
-    creating ? [{ ...emptyCustomerAddress({ isDefault: true }), key: key() }] : [],
+    // Addresses are optional for a customer; an empty default row would fail validation.
+    [],
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [result, setResult] = useState<CustomerFormResult>({});

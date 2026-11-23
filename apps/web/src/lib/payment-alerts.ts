@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { apiFetch } from './api';
 import { EMPTY_PAYMENT_ALERTS, type PaymentAlertsResponse } from './payment-alerts-types';
 
@@ -7,7 +8,7 @@ import { EMPTY_PAYMENT_ALERTS, type PaymentAlertsResponse } from './payment-aler
  * returns no alerts, so the header and dashboard still render. The alerts
  * themselves are computed by the API from current invoice and payment data.
  */
-export async function getPaymentAlerts(): Promise<PaymentAlertsResponse> {
+async function loadPaymentAlerts(): Promise<PaymentAlertsResponse> {
   try {
     return await apiFetch<PaymentAlertsResponse>('/payment-alerts');
   } catch (error) {
@@ -15,3 +16,6 @@ export async function getPaymentAlerts(): Promise<PaymentAlertsResponse> {
     return EMPTY_PAYMENT_ALERTS;
   }
 }
+
+/** Once per request: the layout and the dashboard both need the alerts. */
+export const getPaymentAlerts = cache(loadPaymentAlerts);

@@ -382,7 +382,7 @@ export function SelectField({
         {label}
         {required && <span className="text-danger"> *</span>}
       </label>
-      <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className="field-input">
+      <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className={error ? "field-input border-danger" : "field-input"} aria-invalid={error ? true : undefined}>
         {/* A select always has a blank state, so it never silently submits its first option. */}
         {placeholder !== undefined ? <option value="">{placeholder}</option> : <option value="" disabled hidden>Select</option>}
         {options.map((option) => (
@@ -391,6 +391,7 @@ export function SelectField({
           </option>
         ))}
       </select>
+      {error && <p className="field-error" role="alert">{error}</p>}
     </div>
   );
 }

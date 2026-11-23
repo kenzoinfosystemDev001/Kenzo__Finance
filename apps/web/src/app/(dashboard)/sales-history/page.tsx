@@ -132,7 +132,7 @@ export default async function SalesHistoryPage({
     <div className="mx-auto max-w-6xl space-y-5">
       <PageHeader
         title="Sales history"
-        description="Products sold on issued and sent final invoices. Cancelled and replaced invoices are excluded, so no sale is counted twice."
+        description="Sales from issued and sent final invoices. Cancelled and replaced invoices are excluded."
         actions={
           <div className="flex flex-wrap gap-2">
             <a href={exportLink('xlsx', 'history')} className="btn-secondary">Excel</a>

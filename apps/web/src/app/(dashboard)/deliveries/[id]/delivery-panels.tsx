@@ -318,7 +318,7 @@ function DispatchModal({ delivery, today, onClose }: { delivery: DeliveryActionR
       onClose={onClose}
       size="lg"
       title={`Dispatch ${delivery.deliveryNumber}`}
-      description="The goods leave the premises. The delivery challan and packing list are stored now and can no longer change; the delivery can then only be delivered, fail or be returned."
+      description="Goods leave the premises. The challan and packing list are locked once stored."
       submitLabel="Dispatch"
       onSubmit={async () => {
         if (!values.dispatchDate) return { error: 'Enter the dispatch date.' };
@@ -507,7 +507,7 @@ function AmendPodModal({ delivery, pod, today, onClose }: { delivery: DeliveryAc
       open
       onClose={onClose}
       title={`Amend proof of delivery: ${delivery.deliveryNumber}`}
-      description="The recorded proof is kept; the correction is added as an amendment with your reason. Received quantities are not changed here."
+      description="The original proof is kept. Corrections are added as amendments with a reason."
       submitLabel="Save amendment"
       onSubmit={async () => {
         if (actualDeliveryDate > today) return { error: 'The delivery date cannot be in the future.' };
@@ -677,7 +677,7 @@ export function DeliveryDocumentsPanel({
     <section className="card">
       <PanelHeader
         title="Documents"
-        description="Proof of delivery, receiver signature, photos and supporting files. Stored privately and served through permission-checked links."
+        description="Proof of delivery, signatures, photos and files. Stored privately."
         actions={canUpload && <button type="button" className="btn-primary" onClick={() => setUploading(true)}><IconUpload size={16} /> Upload document</button>}
       />
       {removeBlockedReason && <p className="border-b border-border px-5 py-2 text-xs text-ink-subtle">{removeBlockedReason}</p>}
