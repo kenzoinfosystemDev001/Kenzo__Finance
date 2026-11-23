@@ -114,3 +114,14 @@ export async function createProductCategoryAction(
   revalidatePath('/products');
   return { success: `Category "${name}" added.` };
 }
+
+export async function deleteStockLocationAction(locationId: string): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await apiFetch(`/stock/locations/${encodeURIComponent(locationId)}`, { method: 'DELETE' });
+  } catch (error) {
+    return error instanceof ApiError ? { error: error.messages[0] } : { error: 'The location could not be deleted.' };
+  }
+  revalidatePath('/inventory/locations');
+  revalidatePath('/inventory');
+  return { ok: true };
+}

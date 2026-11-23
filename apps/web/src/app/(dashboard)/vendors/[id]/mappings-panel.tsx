@@ -265,7 +265,7 @@ function BrandEditModal({
     >
       <div className="space-y-4">
         <CheckboxField label="Authorised partner / distributor" checked={authorized} onChange={setAuthorized} />
-        <TextField label="Remarks" value={remarks} onChange={setRemarks} maxLength={500} placeholder="e.g. Platinum partner, North region" />
+        <TextField label="Remarks" value={remarks} onChange={setRemarks} maxLength={500} placeholder="Enter notes (optional)" />
         <ResultAlert result={result} />
       </div>
     </Modal>

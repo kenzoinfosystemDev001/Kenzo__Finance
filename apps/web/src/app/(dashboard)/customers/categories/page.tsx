@@ -5,7 +5,7 @@ import { getCurrentUser } from '@/lib/auth-actions';
 import type { CustomerCategory } from '@/lib/types';
 import { Badge, EmptyState, PageHeader } from '@/components/ui';
 import { MasterRecordActions } from '@/components/master-record-actions';
-import { setCustomerCategoryActiveAction, updateCustomerCategoryAction } from '@/lib/customer-actions';
+import { setCustomerCategoryActiveAction, updateCustomerCategoryAction, deleteCustomerCategoryAction } from '@/lib/customer-actions';
 import { CreateCustomerCategoryForm } from './create-category-form';
 
 export const metadata: Metadata = { title: 'Customer Categories' };
@@ -60,6 +60,7 @@ export default async function CustomerCategoriesPage() {
                           deactivateNote={`${c.name} will no longer be offered on customer forms. Customers already in it keep it.`}
                           onSave={updateCustomerCategoryAction.bind(null, c.id)}
                           onSetActive={setCustomerCategoryActiveAction.bind(null, c.id)}
+                          onDelete={deleteCustomerCategoryAction.bind(null, c.id)}
                         />
                       </td>
                     )}

@@ -23,6 +23,25 @@ async function bootstrap(): Promise<void> {
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site' } }));
 
+  // Business data is never cached by browsers or shared caches. Routes that
+  // may be cached (e.g. the public login background) set their own header,
+  // which overrides this default.
+  app.use((_request: unknown, response: { setHeader(name: string, value: string): void }, next: () => void) => {
+    response.setHeader('Cache-Control', 'no-store');
+    next();
+  });
+
+  // PostgreSQL cannot store NUL characters. A URL carrying one is refused here with a clear 400,
+  // instead of reaching the database and failing as a server error.
+  app.use((request: { originalUrl?: string; url?: string }, response: { status(code: number): { json(body: unknown): void } }, next: () => void) => {
+    const url = request.originalUrl ?? request.url ?? '';
+    if (url.includes('\u0000') || /%00/i.test(url)) {
+      response.status(400).json({ statusCode: 400, error: 'BAD_REQUEST', message: 'The request contains an invalid character.' });
+      return;
+    }
+    next();
+  });
+
   app.enableCors({
     origin: webUrl,
     credentials: true,

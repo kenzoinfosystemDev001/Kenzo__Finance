@@ -12,10 +12,10 @@ import type { EnquiryPriority, EnquiryStatus } from '@/lib/types';
 
 const TONE: Record<EnquiryTone, { pill: string; dot: string }> = {
   accent: { pill: 'border-accent/25 bg-accent-subtle text-accent', dot: 'bg-accent' },
-  violet: { pill: 'border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300', dot: 'bg-violet-500' },
-  sky: { pill: 'border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300', dot: 'bg-sky-500' },
+  violet: { pill: 'border-accent/25 bg-accent/10 text-accent', dot: 'bg-accent' },
+  sky: { pill: 'border-accent-hover/25 bg-accent-hover/10 text-accent-hover', dot: 'bg-accent-hover' },
   warning: { pill: 'border-warning/25 bg-warning-subtle text-warning', dot: 'bg-warning' },
-  teal: { pill: 'border-teal-500/25 bg-teal-500/10 text-teal-700 dark:text-teal-300', dot: 'bg-teal-500' },
+  teal: { pill: 'border-accent-hover/25 bg-accent-hover/10 text-accent-hover', dot: 'bg-accent-hover' },
   success: { pill: 'border-success/25 bg-success-subtle text-success', dot: 'bg-success' },
   neutral: { pill: 'border-border bg-surface-muted text-ink-muted', dot: 'bg-ink-subtle' },
   danger: { pill: 'border-danger/25 bg-danger-subtle text-danger', dot: 'bg-danger' },

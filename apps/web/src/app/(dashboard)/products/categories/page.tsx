@@ -6,7 +6,7 @@ import type { ProductCategory } from '@/lib/types';
 import { Badge, EmptyState, PageHeader } from '@/components/ui';
 import { CreateCategoryForm } from './create-category-form';
 import { MasterRecordActions } from '@/components/master-record-actions';
-import { setCategoryActiveAction, updateCategoryAction } from '@/lib/catalogue-actions';
+import { setCategoryActiveAction, updateCategoryAction, deleteCategoryAction } from '@/lib/catalogue-actions';
 
 export const metadata: Metadata = { title: 'Product categories' };
 
@@ -86,6 +86,7 @@ export default async function ProductCategoriesPage() {
                           deactivateNote={`${category.name} will no longer be offered on product forms. It is refused while active products still use it.`}
                           onSave={updateCategoryAction.bind(null, category.id)}
                           onSetActive={setCategoryActiveAction.bind(null, category.id)}
+                          onDelete={deleteCategoryAction.bind(null, category.id)}
                         />
                       </td>
                     )}

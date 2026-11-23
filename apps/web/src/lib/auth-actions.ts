@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { apiFetch, ApiError, isApiUnavailable } from './api';
 import {
@@ -109,7 +110,7 @@ export type SessionResult =
  * not signed in, and "the backend is down". Treating the third as "not signed
  * in" would bounce the user to a login page that cannot work either.
  */
-export async function getSession(): Promise<SessionResult> {
+async function resolveSession(): Promise<SessionResult> {
   try {
     return { status: 'authenticated', user: await apiFetch<CurrentUser>('/auth/me') };
   } catch (error) {
@@ -142,6 +143,16 @@ export async function getSession(): Promise<SessionResult> {
             : String(error),
     };
   }
+}
+
+/**
+ * Once per request: the layout and the page both ask for the session while
+ * rendering, and React cache() makes that one API call instead of two.
+ */
+const sessionForRequest = cache(resolveSession);
+
+export async function getSession(): Promise<SessionResult> {
+  return sessionForRequest();
 }
 
 /** Current user, or null when there is no valid session. */

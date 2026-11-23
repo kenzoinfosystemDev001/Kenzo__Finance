@@ -124,13 +124,13 @@ function validate(
   if (!name) errors.businessName = 'Vendor name is required.';
   else if (name.length < 2) errors.businessName = 'Vendor name must be at least 2 characters.';
 
-  if (basics.gstin.trim() && !isGstinFormat(basics.gstin)) errors.gstin = 'GSTIN must be 15 characters, e.g. 07ABCDE1234F1Z5.';
+  if (basics.gstin.trim() && !isGstinFormat(basics.gstin)) errors.gstin = 'GSTIN must be 15 characters in the standard format.';
   if (basics.pan.trim() && !isPanFormat(basics.pan)) errors.pan = 'PAN must look like ABCDE1234F.';
   if (basics.gstin.trim() && basics.pan.trim() && isGstinFormat(basics.gstin) && isPanFormat(basics.pan)) {
     const embedded = basics.gstin.replace(/\s/g, '').toUpperCase().slice(2, 12);
     if (embedded !== basics.pan.replace(/\s/g, '').toUpperCase()) errors.pan = `PAN does not match the GSTIN (expected ${embedded}).`;
   }
-  if (basics.website.trim() && !isWebsite(basics.website)) errors.website = 'Enter a valid website, e.g. www.example.com.';
+  if (basics.website.trim() && !isWebsite(basics.website)) errors.website = 'Enter a valid website address.';
   if (basics.email.trim() && !isEmail(basics.email)) errors.email = 'Enter a valid email address.';
   if (basics.alternateEmail.trim() && !isEmail(basics.alternateEmail)) errors.alternateEmail = 'Enter a valid email address.';
   if (basics.phone.trim() && !isPhone(basics.phone)) errors.phone = 'Enter a valid phone number (7-15 digits).';
@@ -189,10 +189,11 @@ export function VendorForm({
 
   const [basics, setBasics] = useState<VendorBasicsPayload>({ ...emptyBasics, ...initial.basics });
   const [contacts, setContacts] = useState<ContactRow[]>(() =>
-    (initial.contacts?.length ? initial.contacts : creating ? [emptyContact({ isPrimary: true })] : []).map((c) => ({ ...c, key: newKey() })),
+    // New vendors start with no contact or address rows: they are optional, and an empty row would fail validation.
+    (initial.contacts ?? []).map((c) => ({ ...c, key: newKey() })),
   );
   const [addresses, setAddresses] = useState<AddressRow[]>(() =>
-    (initial.addresses?.length ? initial.addresses : creating ? [emptyAddress({ isPrimary: true })] : []).map((a) => ({ ...a, key: newKey() })),
+    (initial.addresses ?? []).map((a) => ({ ...a, key: newKey() })),
   );
   const [brands, setBrands] = useState<SearchOption[]>(initial.brands ?? []);
   const [products, setProducts] = useState<SearchOption[]>([]);
@@ -423,7 +424,7 @@ export function VendorForm({
             onChange={(value) => setBasic('businessName', value)}
             error={errors.businessName}
             maxLength={200}
-            placeholder="e.g. ABC Technologies"
+            placeholder="Enter business name"
             badge={confidenceBadge('businessName')}
           />
           <TextField
@@ -452,14 +453,14 @@ export function VendorForm({
             value={basics.registrationNumber}
             onChange={(value) => setBasic('registrationNumber', value)}
             maxLength={50}
-            placeholder="CIN / LLPIN / Udyam"
+            placeholder="Enter registration number"
           />
           <TextField
             label="Website"
             value={basics.website}
             onChange={(value) => setBasic('website', value)}
             error={errors.website}
-            placeholder="www.example.com"
+            placeholder="Enter website address"
             badge={confidenceBadge('website')}
           />
           <TextField
@@ -468,7 +469,7 @@ export function VendorForm({
             onChange={(value) => setBasic('gstin', value.toUpperCase())}
             error={errors.gstin}
             maxLength={15}
-            placeholder="07ABCDE1234F1Z5"
+            placeholder="Enter GSTIN"
             hint="Format and checksum are verified on save"
             badge={confidenceBadge('gstin')}
           />
@@ -478,7 +479,7 @@ export function VendorForm({
             onChange={(value) => setBasic('pan', value.toUpperCase())}
             error={errors.pan}
             maxLength={10}
-            placeholder="ABCDE1234F"
+            placeholder="Enter PAN"
             badge={confidenceBadge('pan')}
           />
           {creating ? (
@@ -508,7 +509,7 @@ export function VendorForm({
               value={basics.notes}
               onChange={(event) => setBasic('notes', event.target.value)}
               className="field-input"
-              placeholder="What they supply, regions covered, terms discussed..."
+              placeholder="Enter notes (optional)"
             />
           </div>
         </div>
@@ -516,9 +517,9 @@ export function VendorForm({
         <div className="mt-5 border-t border-border pt-4">
           <p className="mb-3 text-sm font-semibold text-ink">Company phone &amp; email</p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <TextField label="Company Phone" value={basics.phone} onChange={(v) => setBasic('phone', v)} error={errors.phone} inputMode="tel" placeholder="+91 11 2345 6789" />
+            <TextField label="Company Phone" value={basics.phone} onChange={(v) => setBasic('phone', v)} error={errors.phone} inputMode="tel" placeholder="Enter phone number" />
             <TextField label="Alternate Phone" value={basics.alternatePhone} onChange={(v) => setBasic('alternatePhone', v)} error={errors.alternatePhone} inputMode="tel" />
-            <TextField label="Company Email" type="email" value={basics.email} onChange={(v) => setBasic('email', v)} error={errors.email} placeholder="sales@company.com" />
+            <TextField label="Company Email" type="email" value={basics.email} onChange={(v) => setBasic('email', v)} error={errors.email} placeholder="Enter email address" />
             <TextField label="Alternate Email" type="email" value={basics.alternateEmail} onChange={(v) => setBasic('alternateEmail', v)} error={errors.alternateEmail} />
           </div>
         </div>
@@ -557,7 +558,7 @@ export function VendorForm({
                     <TextField label="Contact Person" required value={contact.name} onChange={(v) => updateContact(contact.key, { name: v })} error={errors[`contacts.${index}.name`]} badge={confidenceBadge(`contacts.${index}.name`)} />
                     <TextField label="Designation" value={contact.designation} onChange={(v) => updateContact(contact.key, { designation: v })} badge={confidenceBadge(`contacts.${index}.designation`)} />
                     <SelectField label="Contact Type" value={contact.contactType} onChange={(v) => updateContact(contact.key, { contactType: v as VendorContactType })} options={CONTACT_TYPES} />
-                    <TextField label="Mobile Number" value={contact.phone} onChange={(v) => updateContact(contact.key, { phone: v })} error={errors[`contacts.${index}.phone`]} inputMode="tel" placeholder="+91 98765 43210" badge={confidenceBadge(`contacts.${index}.phone`)} />
+                    <TextField label="Mobile Number" value={contact.phone} onChange={(v) => updateContact(contact.key, { phone: v })} error={errors[`contacts.${index}.phone`]} inputMode="tel" placeholder="Enter mobile number" badge={confidenceBadge(`contacts.${index}.phone`)} />
                     <TextField label="Alternate Mobile" value={contact.alternatePhone} onChange={(v) => updateContact(contact.key, { alternatePhone: v })} error={errors[`contacts.${index}.alternatePhone`]} inputMode="tel" badge={confidenceBadge(`contacts.${index}.alternatePhone`)} />
                     <div className="flex items-end pb-2">
                       <CheckboxField
@@ -811,9 +812,9 @@ export function QuickProductModal({
         <div className="sm:col-span-2">
           <SearchSelect label="Brand *" placeholder="Search brands..." search={brandSearch} selected={brand} onChange={setBrand} />
         </div>
-        <TextField className="sm:col-span-2" label="Product Name" required value={name} onChange={setName} placeholder="e.g. HP ProBook Laptop" />
-        <TextField label="First Model Name" value={modelName} onChange={setModelName} placeholder="e.g. ProBook 440 G10" hint="Optional; more models can be added in Product Management" />
-        <TextField label="Model Number" value={modelNumber} onChange={setModelNumber} placeholder="e.g. 8A5D7PA" />
+        <TextField className="sm:col-span-2" label="Product Name" required value={name} onChange={setName} placeholder="Enter product name" />
+        <TextField label="First Model Name" value={modelName} onChange={setModelName} placeholder="Enter model name" hint="Optional; more models can be added in Product Management" />
+        <TextField label="Model Number" value={modelNumber} onChange={setModelNumber} placeholder="Enter model number" />
         <SelectField className="sm:col-span-2" label="Category" value={categoryId} onChange={setCategoryId} placeholder="Not categorised" options={categoryOptions} />
         <div className="sm:col-span-2">
           <ResultAlert result={result} />

@@ -17,7 +17,6 @@ import {
   ENQUIRY_DOCUMENT_KIND_LABELS,
   ENQUIRY_PRIORITIES,
   ENQUIRY_PRIORITY_LABELS,
-  todayIso,
 } from '@/lib/enquiry-labels';
 import { CUSTOMER_TYPE_LABELS } from '@/lib/customer-labels';
 import { formatAddress, formatBytes, formatPhone } from '@/lib/vendor-labels';
@@ -60,7 +59,7 @@ export const emptyRequirement = (): RequirementRow => ({
   product: [],
   productCode: '',
   productModelId: '',
-  quantity: '1',
+  quantity: '',
   unit: 'Nos',
   technicalRequirements: '',
   remarks: '',
@@ -214,7 +213,7 @@ export function RequirementFields({
       {!pickerOnly && (
         <>
           <TextField label="Quantity" required value={row.quantity} onChange={(v) => onChange({ quantity: v })} error={errors.quantity} inputMode="numeric" />
-          <TextField label="Unit" value={row.unit} onChange={(v) => onChange({ unit: v })} error={errors.unit} maxLength={20} placeholder="Nos" />
+          <TextField label="Unit" value={row.unit} onChange={(v) => onChange({ unit: v })} error={errors.unit} maxLength={20} placeholder="Enter unit" />
           <TextField label="Remarks" value={row.remarks} onChange={(v) => onChange({ remarks: v })} error={errors.remarks} maxLength={1000} />
           <div className="md:col-span-2 xl:col-span-3">
             <label htmlFor={`${row.key}-tech`} className="field-label">Technical Requirements</label>
@@ -225,7 +224,7 @@ export function RequirementFields({
               value={row.technicalRequirements}
               onChange={(e) => onChange({ technicalRequirements: e.target.value })}
               className="field-input"
-              placeholder="e.g. 16 GB RAM, 512 GB SSD, 3-year onsite warranty"
+              placeholder="Enter specifications"
             />
             {errors.technicalRequirements && <p className="field-error">{errors.technicalRequirements}</p>}
           </div>
@@ -309,7 +308,7 @@ const BUDGET = /^\d{1,13}(\.\d{1,2})?$/;
 export const emptyEnquiryDetails = (): EnquiryDetailsPayload => ({
   customerId: '',
   customerContactId: '',
-  enquiryDate: todayIso(),
+  enquiryDate: '',
   sourceId: '',
   priority: 'NORMAL',
   description: '',
@@ -327,8 +326,8 @@ function validateDetails(d: EnquiryDetailsPayload): Record<string, string> {
   const e: Record<string, string> = {};
   if (!d.customerId) e.customer = 'Select a customer.';
   if (!d.enquiryDate) e.enquiryDate = 'Enquiry date is required.';
-  if (d.expectedBudget.trim() && !BUDGET.test(d.expectedBudget.trim())) e.expectedBudget = 'Enter an amount with up to 2 decimals, e.g. 250000.';
-  if (d.currency.trim() && !/^[A-Za-z]{3}$/.test(d.currency.trim())) e.currency = 'Use a 3-letter code, e.g. INR.';
+  if (d.expectedBudget.trim() && !BUDGET.test(d.expectedBudget.trim())) e.expectedBudget = 'Enter an amount with up to 2 decimals.';
+  if (d.currency.trim() && !/^[A-Za-z]{3}$/.test(d.currency.trim())) e.currency = 'Use a 3-letter currency code.';
   if (d.description.length > 4000) e.description = 'At most 4000 characters.';
   if (d.internalRemarks.length > 2000) e.internalRemarks = 'At most 2000 characters.';
   if (d.commercialNotes.length > 2000) e.commercialNotes = 'At most 2000 characters.';
@@ -608,8 +607,8 @@ export function EnquiryForm({
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <TextField label="Expected Budget" value={details.expectedBudget} onChange={(v) => set('expectedBudget', v)} error={errors.expectedBudget} inputMode="decimal" placeholder="Optional" />
           <TextField label="Currency" value={details.currency} onChange={(v) => set('currency', v.toUpperCase())} error={errors.currency} maxLength={3} />
-          <TextField label="Expected Delivery Timeline" value={details.expectedDeliveryTimeline} onChange={(v) => set('expectedDeliveryTimeline', v)} maxLength={200} placeholder="e.g. Within 3 weeks" />
-          <TextField label="Payment Preference" value={details.paymentPreference} onChange={(v) => set('paymentPreference', v)} maxLength={200} placeholder="e.g. 50% advance" />
+          <TextField label="Expected Delivery Timeline" value={details.expectedDeliveryTimeline} onChange={(v) => set('expectedDeliveryTimeline', v)} maxLength={200} placeholder="Enter delivery time" />
+          <TextField label="Payment Preference" value={details.paymentPreference} onChange={(v) => set('paymentPreference', v)} maxLength={200} placeholder="Enter payment terms" />
           {textarea('commercialNotes', 'Commercial Notes', 2000)}
         </div>,
       )}

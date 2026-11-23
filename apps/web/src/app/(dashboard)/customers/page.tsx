@@ -11,6 +11,7 @@ import { IconArrowDown, IconArrowUp, IconCheck, IconPause, IconPlus, IconSort, I
 import { PageSizeSelect } from '../vendors/vendor-toolbar';
 import { CustomerToolbar } from './customer-toolbar';
 import { CustomerRowActions } from './customer-row-actions';
+import { CustomerRankingsView, CustomerViewTabs } from './customer-rankings-view';
 
 export const metadata: Metadata = { title: 'Customer Management' };
 
@@ -18,11 +19,11 @@ const PAGE_SIZES = [10, 25, 50, 100];
 const UUID = /^[0-9a-f-]{36}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-type Params = Record<'search' | 'customerType' | 'categoryId' | 'industry' | 'status' | 'country' | 'state' | 'createdFrom' | 'createdTo' | 'sortBy' | 'sortDir' | 'page' | 'pageSize', string | undefined>;
+type Params = Record<'view' | 'search' | 'customerType' | 'categoryId' | 'industry' | 'status' | 'country' | 'state' | 'createdFrom' | 'createdTo' | 'sortBy' | 'sortDir' | 'page' | 'pageSize', string | undefined>;
 
 const LIST_SORT_FIELDS = ['customerCode', 'name', 'customerType', 'status', 'createdAt', 'updatedAt'];
 
-export default async function CustomersPage({ searchParams }: { searchParams: Promise<Partial<Params>> }) {
+async function AllCustomersPage({ searchParams }: { searchParams: Promise<Partial<Params>> }) {
   const params = await searchParams;
   const user = await getCurrentUser();
   const permissions = user?.permissions ?? [];
@@ -89,9 +90,9 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
           <StatCard label="Total Customers" value={summary.total} icon={<IconUsers size={22} />} iconClassName="bg-accent" />
           <StatCard label="Active Customers" value={summary.active} icon={<IconCheck size={22} />} iconClassName="bg-success" href="/customers?status=ACTIVE" />
           <StatCard label="Inactive Customers" value={summary.inactive} icon={<IconPause size={22} />} iconClassName="bg-danger" href="/customers?status=INACTIVE" />
-          <StatCard label="Individual" value={summary.individual} icon={<IconUser size={22} />} iconClassName="bg-sky-600" href="/customers?customerType=INDIVIDUAL" />
-          <StatCard label="Business" value={summary.business} icon={<IconWarehouse size={22} />} iconClassName="bg-violet-600" href="/customers?customerType=BUSINESS" />
-          <StatCard label="New This Month" value={summary.newThisMonth} icon={<IconStar size={22} />} iconClassName="bg-orange-500" />
+          <StatCard label="Individual" value={summary.individual} icon={<IconUser size={22} />} iconClassName="bg-accent-hover" href="/customers?customerType=INDIVIDUAL" />
+          <StatCard label="Business" value={summary.business} icon={<IconWarehouse size={22} />} iconClassName="bg-accent" href="/customers?customerType=BUSINESS" />
+          <StatCard label="New This Month" value={summary.newThisMonth} icon={<IconStar size={22} />} iconClassName="bg-warning" />
         </section>
       )}
 
@@ -187,5 +188,28 @@ function CustomerHeader({ canCreate, canManageCategories }: { canCreate: boolean
         {canCreate && <Link href="/customers/new" className="btn-primary h-11 px-5 text-base"><IconPlus size={18} /> Add Customer</Link>}
       </div>
     </div>
+  );
+}
+
+/** Customer Management: the All list, or the Top and Favourite rankings. */
+export default async function CustomersPage({ searchParams }: { searchParams: Promise<Partial<Params>> }) {
+  const params = await searchParams;
+  const user = await getCurrentUser();
+  const permissions = user?.permissions ?? [];
+  if (params.view === "top" || params.view === "favourite") {
+    return (
+      <CustomerRankingsView
+        view={params.view}
+        params={params}
+        canManage={permissions.includes("settings.manage")}
+        canCreate={permissions.includes("customer.create")}
+      />
+    );
+  }
+  return (
+    <>
+      <CustomerViewTabs active="all" />
+      {await AllCustomersPage({ searchParams: Promise.resolve(params) })}
+    </>
   );
 }

@@ -23,6 +23,8 @@ import { QuotationsModule } from './quotations/quotations.module';
 import { ProformaInvoicesModule } from './proforma-invoices/proforma-invoices.module';
 import { FinalInvoicesModule } from './final-invoices/final-invoices.module';
 import { PaymentsModule } from './payments/payments.module';
+import { PaymentAlertsModule } from './payment-alerts/payment-alerts.module';
+import { SalesModule } from './sales/sales.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { UsersModule } from './users/users.module';
@@ -62,6 +64,8 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     ProformaInvoicesModule,
     FinalInvoicesModule,
     PaymentsModule,
+    PaymentAlertsModule,
+    SalesModule,
     DeliveriesModule,
     AnalyticsModule,
     UsersModule,

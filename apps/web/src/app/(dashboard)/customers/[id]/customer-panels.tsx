@@ -438,7 +438,7 @@ export function CustomerProductsPanel({ customer, canManage, canViewProducts }: 
               )}
               <div>
                 <label htmlFor="interest-notes" className="field-label">Notes</label>
-                <textarea id="interest-notes" rows={3} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} className="field-input" placeholder="e.g. Needs 50 units for a Q3 office rollout" />
+                <textarea id="interest-notes" rows={3} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} className="field-input" placeholder="Enter note (optional)" />
               </div>
               <ResultAlert result={result} />
             </div>

@@ -35,7 +35,7 @@ export function CreateCategoryForm() {
             name="name"
             required
             className="field-input"
-            placeholder="Laptops"
+            placeholder="Enter category name"
           />
         </div>
 

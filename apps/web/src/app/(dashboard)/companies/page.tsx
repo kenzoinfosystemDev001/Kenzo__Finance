@@ -11,7 +11,7 @@ import {
 } from '@/components/ui';
 import { CreateCompanyForm } from './create-company-form';
 import { MasterRecordActions } from '@/components/master-record-actions';
-import { setBrandActiveAction, updateBrandAction } from '@/lib/catalogue-actions';
+import { setBrandActiveAction, updateBrandAction, deleteBrandAction } from '@/lib/catalogue-actions';
 
 export const metadata: Metadata = { title: 'Brands' };
 
@@ -61,7 +61,7 @@ export default async function CompaniesPage({
               type="search"
               defaultValue={params.search ?? ''}
               className="field-input"
-              placeholder="Dell, HP, Lenovo"
+              placeholder="Search brands"
             />
           </div>
           <button type="submit" className="btn-primary">
@@ -138,6 +138,7 @@ export default async function CompaniesPage({
                             deactivateNote={`${company.name} will not be offered for new products or vendor mappings. Existing products, models and vendor mappings stay intact.`}
                             onSave={updateBrandAction.bind(null, company.id)}
                             onSetActive={setBrandActiveAction.bind(null, company.id)}
+                            onDelete={deleteBrandAction.bind(null, company.id)}
                           />
                         </td>
                       )}

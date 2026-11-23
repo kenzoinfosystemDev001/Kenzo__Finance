@@ -119,9 +119,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
           <StatCard label="Total Products" value={summary.products.total} icon={<IconBox size={22} />} iconClassName="bg-accent" />
           <StatCard label="Active Products" value={summary.products.active} icon={<IconCheck size={22} />} iconClassName="bg-success" href="/products?isActive=true" />
           <StatCard label="Inactive Products" value={summary.products.inactive} icon={<IconPause size={22} />} iconClassName="bg-danger" href="/products?isActive=false" />
-          <StatCard label="Total Brands" value={summary.brands} icon={<IconTag size={22} />} iconClassName="bg-violet-600" />
-          <StatCard label="Total Models" value={summary.models.total} icon={<IconBox size={22} />} iconClassName="bg-teal-600" />
-          <StatCard label="Vendor Mappings" value={summary.vendorMappings.products} icon={<IconHandshake size={22} />} iconClassName="bg-orange-500" />
+          <StatCard label="Total Brands" value={summary.brands} icon={<IconTag size={22} />} iconClassName="bg-accent" />
+          <StatCard label="Total Models" value={summary.models.total} icon={<IconBox size={22} />} iconClassName="bg-accent-hover" />
+          <StatCard label="Vendor Mappings" value={summary.vendorMappings.products} icon={<IconHandshake size={22} />} iconClassName="bg-warning" />
         </section>
       )}
 

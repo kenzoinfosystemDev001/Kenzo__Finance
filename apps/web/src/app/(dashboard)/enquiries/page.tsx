@@ -108,17 +108,17 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
       {summary && (
         <section aria-label="Enquiry summary" className="grid grid-cols-2 gap-4 md:grid-cols-4 2xl:grid-cols-7">
           <StatCard label="Total Enquiries" value={summary.total} icon={<IconInbox size={22} />} iconClassName="bg-accent" href="/enquiries" />
-          <StatCard label="New" value={summary.new} icon={<IconStar size={22} />} iconClassName="bg-sky-600" href="/enquiries?status=NEW" />
-          <StatCard label="In Progress" value={summary.inProgress} icon={<IconRefresh size={22} />} iconClassName="bg-violet-600" href="/enquiries?status=ASSIGNED,IN_PROGRESS,REQUIREMENT_CLARIFICATION" />
+          <StatCard label="New" value={summary.new} icon={<IconStar size={22} />} iconClassName="bg-accent-hover" href="/enquiries?status=NEW" />
+          <StatCard label="In Progress" value={summary.inProgress} icon={<IconRefresh size={22} />} iconClassName="bg-accent" href="/enquiries?status=ASSIGNED,IN_PROGRESS,REQUIREMENT_CLARIFICATION" />
           <StatCard
             label="Follow-up Pending"
             value={summary.followUpPending}
             icon={<IconClock size={22} />}
-            iconClassName="bg-orange-500"
+            iconClassName="bg-warning"
             href="/enquiries?status=FOLLOW_UP_PENDING"
             note={summary.overdueFollowUps > 0 ? <span className="text-danger">{summary.overdueFollowUps} overdue follow-up{summary.overdueFollowUps === 1 ? '' : 's'}</span> : undefined}
           />
-          <StatCard label="Quotation Pending" value={summary.quotationPending} icon={<IconQuote size={22} />} iconClassName="bg-teal-600" href="/enquiries?status=READY_FOR_QUOTATION" />
+          <StatCard label="Quotation Pending" value={summary.quotationPending} icon={<IconQuote size={22} />} iconClassName="bg-accent-hover" href="/enquiries?status=READY_FOR_QUOTATION" />
           <StatCard label="Converted to Quotation" value={summary.converted} icon={<IconCheckCircle size={22} />} iconClassName="bg-success" href="/enquiries?status=CONVERTED" />
           <StatCard label="Lost / Closed" value={summary.lostClosed} icon={<IconX size={22} />} iconClassName="bg-danger" href="/enquiries?status=LOST,CLOSED" />
         </section>

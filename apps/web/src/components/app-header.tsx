@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { IconChevronDown, IconLogout, IconSearch, IconUser } from './icons';
+import { PaymentAlertBell } from './payment-alert-bell';
+import type { PaymentAlertsResponse } from '@/lib/payment-alerts-types';
 
 /**
  * Top bar: vendor search and the user menu.
@@ -16,10 +18,13 @@ export function AppHeader({
   user,
   canSearchVendors,
   logoutAction,
+  alerts,
 }: {
   user: { fullName: string; email: string; roles: string[] };
   canSearchVendors: boolean;
   logoutAction: () => Promise<void>;
+  /** Null when the user cannot see invoices, so the bell is not shown. */
+  alerts?: PaymentAlertsResponse | null;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -77,7 +82,9 @@ export function AppHeader({
         </form>
       )}
 
-      <div ref={menuRef} className="relative ml-auto">
+      <div className="ml-auto flex items-center gap-2">
+        {alerts && <PaymentAlertBell data={alerts} />}
+      <div ref={menuRef} className="relative">
         <button
           type="button"
           onClick={() => setMenuOpen((value) => !value)}
@@ -133,6 +140,7 @@ export function AppHeader({
             </form>
           </div>
         )}
+      </div>
       </div>
     </header>
   );

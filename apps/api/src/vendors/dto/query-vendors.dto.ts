@@ -55,6 +55,12 @@ export type VendorSortField = (typeof VENDOR_SORT_FIELDS)[number];
  * results stay correct across pages.
  */
 export class QueryVendorsDto extends PaginationQueryDto {
+  /** csv (default) or xlsx. Same columns and filters either way. */
+  @ApiPropertyOptional({ enum: ['csv', 'xlsx'] })
+  @IsOptional()
+  @IsIn(['csv', 'xlsx'])
+  format?: 'csv' | 'xlsx';
+
   @ApiPropertyOptional({
     description:
       'Free-text search across vendor name, code, GSTIN, company and contact ' +

@@ -5,7 +5,7 @@ import { getCurrentUser } from '@/lib/auth-actions';
 import type { EnquirySource } from '@/lib/types';
 import { Badge, EmptyState, PageHeader } from '@/components/ui';
 import { MasterRecordActions } from '@/components/master-record-actions';
-import { setEnquirySourceActiveAction, updateEnquirySourceAction } from '@/lib/enquiry-actions';
+import { setEnquirySourceActiveAction, updateEnquirySourceAction, deleteEnquirySourceAction } from '@/lib/enquiry-actions';
 import { CreateEnquirySourceForm } from './create-source-form';
 
 export const metadata: Metadata = { title: 'Enquiry Sources' };
@@ -62,6 +62,7 @@ export default async function EnquirySourcesPage() {
                           deactivateNote={`${s.name} will no longer be offered on the enquiry form. Enquiries already from it keep it.`}
                           onSave={updateEnquirySourceAction.bind(null, s.id)}
                           onSetActive={setEnquirySourceActiveAction.bind(null, s.id)}
+                          onDelete={deleteEnquirySourceAction.bind(null, s.id)}
                         />
                       </td>
                     )}

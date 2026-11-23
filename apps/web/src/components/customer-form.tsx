@@ -44,8 +44,9 @@ export const emptyCustomerAddress = (o: Partial<CustomerAddressPayload> = {}): C
   addressType: 'BILLING', addressLine1: '', addressLine2: '', city: '', state: '', postalCode: '', country: 'India', isDefault: false, ...o,
 });
 
+// Customer type starts unset and is required; the form refuses to save until it is chosen.
 const emptyBasics: CustomerBasicsPayload = {
-  customerType: 'BUSINESS', name: '', categoryId: '', industry: '', website: '', description: '', taxCountry: 'India',
+  customerType: '' as CustomerType, name: '', categoryId: '', industry: '', website: '', description: '', taxCountry: 'India',
   gstin: '', pan: '', cin: '', taxRegistrationNumber: '', otherRegistration: '', companySize: '', businessType: '',
   annualTurnoverRange: '', employeeCount: '',
 };
@@ -56,16 +57,17 @@ const CIN = /^[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/;
 /** Mirrors the API's tax rules: Indian identifiers only for India, CIN only for businesses. */
 function validateBasics(b: CustomerBasicsPayload): Record<string, string> {
   const e: Record<string, string> = {};
+  if (!b.customerType) e.customerType = 'Select a customer type.';
   if (b.name.trim().length < 2) e.name = 'Customer name is required (at least 2 characters).';
-  if (b.website.trim() && !isWebsite(b.website)) e.website = 'Enter a valid website, e.g. www.example.com.';
+  if (b.website.trim() && !isWebsite(b.website)) e.website = 'Enter a valid website address.';
   if (isIndia(b.taxCountry)) {
-    if (b.gstin.trim() && !isGstinFormat(b.gstin)) e.gstin = 'GSTIN must be 15 characters, e.g. 07ABCDE1234F1Z5.';
+    if (b.gstin.trim() && !isGstinFormat(b.gstin)) e.gstin = 'GSTIN must be 15 characters in the standard format.';
     if (b.pan.trim() && !isPanFormat(b.pan)) e.pan = 'PAN must look like ABCDE1234F.';
     if (b.gstin.trim() && b.pan.trim() && isGstinFormat(b.gstin) && isPanFormat(b.pan)) {
       const embedded = b.gstin.replace(/\s/g, '').toUpperCase().slice(2, 12);
       if (embedded !== b.pan.replace(/\s/g, '').toUpperCase()) e.pan = `PAN does not match the GSTIN (expected ${embedded}).`;
     }
-    if (b.cin.trim() && !CIN.test(b.cin.replace(/\s/g, '').toUpperCase())) e.cin = 'CIN must be 21 characters, e.g. U72200DL2010PTC123456.';
+    if (b.cin.trim() && !CIN.test(b.cin.replace(/\s/g, '').toUpperCase())) e.cin = 'CIN must be 21 characters in the standard format.';
   }
   if (b.employeeCount.trim() && !/^\d{1,8}$/.test(b.employeeCount.trim())) e.employeeCount = 'Enter a whole number.';
   return e;
@@ -89,7 +91,8 @@ export function CustomerForm({
     creating ? [{ ...emptyCustomerContact({ isPrimary: true }), key: key() }] : [],
   );
   const [addresses, setAddresses] = useState<Array<CustomerAddressPayload & { key: string }>>(
-    creating ? [{ ...emptyCustomerAddress({ isDefault: true }), key: key() }] : [],
+    // Addresses are optional for a customer; an empty default row would fail validation.
+    [],
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [result, setResult] = useState<CustomerFormResult>({});
@@ -239,12 +242,14 @@ export function CustomerForm({
             required
             value={basics.customerType}
             onChange={(v) => set('customerType', v as CustomerType)}
+            placeholder="Select customer type"
+            error={errors.customerType}
             options={[{ value: 'BUSINESS', label: 'Business / Company' }, { value: 'INDIVIDUAL', label: 'Individual' }]}
           />
           <TextField className="xl:col-span-2" label={business ? 'Company Name' : 'Customer Name'} required value={basics.name} onChange={(v) => set('name', v)} error={errors.name} maxLength={200} />
           <SelectField label="Customer Category" value={basics.categoryId} onChange={(v) => set('categoryId', v)} placeholder="Not categorised" options={categories.map((c) => ({ value: c.id, label: c.isActive ? c.name : `${c.name} (inactive)` }))} />
-          <TextField label="Industry" value={basics.industry} onChange={(v) => set('industry', v)} maxLength={100} placeholder="e.g. IT & Technology" />
-          <TextField label="Website" value={basics.website} onChange={(v) => set('website', v)} error={errors.website} placeholder="www.example.com" />
+          <TextField label="Industry" value={basics.industry} onChange={(v) => set('industry', v)} maxLength={100} placeholder="Enter industry" />
+          <TextField label="Website" value={basics.website} onChange={(v) => set('website', v)} error={errors.website} placeholder="Enter website address" />
           {creating && (
             <SelectField label="Status" value={status} onChange={(v) => setStatus(v as CustomerStatus)} options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'INACTIVE', label: 'Inactive' }]} />
           )}
@@ -260,14 +265,14 @@ export function CustomerForm({
           <TextField label="Tax Country" value={basics.taxCountry} onChange={(v) => set('taxCountry', v)} maxLength={100} hint="Country the customer is registered for tax in" />
           {india ? (
             <>
-              <TextField label="GSTIN" value={basics.gstin} onChange={(v) => set('gstin', v.toUpperCase())} error={errors.gstin} maxLength={15} placeholder="07ABCDE1234F1Z5" />
-              <TextField label="PAN" value={basics.pan} onChange={(v) => set('pan', v.toUpperCase())} error={errors.pan} maxLength={10} placeholder="ABCDE1234F" />
+              <TextField label="GSTIN" value={basics.gstin} onChange={(v) => set('gstin', v.toUpperCase())} error={errors.gstin} maxLength={15} placeholder="Enter GSTIN" />
+              <TextField label="PAN" value={basics.pan} onChange={(v) => set('pan', v.toUpperCase())} error={errors.pan} maxLength={10} placeholder="Enter PAN" />
               {business && <TextField label="CIN / Company Registration No." value={basics.cin} onChange={(v) => set('cin', v.toUpperCase())} error={errors.cin} maxLength={21} />}
             </>
           ) : (
             <TextField label="Tax Registration Number" value={basics.taxRegistrationNumber} onChange={(v) => set('taxRegistrationNumber', v)} maxLength={40} hint="VAT / TIN / EIN as applicable" />
           )}
-          <TextField className="md:col-span-2" label="Other Registration Details" value={basics.otherRegistration} onChange={(v) => set('otherRegistration', v)} maxLength={500} placeholder="e.g. Udyam, IEC, vendor code with customer" />
+          <TextField className="md:col-span-2" label="Other Registration Details" value={basics.otherRegistration} onChange={(v) => set('otherRegistration', v)} maxLength={500} placeholder="Enter registration name" />
         </div>,
       )}
 

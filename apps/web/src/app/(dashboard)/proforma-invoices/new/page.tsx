@@ -44,7 +44,7 @@ export default async function NewProformaPage({ searchParams }: { searchParams: 
         {data.items.length === 0 ? (
           <EmptyState
             title={search ? 'No accepted quotation matches' : 'No quotations are ready for a proforma invoice'}
-            description="Only quotations the customer accepted, and that do not already have a live proforma invoice, are listed. Record the customer's acceptance on the quotation first."
+            description="Accepted quotations without a proforma invoice. Record acceptance on the quotation first."
             action={search ? <Link href="/proforma-invoices/new" className="btn-secondary">Clear search</Link> : <Link href="/quotations?status=ACCEPTED" className="btn-secondary">Accepted quotations</Link>}
           />
         ) : (

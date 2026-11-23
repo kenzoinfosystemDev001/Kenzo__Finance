@@ -131,7 +131,7 @@ export function PermissionMatrix({
       )}
 
       <div className="max-h-[70vh] overflow-auto">
-        <table className="w-full border-separate border-spacing-0 text-sm">
+        <table className="relative w-full border-separate border-spacing-0 text-sm">
           <thead>
             <tr>
               <th scope="col" className="sticky left-0 top-0 z-20 min-w-[220px] border-b border-border bg-surface-muted px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-ink-subtle">

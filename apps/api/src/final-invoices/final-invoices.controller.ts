@@ -35,6 +35,7 @@ import {
   UpdateFinalInvoiceDto,
   UploadFinalInvoiceDocumentDto,
 } from './dto/final-invoice.dto';
+import { UpdateInvoiceDueDateDto } from './dto/final-invoice.dto';
 import { DocumentsService } from '../documents/documents.service';
 import { PaginationQueryDto } from '../common/dto/pagination.dto';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
@@ -178,6 +179,13 @@ export class FinalInvoicesController {
   @ApiOperation({ summary: 'Audit history of the invoice' })
   activity(@Param('id', uuid()) id: string, @Query() pagination: PaginationQueryDto) {
     return this.invoices.activity(id, pagination);
+  }
+
+  @Patch(':id/due-date')
+  @RequirePermissions(PERMISSIONS.INVOICE_UPDATE)
+  @ApiOperation({ summary: 'Change the payment due date of an issued invoice (payment alerts recalculate)' })
+  updateDueDate(@Param('id', uuid()) id: string, @Body() dto: UpdateInvoiceDueDateDto, @CurrentUser() user: AuthenticatedUser, @Req() request: Request) {
+    return this.invoices.updateDueDate(id, dto, user, contextOf(request));
   }
 
   @Patch(':id')

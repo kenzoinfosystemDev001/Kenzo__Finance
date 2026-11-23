@@ -95,7 +95,10 @@ export function CustomerToolbar({ categories, exportHref }: { categories: Custom
           <IconRefresh size={16} /> Clear Filters
         </button>
         {exportHref && (
-          <a href={exportHref} className="btn-secondary h-10"><IconDownload size={16} /> Export</a>
+          <>
+          <a href={exportHref} className="btn-secondary h-10"><IconDownload size={16} /> CSV</a>
+          <a href={`${exportHref}${exportHref.includes('?') ? '&' : '?'}format=xlsx`} className="btn-secondary h-10"><IconDownload size={16} /> Excel</a>
+          </>
         )}
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-[repeat(3,minmax(0,180px))_auto]">

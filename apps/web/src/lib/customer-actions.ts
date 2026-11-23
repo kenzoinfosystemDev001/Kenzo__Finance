@@ -386,3 +386,25 @@ export async function setCustomerCategoryActiveAction(categoryId: string, isActi
   revalidatePath('/customers/categories');
   return { ok: true };
 }
+
+export async function deleteCustomerCategoryAction(categoryId: string): Promise<ActionResult> {
+  try {
+    await apiFetch(`/customers/categories/${id(categoryId, 'category')}`, { method: 'DELETE' });
+  } catch (error) {
+    return error instanceof ApiError ? { error: error.messages[0] } : { error: 'The category could not be deleted.' };
+  }
+  revalidatePath('/customers/categories');
+  return { ok: true };
+}
+
+/** Admin-only. The API checks settings.manage; this only forwards the request. */
+export async function setCustomerFavouriteAction(customerId: string, isFavourite: boolean): Promise<ActionResult> {
+  if (!/^[0-9a-f-]{36}$/i.test(customerId)) return { error: 'This customer could not be found.' };
+  try {
+    await apiFetch(`/customers/${customerId}/favourite`, { method: 'PATCH', body: { isFavourite } });
+  } catch (error) {
+    return error instanceof ApiError ? { error: error.messages[0] } : { error: 'The favourite status could not be changed.' };
+  }
+  revalidatePath('/customers');
+  return { ok: true };
+}

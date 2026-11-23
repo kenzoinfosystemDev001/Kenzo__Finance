@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { ConfirmDialog, Modal, ResultAlert, TextField } from './client-ui';
 import { IconCheckCircle, IconPause, IconPencil } from './icons';
+import { DeleteRecordButton, type DeleteOutcome } from './delete-record-button';
 
 export interface MasterField {
   name: string;
@@ -27,6 +28,8 @@ export function MasterRecordActions({
   deactivateNote,
   onSave,
   onSetActive,
+  onDelete,
+  deleteNote,
 }: {
   entityLabel: string;
   recordName: string;
@@ -36,6 +39,9 @@ export function MasterRecordActions({
   deactivateNote: string;
   onSave: (values: Record<string, string>) => Promise<{ ok?: boolean; error?: string }>;
   onSetActive: (isActive: boolean) => Promise<{ ok?: boolean; error?: string }>;
+  /** Permanent delete. Omit where the record must never be removed. */
+  onDelete?: () => Promise<DeleteOutcome>;
+  deleteNote?: string;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -82,6 +88,14 @@ export function MasterRecordActions({
       >
         {isActive ? <IconPause /> : <IconCheckCircle />}
       </button>
+
+      {onDelete && (
+        <DeleteRecordButton
+          recordName={recordName}
+          message={deleteNote ?? `${recordName} will be permanently deleted. This cannot be undone. Deletion is refused while anything still uses it.`}
+          onDelete={onDelete}
+        />
+      )}
 
       <Modal
         open={editing}

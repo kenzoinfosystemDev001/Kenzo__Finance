@@ -77,7 +77,7 @@ function PaymentFields({
         label="Received by"
         value={values.receivedById}
         onChange={(v) => setValue('receivedById', v)}
-        placeholder="Me (the person recording it)"
+        placeholder="Select a user"
         options={assignees.map((a) => ({ value: a.id, label: a.fullName }))}
       />
       <TextField label="Transaction reference" value={values.transactionReference} onChange={(v) => setValue('transactionReference', v)} maxLength={100} hint="UTR, cheque number, card approval code... Checked for duplicates." />

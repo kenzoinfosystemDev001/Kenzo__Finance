@@ -22,7 +22,7 @@ type ProformaForPdf = Prisma.ProformaInvoiceGetPayload<{ include: typeof proform
 
 export type BankDetails = { bankName?: string; accountName?: string; accountNumber?: string; ifsc?: string; swift?: string; branch?: string };
 
-const fileBase = (pi: { piNumber: string }) => pi.piNumber.replace(/[\\/]/g, '-');
+const fileBase = (pi: { piNumber: string }) => `Proforma-Invoice_${pi.piNumber.replace(/[\\/]/g, '-')}`;
 
 /**
  * A4 proforma invoice PDF, built only from the PI's own snapshot (customer,
