@@ -364,6 +364,7 @@ export function SelectField({
   placeholder,
   className,
   required,
+  error,
 }: {
   label: string;
   value: string;
@@ -372,6 +373,7 @@ export function SelectField({
   placeholder?: string;
   className?: string;
   required?: boolean;
+  error?: string;
 }) {
   const id = useId();
   return (
@@ -381,7 +383,8 @@ export function SelectField({
         {required && <span className="text-danger"> *</span>}
       </label>
       <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className="field-input">
-        {placeholder !== undefined && <option value="">{placeholder}</option>}
+        {/* A select always has a blank state, so it never silently submits its first option. */}
+        {placeholder !== undefined ? <option value="">{placeholder}</option> : <option value="" disabled hidden>Select</option>}
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

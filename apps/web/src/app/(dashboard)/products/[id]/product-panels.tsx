@@ -186,7 +186,7 @@ export function ModelsPanel({
         actions={canManage && <button type="button" className="btn-primary" onClick={() => setEditing('new')}><IconPlus size={16} /> Add model</button>}
       />
       {product.models.length === 0 ? (
-        <EmptyStateClient title="No models yet" description="Add the models of this product, e.g. Latitude 5450 and Latitude 5550." />
+        <EmptyStateClient title="No models yet" description="Add the models of this product." />
       ) : (
         <div className="overflow-x-auto">
           <table className="data-table">

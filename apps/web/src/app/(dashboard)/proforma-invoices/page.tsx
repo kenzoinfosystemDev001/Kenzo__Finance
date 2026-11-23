@@ -96,12 +96,12 @@ export default async function ProformaInvoicesPage({ searchParams }: { searchPar
       {summary && (
         <section aria-label="Proforma invoice summary" className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
           <StatCard label="Total PIs" value={summary.total} icon={<IconInvoice size={22} />} iconClassName="bg-accent" href="/proforma-invoices" />
-          <StatCard label="Draft" value={summary.draft} icon={<IconPencil size={22} />} iconClassName="bg-slate-500" href="/proforma-invoices?status=DRAFT" />
+          <StatCard label="Draft" value={summary.draft} icon={<IconPencil size={22} />} iconClassName="bg-ink-subtle" href="/proforma-invoices?status=DRAFT" />
           <StatCard
             label="Pending Approval"
             value={summary.pendingApproval}
             icon={<IconClock size={22} />}
-            iconClassName="bg-orange-500"
+            iconClassName="bg-warning"
             href="/proforma-invoices?status=PENDING_APPROVAL"
             note={summary.approvalRequired ? `${summary.approved} approved, not issued` : 'Approval is switched off'}
           />

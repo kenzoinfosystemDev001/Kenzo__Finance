@@ -142,3 +142,25 @@ export async function setCategoryActiveAction(categoryId: string, isActive: bool
   revalidatePath('/products/categories');
   return { ok: true };
 }
+
+export async function deleteCategoryAction(categoryId: string): Promise<MasterResult> {
+  try {
+    await apiFetch(`/products/categories/${idOrThrow(categoryId)}`, { method: 'DELETE' });
+  } catch (error) {
+    return failure(error, 'The category could not be deleted.');
+  }
+  revalidatePath('/products/categories');
+  revalidatePath('/products');
+  return { ok: true };
+}
+
+export async function deleteBrandAction(brandId: string): Promise<MasterResult> {
+  try {
+    await apiFetch(`/companies/${idOrThrow(brandId)}`, { method: 'DELETE' });
+  } catch (error) {
+    return failure(error, 'The brand could not be deleted.');
+  }
+  revalidatePath('/companies');
+  revalidatePath('/products');
+  return { ok: true };
+}

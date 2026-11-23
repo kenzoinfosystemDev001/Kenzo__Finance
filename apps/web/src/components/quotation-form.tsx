@@ -14,7 +14,6 @@ import { getCustomerForEnquiryAction, searchCustomersAction } from '@/lib/enquir
 import type { ActionResult } from '@/lib/vendor-actions';
 import { calculateLine, calculateTotals, hundredthsToString, MONEY_PATTERN, RATE_PATTERN, type CalcLineResult } from '@/lib/quotation-calc';
 import { DISCOUNT_TYPE_LABELS, formatAmount, formatRate } from '@/lib/quotation-labels';
-import { todayIso } from '@/lib/enquiry-labels';
 import { CUSTOMER_TYPE_LABELS } from '@/lib/customer-labels';
 import { formatPhone } from '@/lib/vendor-labels';
 import type { DiscountType, EnquiryAssignee, EnquiryItem, QuotationEnquiryHandoff } from '@/lib/types';
@@ -64,7 +63,7 @@ export interface QuotationFormInitial {
 }
 
 const emptyContent = (): QuotationFormContent => ({
-  quotationDate: todayIso(),
+  quotationDate: '',
   validUntil: '',
   additionalDiscount: '',
   otherChargesLabel: '',
@@ -82,7 +81,7 @@ export const emptyLine = (): QuotationLineRow => ({
   req: emptyRequirement(),
   enquiryItemId: '',
   description: '',
-  quantity: '1',
+  quantity: '',
   unit: 'Nos',
   unitPrice: '',
   discountType: 'NONE',
@@ -307,7 +306,7 @@ export function QuotationForm({
     if (content.additionalDiscount.trim() && !MONEY_PATTERN.test(content.additionalDiscount.trim())) found.additionalDiscount = 'A number with up to 2 decimals.';
     if (content.otherCharges.trim() && !MONEY_PATTERN.test(content.otherCharges.trim())) found.otherCharges = 'A number with up to 2 decimals.';
     if (content.otherChargesLabel.length > 80) found.otherChargesLabel = 'At most 80 characters.';
-    if (currency.trim() && !/^[A-Za-z]{3}$/.test(currency.trim())) found.currency = 'Use a 3-letter code, e.g. INR.';
+    if (currency.trim() && !/^[A-Za-z]{3}$/.test(currency.trim())) found.currency = 'Use a 3-letter currency code.';
     for (const [field, max] of Object.entries(LIMITS)) {
       const value = field in header ? header[field as keyof QuotationHeaderPayload] : content[field as keyof QuotationFormContent];
       if (value.length > max) found[field] = `At most ${max} characters.`;
@@ -448,7 +447,7 @@ export function QuotationForm({
             <TextField label="Quotation Date" type="date" required value={content.quotationDate} onChange={(v) => setC('quotationDate', v)} error={errors.quotationDate} />
             <TextField label="Valid Until" type="date" value={content.validUntil} onChange={(v) => setC('validUntil', v)} error={errors.validUntil} hint="Optional. A quotation cannot be marked sent after this date." />
             <TextField label="Subject" value={header.subject} onChange={(v) => setH('subject', v)} error={errors.subject} maxLength={LIMITS.subject} />
-            <TextField label="Customer Reference No." value={header.referenceNumber} onChange={(v) => setH('referenceNumber', v)} error={errors.referenceNumber} maxLength={LIMITS.referenceNumber} hint="e.g. the customer's RFQ or PO reference" />
+            <TextField label="Customer Reference No." value={header.referenceNumber} onChange={(v) => setH('referenceNumber', v)} error={errors.referenceNumber} maxLength={LIMITS.referenceNumber} hint="Your customer's own reference for this order (optional)" />
             {creating || (quotationId && (revisionNumber ?? 1) <= 1) ? (
               <div>
                 <TextField label="Currency" value={currency} onChange={(v) => { setCurrency(v.toUpperCase()); setErrors(({ currency: _c, ...rest }) => rest); }} error={errors.currency} maxLength={3} />
@@ -510,7 +509,7 @@ export function QuotationForm({
                 <RequirementFields pickerOnly row={line.req} onChange={(change) => updateLine(line.key, { req: { ...line.req, ...change } })} errors={e} />
                 <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-7">
                   <TextField label="Quantity" required value={line.quantity} onChange={(v) => updateLine(line.key, { quantity: v })} error={e.quantity} inputMode="numeric" />
-                  <TextField label="Unit" value={line.unit} onChange={(v) => updateLine(line.key, { unit: v })} error={e.unit} maxLength={20} placeholder="Nos" />
+                  <TextField label="Unit" value={line.unit} onChange={(v) => updateLine(line.key, { unit: v })} error={e.unit} maxLength={20} placeholder="Enter unit" />
                   <TextField label={`Unit Price (${currency})`} required value={line.unitPrice} onChange={(v) => updateLine(line.key, { unitPrice: v })} error={e.unitPrice} inputMode="decimal" />
                   <SelectField label="Discount" value={line.discountType} onChange={(v) => updateLine(line.key, { discountType: v as DiscountType })} options={(Object.keys(DISCOUNT_TYPE_LABELS) as DiscountType[]).map((d) => ({ value: d, label: DISCOUNT_TYPE_LABELS[d] }))} />
                   {line.discountType !== 'NONE' ? (
@@ -518,7 +517,7 @@ export function QuotationForm({
                   ) : (
                     <div aria-hidden className="hidden xl:block" />
                   )}
-                  <TextField label="Tax Label" value={line.taxLabel} onChange={(v) => updateLine(line.key, { taxLabel: v })} error={e.taxLabel} maxLength={40} placeholder="e.g. GST" />
+                  <TextField label="Tax Label" value={line.taxLabel} onChange={(v) => updateLine(line.key, { taxLabel: v })} error={e.taxLabel} maxLength={40} placeholder="Enter charge label" />
                   <TextField label="Tax Rate (%)" value={line.taxRate} onChange={(v) => updateLine(line.key, { taxRate: v })} error={e.taxRate} inputMode="decimal" hint="Blank means no tax" />
                 </div>
                 <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -572,7 +571,7 @@ export function QuotationForm({
       {section('C', 'Pricing Summary', 'Calculated as you type with the same rules the server uses; the server recalculates every amount when you save.',
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <TextField label="Other Charges Label" value={content.otherChargesLabel} onChange={(v) => setC('otherChargesLabel', v)} error={errors.otherChargesLabel} maxLength={80} placeholder="e.g. Freight" />
+            <TextField label="Other Charges Label" value={content.otherChargesLabel} onChange={(v) => setC('otherChargesLabel', v)} error={errors.otherChargesLabel} maxLength={80} placeholder="Enter charge label" />
             <TextField label={`Other Charges (${currency})`} value={content.otherCharges} onChange={(v) => setC('otherCharges', v)} error={errors.otherCharges} inputMode="decimal" />
             <TextField
               label={`Additional Discount (${currency})`}

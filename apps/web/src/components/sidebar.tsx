@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { BrandLogo } from './brand-logo';
+import { BackgroundImage } from './background-image';
 import {
   IconBox,
   IconChart,
@@ -13,6 +14,7 @@ import {
   IconHome,
   IconInbox,
   IconInvoice,
+  IconImage,
   IconMenu,
   IconQuote,
   IconSettings,
@@ -50,11 +52,14 @@ const NAV: NavItem[] = [
   { label: 'Payment Management', href: '/payments', icon: IconWallet, permission: 'payment.read' },
   { label: 'Delivery Management', href: '/deliveries', icon: IconTruck, permission: 'delivery.read' },
   { label: 'Reports & Analytics', href: '/reports', icon: IconChart, permission: 'analytics.dashboard' },
+  { label: 'Sales History', href: '/sales-history', icon: IconChart, permission: 'analytics.products' },
   { label: 'Users & Roles', href: '/users', icon: IconShield, permission: 'user.read' },
+  { label: 'Admin Console', href: '/admin', icon: IconShield, permission: 'settings.manage' },
+  { label: 'Appearance', href: '/appearance', icon: IconImage, permission: 'settings.manage' },
   { label: 'Settings', href: '/settings', icon: IconSettings },
 ];
 
-export function Sidebar({ permissions }: { permissions: string[] }) {
+export function Sidebar({ permissions, backgroundUrl }: { permissions: string[]; backgroundUrl?: string | null }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -83,11 +88,14 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
       <aside
         id="sidebar"
         className={clsx(
-          'fixed inset-y-0 left-0 z-30 flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-ink',
+          'fixed inset-y-0 left-0 z-30 flex w-64 shrink-0 flex-col overflow-hidden bg-sidebar text-sidebar-ink',
           'transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full',
         )}
       >
+        {/* Behind everything in the rail; the tint keeps the navigation readable. */}
+        <BackgroundImage src={backgroundUrl ?? null} overlayClassName="bg-sidebar/85" className="absolute inset-0 -z-10" />
+
         <div className="flex h-16 items-center gap-3 px-5">
           <BrandLogo className="h-10 w-10" priority />
           <div className="min-w-0">
@@ -127,11 +135,11 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
                     href={item.href}
                     aria-current={active ? 'page' : undefined}
                     className={clsx(
-                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                      'relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-bold transition-colors',
                       item.child && 'ml-5 py-1.5 text-[0.8rem]',
                       active
-                        ? 'bg-accent font-semibold text-white shadow-sm'
-                        : 'text-sidebar-ink/85 hover:bg-sidebar-hover hover:text-white',
+                        ? 'bg-sidebar-hover text-white before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-r before:bg-sidebar-ink'
+                        : 'text-sidebar-ink hover:bg-sidebar-hover hover:text-white',
                     )}
                   >
                     <Icon size={item.child ? 16 : 18} />

@@ -39,7 +39,7 @@ export function SpecsEditor({ value, onChange }: { value: Specification[]; onCha
             value={spec.name}
             maxLength={80}
             onChange={(event) => update(index, { name: event.target.value })}
-            placeholder="Name, e.g. RAM"
+            placeholder="Enter attribute name"
             className="field-input"
           />
           <input
@@ -47,7 +47,7 @@ export function SpecsEditor({ value, onChange }: { value: Specification[]; onCha
             value={spec.value}
             maxLength={500}
             onChange={(event) => update(index, { value: event.target.value })}
-            placeholder="Value, e.g. 16 GB DDR5"
+            placeholder="Enter value"
             className="field-input"
           />
           <button type="button" className="icon-btn hover:bg-danger-subtle hover:text-danger" onClick={() => onChange(value.filter((_, i) => i !== index))} aria-label={`Remove specification ${index + 1}`}>
@@ -84,8 +84,8 @@ export function ModelFields({
   const set = <K extends keyof ModelPayload>(field: K, next: ModelPayload[K]) => onChange({ ...value, [field]: next });
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <TextField label="Model Name" required value={value.modelName} onChange={(v) => set('modelName', v)} error={errors[`${prefix}modelName`]} maxLength={200} placeholder="e.g. Latitude 5450" />
-      <TextField label="Model Number" required value={value.modelNumber} onChange={(v) => set('modelNumber', v)} error={errors[`${prefix}modelNumber`]} maxLength={100} placeholder="e.g. LAT-5450-U5" hint="Unique within the brand" />
+      <TextField label="Model Name" required value={value.modelName} onChange={(v) => set('modelName', v)} error={errors[`${prefix}modelName`]} maxLength={200} placeholder="Enter model name" />
+      <TextField label="Model Number" required value={value.modelNumber} onChange={(v) => set('modelNumber', v)} error={errors[`${prefix}modelNumber`]} maxLength={100} placeholder="Enter model number" hint="Unique within the brand" />
       <div className="sm:col-span-2">
         <label className="field-label" htmlFor={`${prefix}description`}>Model Description</label>
         <textarea id={`${prefix}description`} rows={2} maxLength={2000} value={value.description} onChange={(event) => set('description', event.target.value)} className="field-input" />
@@ -219,8 +219,8 @@ export function ProductForm({
         'Product Information',
         'The product code is generated on save. A brand cannot have two products with the same name.',
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <TextField label="Product Name" required value={form.name} onChange={(v) => set('name', v)} error={errors.name} maxLength={250} placeholder="e.g. Dell Latitude Laptop" />
-          <TextField label="Product Code / SKU" value={form.sku} onChange={(v) => set('sku', v)} error={errors.sku} maxLength={60} placeholder="Optional business SKU" hint={mode === 'create' ? 'Product ID (KI/PRD/…) is assigned automatically' : undefined} />
+          <TextField label="Product Name" required value={form.name} onChange={(v) => set('name', v)} error={errors.name} maxLength={250} placeholder="Enter product name" />
+          <TextField label="Product Code / SKU" value={form.sku} onChange={(v) => set('sku', v)} error={errors.sku} maxLength={60} placeholder="Enter SKU (optional)" hint={mode === 'create' ? 'Product ID (KI/PRD/…) is assigned automatically' : undefined} />
           <div>
             <SearchSelect
               label="Brand *"

@@ -84,13 +84,13 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
       {summary ? (
         <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatCard label="Total Deliveries" value={summary.total} icon={<IconTruck size={22} />} iconClassName="bg-accent" href="/deliveries" note={`${summary.draft} draft · ${summary.cancelled} cancelled`} />
-          <StatCard label="Scheduled" value={summary.scheduled} icon={<IconTruck size={22} />} iconClassName="bg-sky-500" href="/deliveries?status=SCHEDULED" />
-          <StatCard label="Ready for Dispatch" value={summary.readyForDispatch} icon={<IconTruck size={22} />} iconClassName="bg-violet-500" href="/deliveries?status=READY_FOR_DISPATCH" />
-          <StatCard label="Dispatched / In Transit" value={summary.dispatched + summary.inTransit} icon={<IconTruck size={22} />} iconClassName="bg-teal-500" href="/deliveries?status=DISPATCHED,IN_TRANSIT" note={`${summary.dispatched} dispatched · ${summary.inTransit} in transit`} />
+          <StatCard label="Scheduled" value={summary.scheduled} icon={<IconTruck size={22} />} iconClassName="bg-accent-hover" href="/deliveries?status=SCHEDULED" />
+          <StatCard label="Ready for Dispatch" value={summary.readyForDispatch} icon={<IconTruck size={22} />} iconClassName="bg-accent" href="/deliveries?status=READY_FOR_DISPATCH" />
+          <StatCard label="Dispatched / In Transit" value={summary.dispatched + summary.inTransit} icon={<IconTruck size={22} />} iconClassName="bg-accent-hover" href="/deliveries?status=DISPATCHED,IN_TRANSIT" note={`${summary.dispatched} dispatched · ${summary.inTransit} in transit`} />
           <StatCard label="Delivered" value={summary.delivered} icon={<IconTruck size={22} />} iconClassName="bg-success" href="/deliveries?status=DELIVERED" />
           <StatCard label="Partially Delivered" value={summary.partiallyDelivered} icon={<IconTruck size={22} />} iconClassName="bg-warning" href="/deliveries?status=PARTIALLY_DELIVERED" />
           <StatCard label="Failed / Returned" value={summary.failed + summary.returned} icon={<IconTruck size={22} />} iconClassName="bg-danger" href="/deliveries?status=DELIVERY_FAILED,RETURNED" note={`${summary.failed} failed · ${summary.returned} returned`} />
-          <StatCard label="Delayed" value={summary.delayed} icon={<IconTruck size={22} />} iconClassName="bg-orange-500" href="/deliveries?delayedOnly=true" note="Expected date passed, not delivered" />
+          <StatCard label="Delayed" value={summary.delayed} icon={<IconTruck size={22} />} iconClassName="bg-warning" href="/deliveries?delayedOnly=true" note="Expected date passed, not delivered" />
         </section>
       ) : (
         summaryError && <ErrorState title="Could not load the summary" message={summaryError} />

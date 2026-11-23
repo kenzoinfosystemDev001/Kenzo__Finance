@@ -124,7 +124,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           <StatCard label="Total Users" value={summary.total} icon={<IconUsers size={22} />} iconClassName="bg-accent" href="/users" />
           <StatCard label="Active Users" value={summary.active} icon={<IconCheck size={22} />} iconClassName="bg-success" href="/users?status=ACTIVE" />
           <StatCard label="Inactive Users" value={summary.inactive} icon={<IconPause size={22} />} iconClassName="bg-danger" href="/users?status=INACTIVE" />
-          <StatCard label="Locked Users" value={summary.locked} icon={<IconAlert size={22} />} iconClassName="bg-orange-500" href="/users?status=LOCKED" />
+          <StatCard label="Locked Users" value={summary.locked} icon={<IconAlert size={22} />} iconClassName="bg-warning" href="/users?status=LOCKED" />
         </section>
       )}
 

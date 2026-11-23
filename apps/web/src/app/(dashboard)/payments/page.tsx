@@ -73,10 +73,10 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
         <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatCard label="Total Received" value={first ?? '0'} icon={<IconWallet size={22} />} iconClassName="bg-success" />
           <StatCard label="Received Today" value={summary.receivedToday.map((v) => `${v.currency} ${formatMoney(v.total, v.currency)}`).join(' · ') || '0'} icon={<IconWallet size={22} />} iconClassName="bg-accent" />
-          <StatCard label="This Month" value={summary.receivedThisMonth.map((v) => `${v.currency} ${formatMoney(v.total, v.currency)}`).join(' · ') || '0'} icon={<IconWallet size={22} />} iconClassName="bg-cyan-500" />
+          <StatCard label="This Month" value={summary.receivedThisMonth.map((v) => `${v.currency} ${formatMoney(v.total, v.currency)}`).join(' · ') || '0'} icon={<IconWallet size={22} />} iconClassName="bg-ink-subtle" />
           <StatCard label="Pending Verification" value={summary.pendingVerification.reduce((n, v) => n + v.count, 0)} icon={<IconWallet size={22} />} iconClassName="bg-warning" href="/payments?status=PENDING_VERIFICATION" />
-          <StatCard label="Outstanding" value={outstanding || '0'} icon={<IconWallet size={22} />} iconClassName="bg-orange-500" />
-          <StatCard label="Partially Paid" value={summary.partiallyPaidInvoices} icon={<IconWallet size={22} />} iconClassName="bg-blue-500" />
+          <StatCard label="Outstanding" value={outstanding || '0'} icon={<IconWallet size={22} />} iconClassName="bg-warning" />
+          <StatCard label="Partially Paid" value={summary.partiallyPaidInvoices} icon={<IconWallet size={22} />} iconClassName="bg-accent" />
           <StatCard label="Fully Paid" value={summary.fullyPaidInvoices} icon={<IconWallet size={22} />} iconClassName="bg-success" />
           <StatCard label="Overdue" value={summary.overdueInvoices} icon={<IconWallet size={22} />} iconClassName="bg-danger" />
         </section>

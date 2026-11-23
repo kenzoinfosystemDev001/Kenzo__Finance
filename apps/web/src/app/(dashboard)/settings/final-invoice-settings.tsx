@@ -99,7 +99,7 @@ export function FinalInvoiceSettingsPanel({ approvalRequired, settings, canManag
                       label="Restart the series every financial year"
                       checked={financialYear}
                       onChange={setFinancialYear}
-                      hint="Adds the financial year after the prefix, e.g. PREFIX/2026-27/00001."
+                      hint="Adds the financial year after the prefix."
                     />
                   </div>
                   <SelectField

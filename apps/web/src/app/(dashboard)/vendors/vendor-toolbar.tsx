@@ -149,10 +149,16 @@ export function VendorToolbar({
         </button>
 
         {exportHref && (
-          <a href={exportHref} className="btn-secondary h-10">
-            <IconDownload size={16} />
-            Export
-          </a>
+          <>
+            <a href={exportHref} className="btn-secondary h-10">
+              <IconDownload size={16} />
+              CSV
+            </a>
+            <a href={`${exportHref}${exportHref.includes('?') ? '&' : '?'}format=xlsx`} className="btn-secondary h-10">
+              <IconDownload size={16} />
+              Excel
+            </a>
+          </>
         )}
       </div>
     </div>

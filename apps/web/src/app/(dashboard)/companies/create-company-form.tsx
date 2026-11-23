@@ -35,7 +35,7 @@ export function CreateCompanyForm() {
             name="name"
             required
             className="field-input"
-            placeholder="Dell"
+            placeholder="Enter brand name"
           />
         </div>
 
@@ -43,7 +43,7 @@ export function CreateCompanyForm() {
           <label htmlFor="code" className="field-label">
             Short code
           </label>
-          <input id="code" name="code" className="field-input" placeholder="DELL" />
+          <input id="code" name="code" className="field-input" placeholder="Enter short code" />
         </div>
 
         <SubmitButton />

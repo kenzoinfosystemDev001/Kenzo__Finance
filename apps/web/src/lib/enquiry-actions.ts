@@ -487,3 +487,13 @@ export async function listAssigneesAction(): Promise<EnquiryAssignee[]> {
     return [];
   }
 }
+
+export async function deleteEnquirySourceAction(sourceId: string): Promise<ActionResult> {
+  try {
+    await apiFetch(`/enquiries/sources/${id(sourceId, 'source')}`, { method: 'DELETE' });
+  } catch (error) {
+    return error instanceof ApiError ? { error: error.messages[0] } : { error: 'The source could not be deleted.' };
+  }
+  revalidatePath('/enquiries/sources');
+  return { ok: true };
+}
