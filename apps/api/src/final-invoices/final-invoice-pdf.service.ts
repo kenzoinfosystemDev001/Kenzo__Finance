@@ -15,7 +15,7 @@ const invoiceForPdf = {
 type InvoiceForPdf = Prisma.FinalInvoiceGetPayload<{ include: typeof invoiceForPdf }>;
 type Bank = { bankName?: string; accountName?: string; accountNumber?: string; ifsc?: string; swift?: string; branch?: string };
 
-const fileBase = (inv: { invoiceNumber: string | null; id: string }) => (inv.invoiceNumber ?? `invoice-draft-${inv.id.slice(0, 8)}`).replace(/[\\/]/g, '-');
+const fileBase = (inv: { invoiceNumber: string | null; id: string }) => `Final-Invoice_${(inv.invoiceNumber ?? `draft-${inv.id.slice(0, 8)}`).replace(/[\\/]/g, '-')}`;
 
 /**
  * A4 invoice PDF built only from the invoice's own snapshot. An issued
