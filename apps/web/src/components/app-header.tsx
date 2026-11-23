@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { IconChevronDown, IconLogout, IconSearch, IconUser } from './icons';
 import { PaymentAlertBell } from './payment-alert-bell';
 import type { PaymentAlertsResponse } from '@/lib/payment-alerts-types';
 
 /**
- * Top bar: vendor search and the user menu.
+ * Top bar: vendor search, payment alerts and the account menu.
  *
  * The search box submits to the vendor list, whose server-side search covers
  * vendor names, contacts, phones, emails, brands, products and model numbers.
@@ -29,15 +29,16 @@ export function AppHeader({
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
+    const onKey = (event: globalThis.KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         inputRef.current?.focus();
       }
-      if (event.key === 'Escape') setMenuOpen(false);
     };
     const onClick = (event: MouseEvent) => {
       if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
@@ -50,6 +51,32 @@ export function AppHeader({
     };
   }, []);
 
+  // Opening moves focus into the menu; closing returns it to the trigger.
+  useEffect(() => {
+    if (menuOpen) panelRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+  }, [menuOpen]);
+
+  function closeMenu() {
+    setMenuOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  function onMenuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeMenu();
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const items = Array.from(panelRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+      const current = items.indexOf(document.activeElement as HTMLElement);
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      const next = items[(current + step + items.length) % items.length];
+      next?.focus();
+    }
+  }
+
   const initials = user.fullName
     .split(/\s+/)
     .filter(Boolean)
@@ -57,7 +84,9 @@ export function AppHeader({
     .map((part) => part[0]?.toUpperCase())
     .join('');
 
-  const role = user.roles[0]?.replace(/_/g, ' ').toLowerCase() ?? 'no role';
+  const roleLabel = (role: string) => role.replace(/_/g, ' ').toLowerCase();
+  const primaryRole = user.roles[0] ? roleLabel(user.roles[0]) : 'no role';
+  const allRoles = user.roles.map(roleLabel).join(', ');
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-surface/95 px-4 pl-14 backdrop-blur lg:px-6">
@@ -83,63 +112,90 @@ export function AppHeader({
 
       <div className="ml-auto flex items-center gap-2">
         {alerts && <PaymentAlertBell data={alerts} />}
-      <div ref={menuRef} className="relative">
-        <button
-          type="button"
-          onClick={() => setMenuOpen((value) => !value)}
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-muted"
-        >
-          <span
-            aria-hidden
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white"
-          >
-            {initials || '?'}
-          </span>
-          <span className="hidden text-left sm:block">
-            <span className="block text-sm font-semibold leading-tight text-ink">{user.fullName}</span>
-            <span className="block text-xs capitalize leading-tight text-ink-subtle">{role}</span>
-          </span>
-          <IconChevronDown size={16} className="text-ink-subtle" />
-        </button>
 
-        {menuOpen && (
-          <div
-            role="menu"
-            className="absolute right-0 mt-1 w-64 overflow-hidden rounded-xl border border-border bg-surface shadow-popover"
+        <div ref={menuRef} className="relative">
+          <button
+            ref={triggerRef}
+            type="button"
+            onClick={() => setMenuOpen((value) => !value)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-label={`Account menu for ${user.fullName}`}
+            className={`group flex items-center gap-3 rounded-xl py-1.5 pl-1.5 pr-2.5 transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+              menuOpen ? 'bg-surface-muted' : ''
+            }`}
           >
-            <div className="border-b border-border px-4 py-3">
-              <p className="truncate text-sm font-semibold text-ink">{user.fullName}</p>
-              <p className="truncate text-xs text-ink-subtle">{user.email}</p>
-              {user.roles.length > 1 && (
-                <p className="mt-1 text-xs capitalize text-ink-muted">
-                  {user.roles.join(', ').replace(/_/g, ' ').toLowerCase()}
-                </p>
-              )}
-            </div>
-            <Link
-              href="/account"
-              role="menuitem"
-              onClick={() => setMenuOpen(false)}
-              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-ink hover:bg-surface-muted"
+            <span
+              aria-hidden
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar text-sm font-semibold tracking-wide text-white ring-2 ring-surface shadow-card"
             >
-              <IconUser size={16} />
-              My account
-            </Link>
-            <form action={logoutAction} className="border-t border-border">
-              <button
-                type="submit"
-                role="menuitem"
-                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-ink hover:bg-surface-muted"
-              >
-                <IconLogout size={16} />
-                Sign out
-              </button>
-            </form>
-          </div>
-        )}
-      </div>
+              {initials || '?'}
+            </span>
+            <span className="hidden min-w-0 text-left sm:block">
+              <span className="block max-w-[11rem] truncate text-sm font-semibold leading-tight text-ink">{user.fullName}</span>
+              <span className="mt-0.5 block truncate text-xs capitalize leading-tight text-ink-muted">{primaryRole}</span>
+            </span>
+            <IconChevronDown
+              size={16}
+              className={`text-ink-subtle transition-transform duration-200 ${menuOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {menuOpen && (
+            <div
+              ref={panelRef}
+              role="menu"
+              aria-label="Account"
+              onKeyDown={onMenuKeyDown}
+              className="absolute right-0 mt-2 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-surface shadow-popover"
+            >
+              <div className="flex items-start gap-3 bg-surface-muted/60 px-4 py-4">
+                <span
+                  aria-hidden
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sidebar text-base font-semibold text-white shadow-card"
+                >
+                  {initials || '?'}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-base font-semibold text-ink">{user.fullName}</p>
+                  <p className="truncate text-sm text-ink-muted" title={user.email}>{user.email}</p>
+                  <span className="mt-2 inline-flex max-w-full truncate rounded-full border border-accent/30 bg-accent-subtle px-2.5 py-0.5 text-xs font-semibold capitalize text-accent">
+                    {allRoles || 'no role'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-1.5">
+                <Link
+                  href="/account"
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                  className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-base font-medium text-ink transition-colors hover:bg-surface-muted focus:bg-surface-muted focus:outline-none"
+                >
+                  <span aria-hidden className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-muted text-ink-muted group-hover:text-accent">
+                    <IconUser size={16} />
+                  </span>
+                  My account
+                </Link>
+              </div>
+
+              <div className="border-t border-border p-1.5">
+                <form action={logoutAction}>
+                  <button
+                    type="submit"
+                    role="menuitem"
+                    className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-base font-medium text-danger transition-colors hover:bg-danger-subtle focus:bg-danger-subtle focus:outline-none"
+                  >
+                    <span aria-hidden className="flex h-8 w-8 items-center justify-center rounded-lg bg-danger-subtle text-danger">
+                      <IconLogout size={16} />
+                    </span>
+                    Sign out
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
