@@ -5,7 +5,7 @@ import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { DocumentsService } from '../documents/documents.service';
 import { buildPaginatedResult } from '../common/dto/pagination.dto';
-import { cleanMultiline, cleanOptional } from '../common/utils/normalize';
+import { cleanMultiline } from '../common/utils/normalize';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
 import {

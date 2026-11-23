@@ -14,7 +14,7 @@ import {
   buildPaginatedResult,
   type PaginatedResult,
 } from '../common/dto/pagination.dto';
-import { cleanOptional, normalizeName, normalizedNameFilter } from '../common/utils/normalize';
+import { cleanOptional, normalizedNameFilter } from '../common/utils/normalize';
 import type {
   CreateStockLocationDto,
   CreateStockMovementDto,
