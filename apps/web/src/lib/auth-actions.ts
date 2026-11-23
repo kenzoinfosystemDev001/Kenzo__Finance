@@ -110,10 +110,20 @@ export type SessionResult =
  * not signed in, and "the backend is down". Treating the third as "not signed
  * in" would bounce the user to a login page that cannot work either.
  */
+/**
+ * Next signals a page that reads cookies during static prerendering with this
+ * digest. It is control flow, not an error: rethrow it so Next can render the
+ * route dynamically. Catching it logged one error per route at build time.
+ */
+function isDynamicRenderSignal(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && (error as { digest?: unknown }).digest === 'DYNAMIC_SERVER_USAGE';
+}
+
 async function resolveSession(): Promise<SessionResult> {
   try {
     return { status: 'authenticated', user: await apiFetch<CurrentUser>('/auth/me') };
   } catch (error) {
+    if (isDynamicRenderSignal(error)) throw error;
     if (isApiUnavailable(error)) {
       return {
         status: 'api-unavailable',
