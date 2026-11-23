@@ -140,12 +140,12 @@ export class CustomersController {
         'Tax Registration No.': c.taxRegistrationNumber ?? '',
         Website: c.website ?? '',
         Status: c.status,
-        'Created At': c.createdAt.toISOString(),
+        'Created At': c.createdAt.toISOString().slice(0, 10),
     }));
     const today = new Date().toISOString().slice(0, 10);
     if (requestedFormat(format) === 'xlsx') {
       response.setHeader('Content-Type', XLSX_CONTENT_TYPE);
-      response.setHeader('Content-Disposition', `attachment; filename="customers-${today}.xlsx"`);
+      response.setHeader('Content-Disposition', `attachment; filename="Customers_${today}.xlsx"`);
       response.send(buildXlsx([recordsToSheet('Customers', records)]));
       return;
     }

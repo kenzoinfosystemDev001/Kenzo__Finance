@@ -1,3 +1,4 @@
+import { assertExportSize } from '../common/export/records-sheet';
 import { businessDayEnd, businessDayStart } from '../common/utils/business-date';
 import {
   BadRequestException,
@@ -280,8 +281,10 @@ export class CustomersService {
   }
 
   async findAllForExport(query: QueryCustomersDto) {
+    const where = this.buildWhere(query);
+    assertExportSize(await this.prisma.customer.count({ where }));
     return this.prisma.customer.findMany({
-      where: this.buildWhere(query),
+      where,
       select: {
         ...listSelect,
         website: true,
@@ -291,7 +294,6 @@ export class CustomersService {
         taxRegistrationNumber: true,
       },
       orderBy: [{ [query.sortBy]: query.sortDir }, { id: 'asc' }],
-      take: 5000,
     });
   }
 

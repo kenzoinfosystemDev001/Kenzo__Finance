@@ -1,3 +1,4 @@
+import { assertExportSize } from '../common/export/records-sheet';
 import {
   BadRequestException,
   ConflictException,
@@ -638,8 +639,10 @@ export class VendorsService {
 
   /** Flat rows for CSV/Excel export. Honours the same filters as the list. */
   async findAllForExport(query: QueryVendorsDto) {
+    const where = this.buildWhere(query);
+    assertExportSize(await this.prisma.vendor.count({ where }));
     return this.prisma.vendor.findMany({
-      where: this.buildWhere(query),
+      where,
       select: {
         vendorCode: true,
         businessName: true,

@@ -118,7 +118,21 @@ export function buildXlsx(sheets: Sheet[]): Buffer {
         return `<row r="${r + 1}">${cells}</row>`;
       })
       .join('');
-    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${body}</sheetData></worksheet>`;
+    // Column widths from the longest value in each column (capped), and a
+    // frozen header row so long lists keep their headings on screen.
+    const width = (c: number) => {
+      let longest = 8;
+      for (const row of rows) {
+        const v = row[c];
+        if (v === null || v === undefined) continue;
+        longest = Math.max(longest, String(v).length);
+      }
+      return Math.min(longest + 2, 50);
+    };
+    const columnCount = Math.max(0, ...rows.map((row) => row.length));
+    const cols = Array.from({ length: columnCount }, (_, c) => `<col min="${c + 1}" max="${c + 1}" width="${width(c)}" customWidth="1"/>`).join('');
+    const views = '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>';
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${views}${cols ? `<cols>${cols}</cols>` : ''}<sheetData>${body}</sheetData></worksheet>`;
   };
   const files = [
     {
