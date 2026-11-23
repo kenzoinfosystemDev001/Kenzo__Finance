@@ -25,6 +25,8 @@ import { DocumentKind } from '@prisma/client';
 import type { Request, Response } from 'express';
 import { QuotationsService } from './quotations.service';
 import { QuotationPdfService } from './quotation-pdf.service';
+import { QuotationEmailService } from './quotation-email.service';
+import { RecipientSearchQueryDto, SendQuotationEmailDto } from './dto/quotation-email.dto';
 import {
   CommunicationDto,
   CompanyProfileDto,
@@ -68,6 +70,7 @@ export class QuotationsController {
     private readonly pdf: QuotationPdfService,
     private readonly enquiries: EnquiriesService,
     private readonly documents: DocumentsService,
+    private readonly quotationEmails: QuotationEmailService,
   ) {}
 
   // --- Collection routes (before :id) -----------------------------------------
@@ -217,6 +220,37 @@ export class QuotationsController {
   ): Promise<void> {
     await this.quotations.revision(id, revisionNumber); // 404 for unknown revisions
     sendStoredFile(response, await this.pdf.open(id, revisionNumber, user));
+  }
+
+  @Post(':id/revisions/:revisionNumber/email')
+  @RequirePermissions(PERMISSIONS.QUOTATION_SEND)
+  @ApiOperation({ summary: 'Email an issued revision as a PDF attachment from the administrator address' })
+  sendEmail(
+    @Param('id', uuid()) id: string,
+    @Param('revisionNumber', ParseIntPipe) revisionNumber: number,
+    @Body() dto: SendQuotationEmailDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() request: Request,
+  ) {
+    return this.quotationEmails.send(id, revisionNumber, dto, user, contextOf(request));
+  }
+
+  @Get(':id/emails')
+  @RequirePermissions(PERMISSIONS.QUOTATION_READ)
+  @ApiOperation({ summary: 'Email history of a quotation, newest first' })
+  emailHistory(@Param('id', uuid()) id: string) {
+    return this.quotationEmails.history(id);
+  }
+
+  @Get(':id/email-recipients')
+  @RequirePermissions(PERMISSIONS.QUOTATION_SEND)
+  @ApiOperation({ summary: 'Customers or vendors to email, with their saved address' })
+  emailRecipients(
+    @Param('id', uuid()) id: string,
+    @Query() query: RecipientSearchQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.quotationEmails.recipients(id, query, user.permissions);
   }
 
   @Get(':id/revisions/:revisionNumber/proforma-handoff')

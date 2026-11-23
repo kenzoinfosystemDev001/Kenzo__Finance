@@ -72,6 +72,7 @@ model User {
   createdRevisions       QuotationRevision[]            @relation("RevisionCreatedBy")
   quotationStatusLogs    QuotationStatusHistory[]       @relation("QuotationStatusChangedBy")
   quotationMessages      QuotationCommunication[]       @relation("QuotationCommunicationBy")
+  quotationEmailsSent    QuotationEmail[]               @relation("QuotationEmailSentBy")
   updatedSettings        Setting[]                      @relation("SettingUpdatedBy")
   assignedProformas      ProformaInvoice[]              @relation("ProformaAssignedTo")
   issuedProformas        ProformaInvoice[]              @relation("ProformaIssuedBy")
@@ -1342,6 +1343,7 @@ model Quotation {
   revisions        QuotationRevision[]      @relation("QuotationRevisions")
   statusHistory    QuotationStatusHistory[]
   communications   QuotationCommunication[]
+  emails           QuotationEmail[]
   documents        Document[]
   proformaInvoices ProformaInvoice[]
 
@@ -1401,6 +1403,7 @@ model QuotationRevision {
   finalInvoices    FinalInvoice[]           @relation("FinalInvoiceSourceRevision")
   items            QuotationItem[]
   statusHistory    QuotationStatusHistory[]
+  emails           QuotationEmail[]
 
   createdById String? @db.Uuid
   createdBy   User?   @relation("RevisionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
@@ -1777,10 +1780,10 @@ model FinalInvoice {
   documents          Document[]                  @relation("FinalInvoiceDocuments")
   deliveries         Delivery[]
 
-  createdById String? @db.Uuid
-  updatedById String? @db.Uuid
-  createdBy   User?   @relation("FinalInvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  updatedBy   User?   @relation("FinalInvoiceUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdById      String?           @db.Uuid
+  updatedById      String?           @db.Uuid
+  createdBy        User?             @relation("FinalInvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy        User?             @relation("FinalInvoiceUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
   // One row per (invoice, due date, stage) the payment-alert sweep has raised.
   paymentReminders PaymentReminder[]
 
@@ -2222,4 +2225,48 @@ model ProofOfDelivery {
 
   @@index([deliveryId])
   @@map("proof_of_delivery")
+}
+
+enum QuotationEmailStatus {
+  PENDING
+  ACCEPTED
+  FAILED
+}
+
+enum EmailRecipientType {
+  CUSTOMER
+  VENDOR
+}
+
+/// One attempt to email an issued quotation revision. Written before sending,
+/// updated with the mail server's answer. ACCEPTED means the SMTP server took
+/// the message; it does not confirm delivery to the recipient.
+model QuotationEmail {
+  id             String               @id @default(uuid()) @db.Uuid
+  quotationId    String               @db.Uuid
+  revisionId     String               @db.Uuid
+  revisionNumber Int
+  recipientType  EmailRecipientType
+  recipientId    String?              @db.Uuid
+  recipientName  String
+  recipientEmail String
+  ccEmails       String[]             @default([])
+  subject        String
+  senderEmail    String
+  status         QuotationEmailStatus @default(PENDING)
+  messageId      String?
+  serverResponse String?
+  errorMessage   String?
+  // Client-generated per dialog opening; a repeated submit returns this row.
+  idempotencyKey String               @unique
+  sentById       String?              @db.Uuid
+  createdAt      DateTime             @default(now())
+  completedAt    DateTime?
+
+  quotation Quotation         @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  revision  QuotationRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
+  sentBy    User?             @relation("QuotationEmailSentBy", fields: [sentById], references: [id], onDelete: SetNull)
+
+  @@index([quotationId, createdAt])
+  @@map("quotation_emails")
 }

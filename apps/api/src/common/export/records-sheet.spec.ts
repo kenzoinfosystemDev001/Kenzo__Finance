@@ -1,4 +1,4 @@
-import { recordsToSheet, requestedFormat } from './records-sheet';
+import { assertExportSize, EXPORT_MAX_ROWS, recordsToSheet, requestedFormat } from './records-sheet';
 
 describe('recordsToSheet', () => {
   it('uses the first record keys as the header row, in order', () => {
@@ -27,5 +27,16 @@ describe('requestedFormat', () => {
     expect(requestedFormat('xlsx')).toBe('xlsx');
     expect(requestedFormat('csv')).toBe('csv');
     expect(requestedFormat(undefined)).toBe('csv');
+  });
+});
+
+describe('assertExportSize', () => {
+  it('allows exports up to the limit', () => {
+    expect(() => assertExportSize(EXPORT_MAX_ROWS)).not.toThrow();
+    expect(() => assertExportSize(0)).not.toThrow();
+  });
+
+  it('refuses larger exports with a message that says what to do', () => {
+    expect(() => assertExportSize(EXPORT_MAX_ROWS + 1)).toThrow(/Narrow the search or filters/);
   });
 });

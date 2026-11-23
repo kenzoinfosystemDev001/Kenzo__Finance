@@ -28,8 +28,10 @@ import { EmptyStateClient, PanelHeader } from '@/components/panel-shared';
 import { PastValidityBadge, QuotationStatusBadge } from '@/components/quotation-badges';
 import { IconChevronLeft, IconDownload, IconFile, IconInvoice, IconQuote } from '@/components/icons';
 import { QuotationCommunicationPanel, QuotationDocumentsPanel, QuotationHeaderActions } from './quotation-panels';
+import { QuotationEmailButton } from './quotation-email-dialog';
+import { EmailHistory } from './email-history';
 
-const TABS = ['overview', 'products', 'revisions', 'documents', 'communication', 'activity'] as const;
+const TABS = ['overview', 'products', 'revisions', 'documents', 'communication', 'emails', 'activity'] as const;
 type Tab = (typeof TABS)[number];
 
 /** States in which a passed validity date matters (still open). */
@@ -156,6 +158,7 @@ export default async function QuotationProfilePage({
           { key: 'revisions', label: 'Revisions', href: href('revisions'), count: quotation.revisions.length },
           { key: 'documents', label: 'Documents', href: href('documents'), count: uploads.length + quotation.revisions.filter((r) => r.pdfDocument).length },
           { key: 'communication', label: 'Communication', href: href('communication'), count: quotation.communications.length },
+          { key: 'emails', label: 'Emails', href: href('emails') },
           { key: 'activity', label: 'Activity', href: href('activity') },
         ]}
       />
@@ -236,11 +239,14 @@ export default async function QuotationProfilePage({
                         <td className="text-right tabular-nums">{formatBytes(r.pdfDocument!.sizeBytes)}</td>
                         <td className="whitespace-nowrap">{formatDateTime(r.pdfDocument!.createdAt)}</td>
                         <td>
-                          <div className="flex justify-end">
+                          <div className="flex items-center justify-end gap-2">
                             {can('quotation.download') ? (
                               <a href={`/quotations/${quotation.id}/revisions/${r.revisionNumber}/pdf`} className="icon-btn" aria-label={`Download revision ${r.revisionNumber} PDF`} title="Download"><IconDownload /></a>
                             ) : (
                               <span className="text-xs text-ink-subtle">No download permission</span>
+                            )}
+                            {can('quotation.send') && (
+                              <QuotationEmailButton quotationId={quotation.id} quotationNumber={quotation.quotationNumber} revisionNumber={r.revisionNumber} />
                             )}
                           </div>
                         </td>
@@ -271,6 +277,8 @@ export default async function QuotationProfilePage({
           canLog={can('quotation.send')}
         />
       )}
+
+      {tab === 'emails' && <EmailHistory quotationId={quotation.id} />}
 
       {tab === 'activity' && <ActivityTab quotationId={quotation.id} page={query.page} />}
     </div>

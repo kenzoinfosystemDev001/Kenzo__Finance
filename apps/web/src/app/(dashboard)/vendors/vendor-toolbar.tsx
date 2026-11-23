@@ -1,9 +1,10 @@
 'use client';
+import { ExportButton } from '@/components/export-button';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import { SearchSelect, type SearchOption } from '@/components/search-select';
-import { IconDownload, IconRefresh, IconSearch } from '@/components/icons';
+import { IconRefresh, IconSearch } from '@/components/icons';
 import { searchBrandsAction, searchProductsAction } from '@/lib/vendor-actions';
 
 /**
@@ -150,14 +151,8 @@ export function VendorToolbar({
 
         {exportHref && (
           <>
-            <a href={exportHref} className="btn-secondary h-10">
-              <IconDownload size={16} />
-              CSV
-            </a>
-            <a href={`${exportHref}${exportHref.includes('?') ? '&' : '?'}format=xlsx`} className="btn-secondary h-10">
-              <IconDownload size={16} />
-              Excel
-            </a>
+            <ExportButton href={exportHref} label="CSV" />
+            <ExportButton href={`${exportHref}${exportHref.includes('?') ? '&' : '?'}format=xlsx`} label="Excel (.xlsx)" />
           </>
         )}
       </div>

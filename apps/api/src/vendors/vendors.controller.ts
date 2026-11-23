@@ -119,14 +119,14 @@ export class VendorsController {
           Brands: row.companies.map((c) => c.company.name).join('; '),
           'Mapped Products': row._count.products,
           Status: row.archivedAt ? 'ARCHIVED' : row.status,
-          'Created At': row.createdAt.toISOString(),
+          'Created At': row.createdAt.toISOString().slice(0, 10),
         };
     });
 
     const today = new Date().toISOString().slice(0, 10);
     if (requestedFormat(format) === 'xlsx') {
       response.setHeader('Content-Type', XLSX_CONTENT_TYPE);
-      response.setHeader('Content-Disposition', `attachment; filename="vendors-${today}.xlsx"`);
+      response.setHeader('Content-Disposition', `attachment; filename="Vendors_${today}.xlsx"`);
       response.send(buildXlsx([recordsToSheet('Vendors', records)]));
       return;
     }

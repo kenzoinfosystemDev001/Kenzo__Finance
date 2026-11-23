@@ -1,8 +1,9 @@
 'use client';
+import { ExportButton } from '@/components/export-button';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState, useTransition } from 'react';
-import { IconDownload, IconRefresh, IconSearch } from '@/components/icons';
+import { IconRefresh, IconSearch } from '@/components/icons';
 import type { CustomerCategory } from '@/lib/types';
 
 const FILTER_KEYS = ['search', 'customerType', 'categoryId', 'industry', 'status', 'country', 'state', 'createdFrom', 'createdTo'];
@@ -96,8 +97,8 @@ export function CustomerToolbar({ categories, exportHref }: { categories: Custom
         </button>
         {exportHref && (
           <>
-          <a href={exportHref} className="btn-secondary h-10"><IconDownload size={16} /> CSV</a>
-          <a href={`${exportHref}${exportHref.includes('?') ? '&' : '?'}format=xlsx`} className="btn-secondary h-10"><IconDownload size={16} /> Excel</a>
+          <ExportButton href={exportHref} label="CSV" />
+          <ExportButton href={`${exportHref}${exportHref.includes('?') ? '&' : '?'}format=xlsx`} label="Excel (.xlsx)" />
           </>
         )}
       </div>

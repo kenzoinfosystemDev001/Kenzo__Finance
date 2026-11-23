@@ -12,7 +12,7 @@ import { businessToday } from '../common/utils/business-date';
  *   any open status ──▶ CANCELLED
  *
  * "Sent" records that the quotation was given to the customer by someone;
- * the application itself does not email anything.
+ * emailing is recorded separately (see quotation-email.service.ts).
  */
 export const TRANSITIONS: Partial<Record<QuotationStatus, QuotationStatus[]>> = {
   DRAFT: [QuotationStatus.PENDING_APPROVAL, QuotationStatus.SENT, QuotationStatus.CANCELLED],

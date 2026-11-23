@@ -7,6 +7,8 @@ import { DocumentsModule } from '../documents/documents.module';
 import { CustomersModule } from '../customers/customers.module';
 import { ProductsModule } from '../products/products.module';
 import { EnquiriesModule } from '../enquiries/enquiries.module';
+import { EmailModule } from '../email/email.module';
+import { QuotationEmailService } from './quotation-email.service';
 
 /**
  * Module 5 - Quotation Management. Converts enquiries through the Module 4
@@ -14,9 +16,9 @@ import { EnquiriesModule } from '../enquiries/enquiries.module';
  * module can read the accepted-revision hand-off.
  */
 @Module({
-  imports: [NumberingModule, DocumentsModule, CustomersModule, ProductsModule, EnquiriesModule],
+  imports: [NumberingModule, DocumentsModule, CustomersModule, ProductsModule, EnquiriesModule, EmailModule],
   controllers: [QuotationsController],
-  providers: [QuotationsService, QuotationPdfService],
+  providers: [QuotationsService, QuotationPdfService, QuotationEmailService],
   exports: [QuotationsService],
 })
 export class QuotationsModule {}
