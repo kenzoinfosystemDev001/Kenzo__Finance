@@ -15,6 +15,7 @@ import type {
   RefreshTokenPayload,
 } from '../common/authz/authenticated-user';
 import type { PermissionCode } from '../common/authz/permissions';
+import { photoVersion } from '../profile-photo/profile-photo.service';
 
 export interface RequestContext {
   ipAddress?: string | null;
@@ -266,7 +267,7 @@ export class AuthService {
     });
   }
 
-  async getProfile(userId: string): Promise<AuthenticatedUser> {
+  async getProfile(userId: string): Promise<AuthenticatedUser & { photoVersion: string | null }> {
     const user = await this.prisma.user.findFirstOrThrow({
       where: { id: userId, archivedAt: null },
       include: {
@@ -275,6 +276,7 @@ export class AuthService {
             role: { include: { permissions: { include: { permission: true } } } },
           },
         },
+        profilePhoto: { select: { sha256: true } },
       },
     });
 
@@ -291,6 +293,8 @@ export class AuthService {
       fullName: user.fullName,
       roles: user.roles.map((userRole) => userRole.role.code),
       permissions: [...permissions] as PermissionCode[],
+      // Version of the profile photo (null = initials). Never the image itself.
+      photoVersion: photoVersion(user.profilePhoto?.sha256),
     };
   }
 

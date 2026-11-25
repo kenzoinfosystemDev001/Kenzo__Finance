@@ -25,6 +25,8 @@ const USER_SELECT = {
   createdAt: true,
   updatedAt: true,
   roles: { select: { assignedAt: true, role: { select: { id: true, code: true, name: true } } } },
+  // Only the content hash: enough to show the avatar and bust its cache.
+  profilePhoto: { select: { sha256: true } },
 } satisfies Prisma.UserSelect;
 
 type UserRow = Prisma.UserGetPayload<{ select: typeof USER_SELECT }>;

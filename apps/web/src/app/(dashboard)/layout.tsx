@@ -46,7 +46,7 @@ export default async function DashboardLayout({
         <BackgroundImage src={workspaceUrl} overlayClassName="bg-canvas/85" className="fixed inset-0 -z-10" />
 
         <AppHeader
-          user={{ fullName: user.fullName, email: user.email, roles: user.roles }}
+          user={{ id: user.id, fullName: user.fullName, email: user.email, roles: user.roles, photoVersion: user.photoVersion }}
           canSearchVendors={user.permissions.includes('vendor.read')}
           logoutAction={logoutAction}
           alerts={paymentAlerts}

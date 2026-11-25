@@ -95,13 +95,11 @@ export function Sidebar({ permissions, backgroundUrl }: { permissions: string[];
         {/* Behind everything in the rail; the tint keeps the navigation readable. */}
         <BackgroundImage src={backgroundUrl ?? null} overlayClassName="bg-sidebar/85" className="absolute inset-0 -z-10" />
 
-        <div className="flex h-16 items-center gap-3 px-5">
-          <BrandLogo className="h-10 w-10" priority />
-          <div className="min-w-0">
-            <p className="truncate text-lg font-bold leading-tight tracking-wide text-white">KENZO</p>
-            <p className="truncate text-[0.65rem] font-medium uppercase leading-tight tracking-[0.2em] text-sidebar-muted">
-              Infosystems
-            </p>
+        <div className="flex min-h-[4rem] items-center gap-3 border-b border-white/10 px-5 py-3">
+          <BrandLogo className="h-10 w-10 shrink-0" priority />
+          <div className="min-w-0 leading-tight">
+            <p className="break-words text-[0.95rem] font-semibold tracking-wide text-white">Kenzo Infosystems</p>
+            <p className="mt-0.5 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-sidebar-muted">Pvt Ltd</p>
           </div>
         </div>
 

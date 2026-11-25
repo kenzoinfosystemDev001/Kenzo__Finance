@@ -8,6 +8,7 @@ import { formatDate, formatDateTime, formatPhone } from '@/lib/vendor-labels';
 import { actionLabel, groupByModule, moduleLabel, SUPER_ADMIN_ROLE, userActivityLabel } from '@/lib/user-labels';
 import { DefinitionList, EmptyState, ErrorState, Pagination, SectionCard } from '@/components/ui';
 import { UserStatusBadge } from '@/components/user-badges';
+import { ProfilePhotoControls } from '@/components/profile-photo-controls';
 import { IconChevronLeft, IconClock, IconMail, IconPhone } from '@/components/icons';
 import { UserActions } from './user-actions';
 
@@ -79,12 +80,6 @@ export default async function UserProfilePage({
       : allRoles.filter((role) => role.code !== SUPER_ADMIN_ROLE)
     : null;
 
-  const initials = user.fullName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
   const permissionGroups = groupByModule(user.permissions);
   const holdsAdminPermission = can('user.update') || can('user.archive');
 
@@ -117,9 +112,13 @@ export default async function UserProfilePage({
       <section className="card p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-4">
-            <span aria-hidden className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent text-xl font-bold text-white">
-              {initials || '?'}
-            </span>
+            <ProfilePhotoControls
+              owner={user.id}
+              fullName={user.fullName}
+              initialVersion={user.profilePhoto ? user.profilePhoto.sha256.slice(0, 16) : null}
+              size="lg"
+              canEdit={isSelf || (can('user.update') && !protectedTarget)}
+            />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl font-bold text-ink">{user.fullName}</h1>
