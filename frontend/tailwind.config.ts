@@ -38,6 +38,7 @@ const config: Config = {
         'sidebar-hover': withAlpha('--sidebar-hover'),
         'sidebar-ink': withAlpha('--sidebar-ink'),
         'sidebar-muted': withAlpha('--sidebar-muted'),
+        'sidebar-active': withAlpha('--sidebar-active'),
       },
       fontFamily: {
         sans: ['ui-sans-serif', 'system-ui', 'Segoe UI', 'Roboto', 'Arial', 'sans-serif'],

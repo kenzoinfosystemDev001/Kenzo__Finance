@@ -33,13 +33,12 @@ export default async function DashboardLayout({
     getAppearanceConfig(),
     user.permissions.includes('invoice.read') ? getPaymentAlerts() : Promise.resolve(null),
   ]);
-  const sidebarUrl = appearance?.sidebar ? appearanceImageUrl('sidebar', appearance.sidebar.documentId) : null;
   const workspaceUrl = appearance?.workspace ? appearanceImageUrl('workspace', appearance.workspace.documentId) : null;
   // Payment due alerts are shown to anyone who can read invoices.
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar permissions={user.permissions} backgroundUrl={sidebarUrl} />
+      <Sidebar permissions={user.permissions} />
 
       <div className="relative flex min-w-0 flex-1 flex-col">
         {/* Fixed behind the content, so it stays put while the page scrolls. */}

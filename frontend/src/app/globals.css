@@ -34,6 +34,8 @@
   --sidebar-hover: 52 73 94;
   --sidebar-ink: 236 240 241;
   --sidebar-muted: 189 195 199;
+  /* Active menu item: restrained royal blue (#2157E8). */
+  --sidebar-active: 33 87 232;
 }
 
 html,
