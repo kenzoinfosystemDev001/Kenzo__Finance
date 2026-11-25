@@ -16,6 +16,8 @@ export interface CurrentUser {
   fullName: string;
   roles: string[];
   permissions: string[];
+  /** Profile photo version (null when none is set). The image itself is never in this payload. */
+  photoVersion?: string | null;
 }
 
 export type VendorStatus = 'ACTIVE' | 'INACTIVE';
@@ -1960,6 +1962,8 @@ export interface UserListItem {
   updatedAt: string;
   /** True while a login lockout is in force (lockedUntil in the future). */
   locked: boolean;
+  /** Only the photo's content hash (null when none is set). */
+  profilePhoto?: { sha256: string } | null;
   roles: UserRoleAssignment[];
 }
 

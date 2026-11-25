@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth-actions';
 import type { Company, PaginatedResponse, Product, VendorListItem, VendorSummary } from '@/lib/types';
-import { PageHeader, SectionCard } from '@/components/ui';
+import { SectionCard } from '@/components/ui';
 import { PaymentAlertTable } from '@/components/payment-alert-rows';
 import { getPaymentAlerts } from '@/lib/payment-alerts';
 
@@ -53,9 +53,10 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <PageHeader
-        title={`Welcome, ${user?.fullName.split(' ')[0] ?? 'there'}`}
-      />
+      <header className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">Welcome</h1>
+        <span aria-hidden className="mt-2 block h-1 w-12 rounded-full bg-accent" />
+      </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stats.map((stat) => (

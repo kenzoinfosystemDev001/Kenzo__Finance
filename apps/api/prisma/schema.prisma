@@ -47,6 +47,7 @@ model User {
   roles         UserRole[]
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]     @relation("AuditActor")
+  profilePhoto  UserProfilePhoto?
 
   createdVendors         Vendor[]                       @relation("VendorCreatedBy")
   updatedVendors         Vendor[]                       @relation("VendorUpdatedBy")
@@ -135,6 +136,26 @@ model Permission {
 
   @@index([module])
   @@map("permissions")
+}
+
+/// One profile photo per user, stored in the database itself. `data` holds the
+/// re-encoded image bytes (WebP, 512x512); `sha256` is the ETag source, so a
+/// replaced photo is never served from a stale cache.
+model UserProfilePhoto {
+  userId    String   @id @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  data      Bytes    @db.ByteA
+  mimeType  String   @db.VarChar(50)
+  sizeBytes Int
+  width     Int
+  height    Int
+  sha256    String   @db.VarChar(64)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_profile_photos")
 }
 
 model UserRole {

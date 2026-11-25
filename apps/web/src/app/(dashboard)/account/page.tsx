@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth-actions';
 import { actionLabel, groupByModule, humanizeCode, moduleLabel, parsePermissionCodes } from '@/lib/user-labels';
 import { DefinitionList, PageHeader, SectionCard } from '@/components/ui';
 import { ChangePasswordForm } from './change-password-form';
+import { ProfilePhotoControls } from '@/components/profile-photo-controls';
 
 export const metadata: Metadata = { title: 'My account' };
 
@@ -20,6 +21,11 @@ export default async function AccountPage() {
       <PageHeader title="My account" description="Your profile, your access, and your password." />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <SectionCard title="Profile photo" description="Shown in the top bar and wherever you appear in the app.">
+          <ProfilePhotoControls owner="me" fullName={user.fullName} initialVersion={user.photoVersion ?? null} size="xl" />
+          <p className="mt-4 text-xs text-ink-subtle">JPG, PNG or WEBP, up to 2 MB. Your photo is stored with your account.</p>
+        </SectionCard>
+
         <SectionCard title="Profile">
           <DefinitionList
             items={[

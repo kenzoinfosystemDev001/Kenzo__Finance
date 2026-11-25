@@ -137,3 +137,24 @@ body {
     @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium;
   }
 }
+
+/* Popover and dialog motion. Short, and disabled for users who ask for reduced motion. */
+@keyframes kenzo-menu-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes kenzo-menu-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(-6px) scale(0.98); }
+}
+@keyframes kenzo-dialog-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.anim-menu-in { animation: kenzo-menu-in 160ms cubic-bezier(0.16, 1, 0.3, 1) both; transform-origin: top right; }
+.anim-menu-out { animation: kenzo-menu-out 120ms ease-in both; transform-origin: top right; }
+.anim-dialog-in { animation: kenzo-dialog-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-menu-in, .anim-menu-out, .anim-dialog-in { animation: none; }
+}
