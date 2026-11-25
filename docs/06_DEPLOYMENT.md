@@ -32,7 +32,7 @@ for production so test data can never reach real records.
 | Type | Web Service |
 | Repository | `kenzoinfosystemDev001/Kenzo__Finance` |
 | Branch | `main` |
-| Root Directory | *(blank, or `apps/api` — both work)* |
+| Root Directory | *(blank, or `backend` — both work)* |
 | Runtime | Node |
 | Build Command | `npm install && npm run render:build` |
 | Start Command | `npm run render:start` |
@@ -43,16 +43,16 @@ generates the Prisma client and compiles. `render:start` runs the compiled
 server.
 
 **The same two commands work from either Root Directory**, because both
-`package.json` and `apps/api/package.json` define `render:build` and
+`package.json` and `backend/package.json` define `render:build` and
 `render:start`. Render resolves a script relative to the Root Directory, so
 a root-only script reports `Missing script: "render:build"` when the Root
-Directory is `apps/api` — the duplication exists to make that impossible.
+Directory is `backend` — the duplication exists to make that impossible.
 
 Verified from both directories:
 
 ```
 Root Directory = (blank)      npm install && npm run render:build   -> exit 0
-Root Directory = apps/api     npm install && npm run render:build   -> exit 0
+Root Directory = backend     npm install && npm run render:build   -> exit 0
 ```
 
 > Do not put `npm install` *inside* `render:build`. Run from within a
@@ -162,12 +162,12 @@ password in the app.
 | Setting | Value |
 | --- | --- |
 | Framework Preset | Next.js |
-| Root Directory | `apps/web` |
+| Root Directory | `frontend` |
 | Build Command | *(default)* `next build` |
 | Install Command | *(default)* |
 | Node Version | 20.x |
 
-Because the Root Directory is `apps/web`, Vercel installs and builds only the
+Because the Root Directory is `frontend`, Vercel installs and builds only the
 frontend. The frontend has no Prisma or database dependency.
 
 ### Frontend environment variables
@@ -332,7 +332,7 @@ model, `include`/`select` inference collapses and perfectly good code starts
 reporting missing properties and implicit `any`. **Fix the client and they all
 disappear together** — do not "fix" them individually.
 
-`apps/api`'s `build` script is now `prisma generate && nest build`, so this
+`backend`'s `build` script is now `prisma generate && nest build`, so this
 cannot recur regardless of build command, Root Directory or cache state.
 
 The same thing happens locally after pulling a branch that changed the
@@ -361,7 +361,7 @@ then reports that no port was opened. The port binding was never the problem.
 
 **Fix:** the start command must run the already-compiled output. Set the
 service to the values in *Service settings* above (`npm run render:start`).
-`apps/api`'s own `start` script is also `node dist/main.js` now, so a plain
+`backend`'s own `start` script is also `node dist/main.js` now, so a plain
 `npm start` is correct whichever directory Render runs it from — `nest start`
 is no longer reachable by accident.
 
@@ -418,7 +418,7 @@ variable**; copy the part from `cloudinary://` onwards.
 
 ```
 npm error workspace @kenzo-erp/api@0.1.0
-npm error location /opt/render/project/src/apps/api
+npm error location /opt/render/project/src/backend
 npm error Missing script: "render:build"
 ```
 

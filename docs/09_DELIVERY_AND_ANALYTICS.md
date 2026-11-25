@@ -57,7 +57,7 @@ remaining quantities, invoice and customer history; create, edit, packages,
 schedule, simple status changes, dispatch, tracking, failure, confirm, POD
 amendment, cancel; challan / packing-list PDFs; document upload, download and
 removal. Permissions use `delivery.*` codes (see
-`apps/api/src/common/authz/permissions.ts`).
+`backend/src/common/authz/permissions.ts`).
 
 ### Database (migration `20261128090000_delivery_hardening`)
 

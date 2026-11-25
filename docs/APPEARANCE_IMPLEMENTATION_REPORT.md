@@ -4,12 +4,12 @@ Scope: five-colour theme, bold sidebar typography, and three admin-managed backg
 
 ## 1. Files changed
 
-**API (`apps/api/src`)**
+**API (`backend/src`)**
 - `settings/settings.service.ts`: adds `branding.sidebarBackgroundDocumentId` and `branding.workspaceBackgroundDocumentId` keys, with defaults and descriptions.
 - `branding/branding.service.ts`: generalised from login-only to three kinds (`login`, `sidebar`, `workspace`).
 - `branding/branding.controller.ts`: new endpoints for the sidebar and workspace images. Existing login endpoints are kept and behave as before.
 
-**Web (`apps/web/src`)**
+**Web (`frontend/src`)**
 - `app/globals.css`: design tokens replaced with the five-colour palette. Dark-mode overrides removed. Table headers, primary buttons and disabled states follow the spec.
 - `components/sidebar.tsx`: background layer, bold labels (`font-bold`), clearer active state, Appearance entry (permission `settings.manage`).
 - `components/background-image.tsx` (new): shared image layer. Falls back to the default colour if the image fails to load.
