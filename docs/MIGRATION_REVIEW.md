@@ -2,7 +2,7 @@
 
 Status: **both migrations are unapplied and wait for your approval.** Neither has been run against the production (Neon) database, and neither has been run against the test database. This document describes exactly what each one does, so you can decide.
 
-Both migrations are in `apps/api/prisma/migrations/`. The files are reviewed below in full.
+Both migrations are in `database/prisma/migrations/`. The files are reviewed below in full.
 
 ---
 

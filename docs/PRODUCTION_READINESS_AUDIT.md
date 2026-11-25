@@ -157,17 +157,17 @@ suite (`e2e.mjs`). Its last full run (run 5, before Modules 8-10) passed 129 of
 
 | Command | Result |
 |---|---|
-| `apps/api: npx jest` | 17 suites, **187 / 187 passed** |
-| `apps/api: npx tsc --noEmit` | exit 0 |
-| `apps/web: npx tsc --noEmit` | exit 0 |
-| `apps/api: npx jest src/config` (incl. new placeholder-secret test) | 13 / 13 passed |
-| `apps/api: npx jest src/users` (new privilege rules) | 5 / 5 passed |
+| `backend: npx jest` | 17 suites, **187 / 187 passed** |
+| `backend: npx tsc --noEmit` | exit 0 |
+| `frontend: npx tsc --noEmit` | exit 0 |
+| `backend: npx jest src/config` (incl. new placeholder-secret test) | 13 / 13 passed |
+| `backend: npx jest src/users` (new privilege rules) | 5 / 5 passed |
 | `npx prisma migrate status` | up to date (14) |
 | `npm audit --omit=dev` | 7 findings, see D |
 | `next lint` (web) | **not configured** (no ESLint config; `next build` ignores lint) |
 | API ESLint | **not configured** |
 | Live E2E (`e2e.mjs`, 139 steps) | **not run**: blocked on credentials (Phase 4) |
-| `apps/web: npx next build` | **passed**; all routes compiled; first-load JS 103-134 kB |
+| `frontend: npx next build` | **passed**; all routes compiled; first-load JS 103-134 kB |
 | `curl -I /login` on the running app | security headers present |
 
 No frontend component tests exist. The web app is verified by type checking
@@ -197,25 +197,25 @@ and through the live E2E suite, which exercises the same API the pages call.
 
 ## H. Modified files (this audit)
 
-- `apps/api/src/users/*` (new): user and role administration API, privilege
+- `backend/src/users/*` (new): user and role administration API, privilege
   rules, unit spec.
-- `apps/api/src/app.module.ts`: registers `UsersModule`.
-- `apps/api/src/config/env.validation.ts` and `.spec.ts`: refuse placeholder
+- `backend/src/app.module.ts`: registers `UsersModule`.
+- `backend/src/config/env.validation.ts` and `.spec.ts`: refuse placeholder
   secrets in production.
-- `apps/web/next.config.ts`: security headers.
-- `apps/web/src/app/(dashboard)/settings/payment-settings.tsx` (new) and
+- `frontend/next.config.ts`: security headers.
+- `frontend/src/app/(dashboard)/settings/payment-settings.tsx` (new) and
   `settings/page.tsx`: payment methods and auto-verify configuration.
-- `apps/web/src/app/(dashboard)/payments/new/page.tsx`: customer search
+- `frontend/src/app/(dashboard)/payments/new/page.tsx`: customer search
   (previously only the first 100 customers could be selected); a settings
   failure now shows an error instead of an empty method list.
-- `apps/web/src/app/(dashboard)/deliveries/**`,
+- `frontend/src/app/(dashboard)/deliveries/**`,
   `components/delivery-*.tsx`, `lib/delivery-*.ts`: complete delivery UI
   (list, create, edit, profile with every lifecycle action, reports) replacing
   the stubs.
 - `final-invoices/[id]/page.tsx` and `customers/[id]/page.tsx`: delivery
   panels.
-- `apps/web/src/app/(dashboard)/reports/[report]/sections.tsx`: report bodies.
-- `apps/web/src/app/(dashboard)/users/**`, `account/**`,
+- `frontend/src/app/(dashboard)/reports/[report]/sections.tsx`: report bodies.
+- `frontend/src/app/(dashboard)/users/**`, `account/**`,
   `lib/user-actions.ts`, `lib/user-labels.ts`, `components/user-badges.tsx`
   (new): user, role and account administration UI. `components/sidebar.tsx`
   and `components/app-header.tsx`: navigation. `app/(auth)/login/page.tsx`:

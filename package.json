@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "description": "Kenzo Infosystems ERP & Business Management System",
   "workspaces": [
-    "apps/*"
+    "frontend",
+    "backend"
   ],
   "engines": {
     "node": ">=20.9.0"
@@ -15,16 +16,16 @@
     "api:test": "npm run test --workspace @kenzo-erp/api",
     "web:dev": "npm run dev --workspace @kenzo-erp/web",
     "web:build": "npm run build --workspace @kenzo-erp/web",
-    "db:generate": "prisma generate --schema apps/api/prisma/schema.prisma",
-    "db:migrate": "prisma migrate dev --schema apps/api/prisma/schema.prisma",
-    "db:seed": "ts-node --transpile-only -P apps/api/tsconfig.json apps/api/prisma/seed.ts",
-    "db:studio": "prisma studio --schema apps/api/prisma/schema.prisma",
+    "db:generate": "prisma generate --schema database/prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema database/prisma/schema.prisma",
+    "db:seed": "ts-node --transpile-only -P backend/tsconfig.json database/seeds/seed.ts",
+    "db:studio": "prisma studio --schema database/prisma/schema.prisma",
     "dev": "concurrently -n api,web -c blue,green \"npm run api:dev\" \"npm run web:dev\"",
-    "db:deploy": "prisma migrate deploy --schema apps/api/prisma/schema.prisma",
+    "db:deploy": "prisma migrate deploy --schema database/prisma/schema.prisma",
     "build": "npm run api:build",
-    "start": "node apps/api/dist/main.js",
+    "start": "node backend/dist/main.js",
     "render:build": "npm run db:deploy && npm run db:generate && npm run db:seed && npm run api:build",
-    "render:start": "node apps/api/dist/main.js"
+    "render:start": "node backend/dist/main.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

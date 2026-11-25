@@ -21,22 +21,22 @@ what was checked and what was actually removed.
 - Web source search for sample names, example emails, GSTINs, mock arrays and
   hardcoded statistics found nothing. The only matches were instructional
   placeholders and default filter values read from the URL.
-- Seed data: `apps/api/prisma/seed.ts` creates no business records (checked in
+- Seed data: `database/prisma/seed.ts` creates no business records (checked in
   the earlier test pass). Nothing was removed.
 
 ## Files
 
 - Tracked files: no dummy files, temporary exports, logs, CSV/XLSX/PDF
   samples, or test screenshots are committed. A search for those types returned
-  only the app's own icons and logo (`apps/web/public/logo.png`,
-  `apps/web/src/app/icon.png`, `apps/web/src/app/apple-icon.png`). All are kept.
-- Ignored local files: `apps/api/storage/` holds uploaded documents for
+  only the app's own icons and logo (`frontend/public/logo.png`,
+  `frontend/src/app/icon.png`, `frontend/src/app/apple-icon.png`). All are kept.
+- Ignored local files: `backend/storage/` holds uploaded documents for
   whichever API runs locally. It can also hold files referenced by the shared
   database, so it was **not** deleted. Test uploads made during this session
   (sidebar, workspace and sign-in background uploads to the test database) are
   in there and can be removed once you confirm no other environment uses that
   folder.
-- Build output (`apps/web/.next/`, `apps/api/dist/`, `tsconfig.tsbuildinfo`) is
+- Build output (`frontend/.next/`, `backend/dist/`, `tsconfig.tsbuildinfo`) is
   generated and ignored. It was left in place; it is rebuilt by the build
   commands.
 
@@ -44,17 +44,17 @@ what was checked and what was actually removed.
 
 Removed (confirmed unused by the TypeScript compiler with `--noUnusedLocals`):
 
-- `apps/api/src/enquiries/enquiry-children.service.ts`: unused import
+- `backend/src/enquiries/enquiry-children.service.ts`: unused import
   `cleanOptional`.
-- `apps/api/src/quotations/quotations.service.ts`: unused import `normalizeName`.
-- `apps/api/src/stock/stock.service.ts`: unused import `normalizeName`.
+- `backend/src/quotations/quotations.service.ts`: unused import `normalizeName`.
+- `backend/src/stock/stock.service.ts`: unused import `normalizeName`.
 
 Checked and kept:
 
 - Web: `npx tsc --noUnusedLocals` reports no unused locals.
 - Dependencies: every declared package is imported somewhere. `server-only` is
   imported as a side-effect import in the web session and data modules;
-  `dotenv` is used by `apps/api/prisma/seed.ts`.
+  `dotenv` is used by `database/prisma/seed.ts`.
 - Lint: `next lint` has no ESLint configuration in this repository and prompts
   for setup. It was not configured here, because that would add dependencies.
 
@@ -78,12 +78,12 @@ The difference was not investigated in this pass.
 - Migrations, including the two unapplied migrations awaiting approval.
 - Documentation in `docs/`, including the test, security and migration reports.
 - Runtime assets (logo and app icons).
-- `apps/api/storage/` (shared runtime storage, see above).
+- `backend/storage/` (shared runtime storage, see above).
 
 ## Remaining items that need your approval
 
 1. A cleanup of the production (Neon) database. Needs a list of candidate
    records reviewed by you, and a verified backup first.
-2. Removing the test uploads in `apps/api/storage/` (listed above).
+2. Removing the test uploads in `backend/storage/` (listed above).
 3. Whether to configure ESLint so lint can run as part of this check.
 4. The 220 vs 225 test count difference in `docs/TEST_REPORT.md`.

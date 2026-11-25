@@ -1463,7 +1463,7 @@ The project uses **npm workspaces**. pnpm was the original suggestion, but
 corepack cannot verify the pnpm signature on the current development machine,
 and npm workspaces cover the same need.
 
-Apps/api and apps/web exist as described. Module folders for customers,
+backend and frontend exist as described. Module folders for customers,
 enquiries, quotations, invoicing, payments and delivery are planned, not built.
 
 ## 2. NestJS module internal structure

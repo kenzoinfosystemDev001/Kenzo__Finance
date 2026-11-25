@@ -79,7 +79,7 @@ Cancelled invoices and invoices replaced by a revision are not issued or sent, s
 
 ## Waiting on you
 
-1. **Approve the favourites database change.** It is `apps/api/prisma/migrations/20261201090000_customer_favourites/migration.sql`: three new columns on `customers` and a foreign key to `users`, all additive. It was generated from a schema diff and has not been applied. Once you approve it, I will restore the three fields in `schema.prisma`, regenerate the client, and verify the Favourite view and the toggle.
+1. **Approve the favourites database change.** It is `database/prisma/migrations/20261201090000_customer_favourites/migration.sql`: three new columns on `customers` and a foreign key to `users`, all additive. It was generated from a schema diff and has not been applied. Once you approve it, I will restore the three fields in `schema.prisma`, regenerate the client, and verify the Favourite view and the toggle.
 2. **Approve the earlier payment reminder migration** (`20261130090000_payment_reminders`), if it has not been applied yet.
 3. **Provide a test database** to verify real figures for rankings, sales and exports.
 

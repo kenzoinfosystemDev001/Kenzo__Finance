@@ -10,7 +10,7 @@ Scope: API (NestJS), web (Next.js), database (Prisma / Neon PostgreSQL), authent
 | 2 | Appearance (my earlier work) | Sidebar and workspace background images were never returned. `GET /branding/appearance` returned 403 to every user. | The route had no permission declaration, so the fail-closed guard refused it. The layout caught the error and silently showed default colours. | Declared `@RequirePermissions()` (signed-in users only; JWT still required). Same for the image read route. | Endpoint returns 200 for a signed-in user. Signed-out returns 401. |
 | 3 | Dashboard | Copy said sales, invoicing and delivery "follow in later phases", although those modules exist. | Stale text. | Replaced with accurate copy. | Visual / text check. |
 | 4 | Mobile layout | Settings and Users & Roles widened the whole page to 581 px and 960 px on a 375 px phone (horizontal scroll). | A screen-reader-only label inside a table header is absolutely positioned; the table had no positioned ancestor, so it escaped the table's own scroll container. | `.data-table` and the permission matrix table are positioning contexts. | Mobile sweep of 28 pages: no horizontal overflow. |
-| 5 | Dependencies | `zod` declared in the web app but never imported. It carries an advisory (memory exhaustion) that was flagged in the audit. | Unused dependency. | Removed from `apps/web/package.json` and the lockfile. | Web build and typecheck pass. |
+| 5 | Dependencies | `zod` declared in the web app but never imported. It carries an advisory (memory exhaustion) that was flagged in the audit. | Unused dependency. | Removed from `frontend/package.json` and the lockfile. | Web build and typecheck pass. |
 
 ## 2. Verified without defects
 
@@ -54,10 +54,10 @@ To close these gaps, we need a non-production database (or explicit permission t
 
 ## 5. Changed files in this audit
 
-- `apps/api/src/users/users.service.ts`: list ordering.
-- `apps/api/src/branding/branding.controller.ts`: permission declaration on the appearance read routes.
-- `apps/web/src/app/globals.css`: table positioning fix.
-- `apps/web/src/app/(dashboard)/users/roles/permission-matrix.tsx`: table positioning fix.
-- `apps/web/src/app/(dashboard)/dashboard/page.tsx`: copy.
-- `apps/web/package.json`, `package-lock.json`: unused `zod` removed.
+- `backend/src/users/users.service.ts`: list ordering.
+- `backend/src/branding/branding.controller.ts`: permission declaration on the appearance read routes.
+- `frontend/src/app/globals.css`: table positioning fix.
+- `frontend/src/app/(dashboard)/users/roles/permission-matrix.tsx`: table positioning fix.
+- `frontend/src/app/(dashboard)/dashboard/page.tsx`: copy.
+- `frontend/package.json`, `package-lock.json`: unused `zod` removed.
 - `docs/AUDIT_REPORT.md`: this report.

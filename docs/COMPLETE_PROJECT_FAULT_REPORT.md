@@ -28,8 +28,8 @@ No Critical issues were found. Two High issues concern correctness of the Users 
 | Module | User Management |
 | Category | Backend (Prisma query) |
 | Problem | `GET /users` returned HTTP 400 ("The request did not match the expected data shape") for every sort field except `lastLoginAt`. The page defaults to sorting by `fullName`, so the list never loaded. |
-| Root cause | `apps/api/src/users/users.service.ts` built `orderBy` with `{ sort, nulls: 'last' }` for every column. Prisma accepts `nulls` only on nullable columns. The exception filter maps Prisma validation errors to the generic 400 message, which hid the cause. |
-| Affected files | `apps/api/src/users/users.service.ts` |
+| Root cause | `backend/src/users/users.service.ts` built `orderBy` with `{ sort, nulls: 'last' }` for every column. Prisma accepts `nulls` only on nullable columns. The exception filter maps Prisma validation errors to the generic 400 message, which hid the cause. |
+| Affected files | `backend/src/users/users.service.ts` |
 | Severity | High |
 | Business impact | Administrators could not view or manage user accounts. |
 | Resolution | Apply `nulls: 'last'` only to `lastLoginAt`; all other fields sort directly. |
@@ -43,7 +43,7 @@ No Critical issues were found. Two High issues concern correctness of the Users 
 | Category | Backend (authorisation declaration) |
 | Problem | `GET /branding/appearance` and `GET /branding/appearance/:kind/image` returned 403 to every user. The sidebar and workspace backgrounds configured in Admin → Appearance never appeared. |
 | Root cause | The routes had no permission declaration. `PermissionsGuard` fails closed on undeclared routes. `getAppearanceConfig()` caught the error and silently fell back to defaults, so nothing visibly failed. |
-| Affected files | `apps/api/src/branding/branding.controller.ts`, `apps/web/src/lib/branding.ts` |
+| Affected files | `backend/src/branding/branding.controller.ts`, `frontend/src/lib/branding.ts` |
 | Severity | High |
 | Business impact | Configured appearance silently ignored for all users. |
 | Resolution | Declared `@RequirePermissions()` (empty list = any signed-in user). The JWT guard still applies. |
@@ -57,7 +57,7 @@ No Critical issues were found. Two High issues concern correctness of the Users 
 | Category | Frontend (responsive layout) |
 | Problem | At 375px width, Settings grew to 581px and the Roles permission matrix to 960px, forcing horizontal page scrolling. |
 | Root cause | A screen-reader-only label (`sr-only`, absolutely positioned) inside a table header had no positioned ancestor, so it escaped the table's own `overflow-x-auto` container and widened the document. |
-| Affected files | `apps/web/src/app/globals.css` (`.data-table`), `apps/web/src/app/(dashboard)/users/roles/permission-matrix.tsx` |
+| Affected files | `frontend/src/app/globals.css` (`.data-table`), `frontend/src/app/(dashboard)/users/roles/permission-matrix.tsx` |
 | Severity | Medium |
 | Business impact | Pages unusable on phones without sideways scrolling. |
 | Resolution | Tables are positioning contexts (`relative`), keeping absolutely positioned helpers inside the scroll container. |
@@ -71,7 +71,7 @@ No Critical issues were found. Two High issues concern correctness of the Users 
 | Category | Frontend (content) |
 | Problem | Text said sales, invoicing and delivery "follow in later phases" although those modules are live. |
 | Root cause | Stale copy. |
-| Affected files | `apps/web/src/app/(dashboard)/dashboard/page.tsx` |
+| Affected files | `frontend/src/app/(dashboard)/dashboard/page.tsx` |
 | Severity | Low |
 | Business impact | Misleading to users. |
 | Resolution | Replaced with accurate copy. |
@@ -85,7 +85,7 @@ No Critical issues were found. Two High issues concern correctness of the Users 
 | Category | Security (dependency) |
 | Problem | `zod` declared in the web app but never imported; carries an advisory. |
 | Root cause | Leftover dependency. |
-| Affected files | `apps/web/package.json`, `package-lock.json` |
+| Affected files | `frontend/package.json`, `package-lock.json` |
 | Severity | Low |
 | Business impact | Unneeded attack surface. |
 | Resolution | Removed the dependency. |
@@ -99,7 +99,7 @@ No Critical issues were found. Two High issues concern correctness of the Users 
 | Category | Security / caching |
 | Problem | JSON responses carried no `Cache-Control`, so any intermediary or browser could cache business data. |
 | Root cause | No global default; only file and export routes set headers. |
-| Affected files | `apps/api/src/main.ts` |
+| Affected files | `backend/src/main.ts` |
 | Severity | Medium |
 | Business impact | Risk of stale or shared-cache exposure of business data. |
 | Resolution | Global `Cache-Control: no-store` default; routes that legitimately cache (the public sign-in background) still set their own header, which overrides the default. |
@@ -142,7 +142,7 @@ No Critical issues were found. Two High issues concern correctness of the Users 
 | Module | Documents, Appearance (login, sidebar, workspace), all attachment panels |
 | Category | Data / storage |
 | Problem | Removing or replacing a file archives its database row; the stored file is kept. The requested behaviour is to delete the file once nothing references it. |
-| Root cause | Deliberate design: `DocumentsService.archive` keeps the file "so it stays auditable" (`apps/api/src/documents/documents.service.ts`). The appearance feature follows the same rule (`apps/api/src/branding/branding.service.ts`). |
+| Root cause | Deliberate design: `DocumentsService.archive` keeps the file "so it stays auditable" (`backend/src/documents/documents.service.ts`). The appearance feature follows the same rule (`backend/src/branding/branding.service.ts`). |
 | Severity | Medium |
 | Business impact | Storage grows; deleted documents remain recoverable from storage by anyone with storage access. |
 | Resolution options | (a) Hard-delete the file and row when unreferenced, and keep only the audit entry — conflicts with the existing auditability design; or (b) keep archiving, but purge stored bytes for archived rows after a retention period. **Decision needed from you.** |

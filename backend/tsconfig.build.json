@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    // Keep the incremental cache inside dist. If it lives outside, deleting
+    // dist leaves a stale cache and the next build silently emits nothing.
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "../database",
+    "test",
+    "**/*.spec.ts"
+  ]
+}

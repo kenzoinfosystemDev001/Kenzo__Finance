@@ -31,14 +31,14 @@
 
 ## Database change (not yet applied)
 
-Migration folder: `apps/api/prisma/migrations/20261130090000_payment_reminders/`. It is **additive only**: one enum, one table, one unique index and one foreign key. No existing table or row changes.
+Migration folder: `database/prisma/migrations/20261130090000_payment_reminders/`. It is **additive only**: one enum, one table, one unique index and one foreign key. No existing table or row changes.
 
 It was generated from a schema diff offline and has **not** been applied to the shared database. Applying it needs your approval, as it is a production schema change.
 
 - Until it is applied, the **alert list, bell and dashboard work**, because they read existing columns only.
 - The **sweep fails** as soon as there is an alert to record, because it writes to `PaymentReminder`. The failure is logged each hour and nothing else breaks. A sweep with no open alerts writes nothing, so it still succeeds.
 
-To apply after approval: `npx prisma migrate deploy --schema apps/api/prisma/schema.prisma` from the repository root.
+To apply after approval: `npx prisma migrate deploy --schema database/prisma/schema.prisma` from the repository root.
 
 ## Configuration
 

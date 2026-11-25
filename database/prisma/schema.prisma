@@ -1,0 +1,2310 @@
+// ---------------------------------------------------------------------------
+// Kenzo Infosystems ERP - Prisma schema
+// Scope: identity/RBAC foundation + Module 1 (Vendor Management).
+//
+// Deliberately NOT modelled yet (pending client confirmation - see
+// docs/01_PRD.md section 10):
+//   * stock ledger / warehouses          -> inventory decision open
+//   * purchase orders, GRN, vendor bills -> procurement decision open
+//   * branch / multi-company columns     -> org structure decision open
+//   * vendor supply price on mappings    -> commercial rules not approved
+// Adding any of these later is an additive migration; guessing them now
+// would mean a destructive one.
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ===========================================================================
+// Identity, roles and permissions
+// ===========================================================================
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String     @unique
+  passwordHash String
+  fullName     String
+  phone        String?
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+
+  roles         UserRole[]
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]     @relation("AuditActor")
+  profilePhoto  UserProfilePhoto?
+
+  createdVendors         Vendor[]                       @relation("VendorCreatedBy")
+  updatedVendors         Vendor[]                       @relation("VendorUpdatedBy")
+  uploadedDocs           Document[]                     @relation("DocumentUploadedBy")
+  requestedOcr           OcrJob[]                       @relation("OcrRequestedBy")
+  stockMovements         StockMovement[]                @relation("StockMovementCreatedBy")
+  createdProducts        Product[]                      @relation("ProductCreatedBy")
+  updatedProducts        Product[]                      @relation("ProductUpdatedBy")
+  createdModels          ProductModel[]                 @relation("ProductModelCreatedBy")
+  createdCustomers       Customer[]                     @relation("CustomerCreatedBy")
+  updatedCustomers       Customer[]                     @relation("CustomerUpdatedBy")
+  customerInterests      CustomerProductInterest[]      @relation("CustomerInterestCreatedBy")
+  assignedEnquiries      Enquiry[]                      @relation("EnquiryAssignedTo")
+  createdEnquiries       Enquiry[]                      @relation("EnquiryCreatedBy")
+  updatedEnquiries       Enquiry[]                      @relation("EnquiryUpdatedBy")
+  convertedEnquiries     Enquiry[]                      @relation("EnquiryConvertedBy")
+  assignedFollowUps      EnquiryFollowUp[]              @relation("FollowUpAssignedTo")
+  createdFollowUps       EnquiryFollowUp[]              @relation("FollowUpCreatedBy")
+  enquiryStatusLogs      EnquiryStatusHistory[]         @relation("EnquiryStatusChangedBy")
+  assignedQuotations     Quotation[]                    @relation("QuotationAssignedTo")
+  createdQuotations      Quotation[]                    @relation("QuotationCreatedBy")
+  updatedQuotations      Quotation[]                    @relation("QuotationUpdatedBy")
+  createdRevisions       QuotationRevision[]            @relation("RevisionCreatedBy")
+  quotationStatusLogs    QuotationStatusHistory[]       @relation("QuotationStatusChangedBy")
+  quotationMessages      QuotationCommunication[]       @relation("QuotationCommunicationBy")
+  quotationEmailsSent    QuotationEmail[]               @relation("QuotationEmailSentBy")
+  updatedSettings        Setting[]                      @relation("SettingUpdatedBy")
+  assignedProformas      ProformaInvoice[]              @relation("ProformaAssignedTo")
+  issuedProformas        ProformaInvoice[]              @relation("ProformaIssuedBy")
+  createdProformas       ProformaInvoice[]              @relation("ProformaCreatedBy")
+  updatedProformas       ProformaInvoice[]              @relation("ProformaUpdatedBy")
+  proformaStatusLogs     ProformaInvoiceStatusHistory[] @relation("ProformaStatusChangedBy")
+  assignedFinalInvoices  FinalInvoice[]                 @relation("FinalInvoiceAssignedTo")
+  issuedFinalInvoices    FinalInvoice[]                 @relation("FinalInvoiceIssuedBy")
+  createdFinalInvoices   FinalInvoice[]                 @relation("FinalInvoiceCreatedBy")
+  updatedFinalInvoices   FinalInvoice[]                 @relation("FinalInvoiceUpdatedBy")
+  finalInvoiceStatusLogs FinalInvoiceStatusHistory[]    @relation("FinalInvoiceStatusChangedBy")
+  receivedPayments       Payment[]                      @relation("PaymentReceivedBy")
+  verifiedPayments       Payment[]                      @relation("PaymentVerifiedBy")
+  rejectedPayments       Payment[]                      @relation("PaymentRejectedBy")
+  reversedPayments       Payment[]                      @relation("PaymentReversedBy")
+  createdPayments        Payment[]                      @relation("PaymentCreatedBy")
+  updatedPayments        Payment[]                      @relation("PaymentUpdatedBy")
+  paymentStatusLogs      PaymentStatusHistory[]         @relation("PaymentStatusChangedBy")
+  createdDeliveries      Delivery[]                     @relation("DeliveryCreatedBy")
+  updatedDeliveries      Delivery[]                     @relation("DeliveryUpdatedBy")
+  deliveryStatusLogs     DeliveryStatusHistory[]        @relation("DeliveryStatusChangedBy")
+  deliveryConfirmations  ProofOfDelivery[]              @relation("DeliveryConfirmedBy")
+  deliveryTrackingEvents ShipmentTrackingEvent[]        @relation("DeliveryTrackingRecordedBy")
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  @@index([status])
+  @@map("users")
+}
+
+model Role {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @unique // SUPER_ADMIN, VENDOR_MANAGER, ...
+  name        String
+  description String?
+  // System roles cannot be deleted or renamed through the API.
+  isSystem    Boolean @default(false)
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @unique // "vendor.create", "vendor.read", ...
+  module      String // "vendor", "product", "company", "user", ...
+  action      String // "create", "read", "update", "archive", "export", ...
+  description String?
+
+  roles RolePermission[]
+
+  createdAt DateTime @default(now())
+
+  @@index([module])
+  @@map("permissions")
+}
+
+/// One profile photo per user, stored in the database itself. `data` holds the
+/// re-encoded image bytes (WebP, 512x512); `sha256` is the ETag source, so a
+/// replaced photo is never served from a stale cache.
+model UserProfilePhoto {
+  userId    String   @id @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  data      Bytes    @db.ByteA
+  mimeType  String   @db.VarChar(50)
+  sizeBytes Int
+  width     Int
+  height    Int
+  sha256    String   @db.VarChar(64)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_profile_photos")
+}
+
+model UserRole {
+  userId     String   @db.Uuid
+  roleId     String   @db.Uuid
+  assignedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  // Only the hash is stored; a database leak must not yield usable tokens.
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// ===========================================================================
+// Vendor management (Module 1)
+// ===========================================================================
+
+enum VendorStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model VendorCategory {
+  id             String  @id @default(uuid()) @db.Uuid
+  name           String
+  normalizedName String  @unique
+  description    String?
+  isActive       Boolean @default(true)
+  sortOrder      Int     @default(0)
+
+  vendors Vendor[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("vendor_categories")
+}
+
+model Vendor {
+  id         String @id @default(uuid()) @db.Uuid
+  // Human-facing identifier, allocated by DocumentSequence (KI/VEN/0001).
+  vendorCode String @unique
+
+  businessName   String
+  legalName      String?
+  // Lowercased, punctuation-stripped businessName. Used for duplicate
+  // detection and case-insensitive search without a trigram index.
+  normalizedName String
+
+  // Company-level communication channels (switchboard / general inbox).
+  // People are modelled in VendorContact.
+  email          String?
+  alternateEmail String?
+  phone          String?
+  alternatePhone String?
+  website        String?
+
+  // Mirror of the primary VendorContact's name. Maintained by the service on
+  // every contact write so list queries and exports need no join. The
+  // authoritative data is vendor_contacts.
+  contactPerson String?
+
+  // Mirror of the primary VendorAddress. Maintained by the service on every
+  // address write; vendor_addresses is authoritative. Kept (not dropped) so
+  // existing readers such as product detail and CSV export keep working.
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String  @default("India")
+
+  // Company / LLP / registration number (CIN, Udyam, shop licence...).
+  registrationNumber String?
+
+  // Stored uppercase+trimmed. Unique when present; NULLs do not collide in
+  // PostgreSQL, so vendors without a GSTIN are still allowed.
+  gstin String? @unique
+  pan   String?
+
+  categoryId String?      @db.Uuid
+  status     VendorStatus @default(ACTIVE)
+  notes      String?
+
+  category  VendorCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  contacts  VendorContact[]
+  addresses VendorAddress[]
+  companies VendorCompany[]
+  products  VendorProduct[]
+  documents Document[]
+  ocrJobs   OcrJob[]
+
+  createdById String? @db.Uuid
+  updatedById String? @db.Uuid
+  createdBy   User?   @relation("VendorCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?   @relation("VendorUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  // Soft delete. Historical transactions must survive vendor deactivation.
+  archivedAt DateTime?
+
+  @@index([normalizedName])
+  @@index([status])
+  @@index([categoryId])
+  @@index([archivedAt])
+  @@map("vendors")
+}
+
+// Which part of the vendor's business a contact person represents. At most
+// one primary contact exists per (vendor, contactType); the service enforces
+// it inside a transaction that locks the vendor row.
+enum VendorContactType {
+  GENERAL
+  SALES
+  ACCOUNTS
+  SUPPORT
+  MANAGEMENT
+  LOGISTICS
+}
+
+model VendorContact {
+  id             String            @id @default(uuid()) @db.Uuid
+  vendorId       String            @db.Uuid
+  contactType    VendorContactType @default(GENERAL)
+  name           String
+  designation    String?
+  email          String?
+  alternateEmail String?
+  phone          String?
+  alternatePhone String?
+  isPrimary      Boolean           @default(false)
+  notes          String?
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendorId])
+  @@index([vendorId, contactType])
+  @@index([phone])
+  @@index([email])
+  @@map("vendor_contacts")
+}
+
+enum VendorAddressType {
+  REGISTERED_OFFICE
+  OFFICE
+  WAREHOUSE
+  OTHER
+}
+
+// A vendor may have a registered office, branch offices and warehouses.
+// Exactly one address per vendor is primary; it is mirrored onto vendors.*.
+model VendorAddress {
+  id           String            @id @default(uuid()) @db.Uuid
+  vendorId     String            @db.Uuid
+  addressType  VendorAddressType @default(OFFICE)
+  label        String?
+  addressLine1 String
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String            @default("India")
+  isPrimary    Boolean           @default(false)
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendorId])
+  @@index([city])
+  @@map("vendor_addresses")
+}
+
+// Company == brand (Dell, HP, Lenovo). Normalized so brand names are not
+// repeated as free text on every product and mapping row.
+model Company {
+  id             String  @id @default(uuid()) @db.Uuid
+  name           String
+  normalizedName String  @unique
+  code           String? @unique
+  website        String?
+  isActive       Boolean @default(true)
+
+  products Product[]
+  vendors  VendorCompany[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  @@index([normalizedName])
+  @@map("companies")
+}
+
+model ProductCategory {
+  id             String  @id @default(uuid()) @db.Uuid
+  name           String
+  normalizedName String  @unique
+  description    String?
+  isActive       Boolean @default(true)
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("product_categories")
+}
+
+// A catalogue product (e.g. "Dell Latitude Laptop") under one shared brand.
+// Its concrete models live in ProductModel. Unique per brand by normalised name.
+model Product {
+  id             String  @id @default(uuid()) @db.Uuid
+  // System-generated, human-facing id (KI/PRD/00001). Never reused.
+  productCode    String  @unique
+  // Optional business SKU entered by the user; unique when present.
+  sku            String? @unique
+  name           String
+  normalizedName String
+  companyId      String  @db.Uuid
+  categoryId     String? @db.Uuid
+
+  // LEGACY (pre-ProductModel, when one product row was one model). Kept so
+  // existing rows stay readable; new products leave it null and use models.
+  modelNumber    String?
+  designNumber   String?
+  description    String?
+  // Free-form key/value technical specifications, e.g.
+  // { "Processor": "Intel i5-1335U", "RAM": "16GB" }. Kept as JSON because
+  // the attribute set differs per category and is not known in advance.
+  specifications Json?
+  isActive       Boolean @default(true)
+
+  // Quantity at or below which the product is reported as low stock.
+  // Null means "not tracked for reordering". Only meaningful when stock
+  // tracking is enabled.
+  reorderLevel Int?
+
+  // Primary catalogue image. Separate from `documents` so the product has one
+  // definite image rather than "whichever upload happens to be first".
+  imageDocumentId String?   @unique @db.Uuid
+  imageDocument   Document? @relation("ProductPrimaryImage", fields: [imageDocumentId], references: [id], onDelete: SetNull)
+
+  company           Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  category          ProductCategory?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  models            ProductModel[]
+  vendors           VendorProduct[]
+  customerInterests CustomerProductInterest[]
+  enquiryItems      EnquiryItem[]
+  quotationItems    QuotationItem[]
+  documents         Document[]                @relation("ProductDocuments")
+  proformaItems     ProformaInvoiceItem[]
+  finalInvoiceItems FinalInvoiceItem[]
+  movements         StockMovement[]
+
+  createdById String? @db.Uuid
+  updatedById String? @db.Uuid
+  createdBy   User?   @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?   @relation("ProductUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  // Legacy uniqueness of the old one-row-per-model design (NULLs never collide).
+  @@unique([companyId, modelNumber])
+  // One brand cannot list the same product twice.
+  @@unique([companyId, normalizedName])
+  @@index([normalizedName])
+  @@index([isActive])
+  @@index([createdAt])
+  @@index([modelNumber])
+  @@index([designNumber])
+  @@index([categoryId])
+  @@map("products")
+}
+
+// Vendor <-> brand. "This vendor supplies Dell."
+model VendorCompany {
+  id           String  @id @default(uuid()) @db.Uuid
+  vendorId     String  @db.Uuid
+  companyId    String  @db.Uuid
+  isAuthorized Boolean @default(false) // authorised partner / distributor
+  remarks      String?
+
+  vendor  Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([vendorId, companyId])
+  @@index([companyId])
+  @@map("vendor_companies")
+}
+
+// Vendor <-> product. Many-to-many in both directions.
+// NOTE: no supply price column. Vendor pricing rules are not confirmed
+// (docs/01_PRD.md 5.2) and money columns must not be guessed.
+model VendorProduct {
+  id           String  @id @default(uuid()) @db.Uuid
+  vendorId     String  @db.Uuid
+  productId    String  @db.Uuid
+  vendorSku    String?
+  leadTimeDays Int?
+  isPreferred  Boolean @default(false)
+  remarks      String?
+
+  vendor  Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Whether this supply relationship is currently in use. Inactive mappings
+  // stay for history but are not offered for new business.
+  status VendorMappingStatus @default(ACTIVE)
+
+  // Optional: the specific models this vendor supplies. None means the
+  // mapping applies to the product as a whole.
+  models VendorProductModel[]
+
+  @@unique([vendorId, productId])
+  @@index([productId])
+  @@map("vendor_products")
+}
+
+enum VendorMappingStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// A concrete model of a product, e.g. Latitude 5450 of "Dell Latitude Laptop".
+// Specifications are free-form key/value pairs because each category needs a
+// different attribute set (laptop: processor/RAM; switch: ports/PoE).
+model ProductModel {
+  id                    String  @id @default(uuid()) @db.Uuid
+  productId             String  @db.Uuid
+  // System-generated, human-facing id (KI/MDL/00001).
+  modelCode             String  @unique
+  modelName             String
+  modelNumber           String
+  // Uppercased, whitespace-stripped modelNumber for duplicate checks.
+  normalizedModelNumber String
+  description           String?
+  specifications        Json?
+  isActive              Boolean @default(true)
+
+  imageDocumentId String?   @unique @db.Uuid
+  imageDocument   Document? @relation("ProductModelImage", fields: [imageDocumentId], references: [id], onDelete: SetNull)
+
+  product           Product                   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vendors           VendorProductModel[]
+  customerInterests CustomerProductInterest[]
+  enquiryItems      EnquiryItem[]
+  quotationItems    QuotationItem[]
+  proformaItems     ProformaInvoiceItem[]
+
+  finalInvoiceItems FinalInvoiceItem[]
+  createdById       String?            @db.Uuid
+  createdBy         User?              @relation("ProductModelCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // A model number appears once per product (brand-wide uniqueness is
+  // checked by the service, since the brand lives on the parent product).
+  @@unique([productId, normalizedModelNumber])
+  @@index([modelNumber])
+  @@index([modelName])
+  @@map("product_models")
+}
+
+// Vendor <-> specific model, always under an existing vendor<->product row,
+// so a model mapping can never exist without its product mapping.
+model VendorProductModel {
+  id              String              @id @default(uuid()) @db.Uuid
+  vendorProductId String              @db.Uuid
+  productModelId  String              @db.Uuid
+  vendorSku       String?
+  isPreferred     Boolean             @default(false)
+  status          VendorMappingStatus @default(ACTIVE)
+
+  vendorProduct VendorProduct @relation(fields: [vendorProductId], references: [id], onDelete: Cascade)
+  productModel  ProductModel  @relation(fields: [productModelId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([vendorProductId, productModelId])
+  @@index([productModelId])
+  @@map("vendor_product_models")
+}
+
+// ===========================================================================
+// Documents, OCR, audit, numbering
+// ===========================================================================
+
+enum DocumentKind {
+  VENDOR_ONBOARDING
+  VENDOR_VISITING_CARD
+  VENDOR_GST_CERTIFICATE
+  VENDOR_PAN
+  VENDOR_REGISTRATION_CERTIFICATE
+  VENDOR_AGREEMENT
+  VENDOR_PRODUCT_CATALOGUE
+  VENDOR_OTHER
+  PRODUCT_IMAGE
+  PRODUCT_DATASHEET
+  PRODUCT_BROCHURE
+  PRODUCT_TECH_SPEC
+  PRODUCT_MANUAL
+  PRODUCT_WARRANTY
+  PRODUCT_OTHER
+  CUSTOMER_GST_CERTIFICATE
+  CUSTOMER_PAN
+  CUSTOMER_REGISTRATION_CERTIFICATE
+  CUSTOMER_AGREEMENT
+  CUSTOMER_PURCHASE_AUTHORIZATION
+  CUSTOMER_OTHER
+  ENQUIRY_REQUIREMENT
+  ENQUIRY_TECH_SPEC
+  ENQUIRY_REFERENCE_IMAGE
+  ENQUIRY_EXISTING_QUOTATION
+  ENQUIRY_OTHER
+  QUOTATION_PDF
+  QUOTATION_CUSTOMER_DOCUMENT
+  QUOTATION_ATTACHMENT
+  PROFORMA_PDF
+  PROFORMA_ATTACHMENT
+  FINAL_INVOICE_PDF
+  FINAL_INVOICE_ATTACHMENT
+  PAYMENT_RECEIPT
+  PAYMENT_PROOF
+  DELIVERY_CHALLAN
+  PACKING_LIST
+  DELIVERY_POD
+  DELIVERY_SIGNATURE
+  DELIVERY_PHOTO
+  DELIVERY_ATTACHMENT
+  // Application branding (login page background). Not owned by a record;
+  // referenced from the "branding.loginBackgroundDocumentId" setting.
+  BRANDING_IMAGE
+}
+
+model Document {
+  id               String       @id @default(uuid()) @db.Uuid
+  kind             DocumentKind @default(VENDOR_OTHER)
+  originalFilename String
+  // Opaque key into private storage. Never a public URL, never a client path.
+  storageKey       String       @unique
+  mimeType         String
+  sizeBytes        Int
+  checksumSha256   String
+
+  // Explicit FK per owner type rather than a polymorphic ownerId pair, so the
+  // database keeps referential integrity. Later modules add their own column.
+  vendorId String? @db.Uuid
+  vendor   Vendor? @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  productId String?  @db.Uuid
+  product   Product? @relation("ProductDocuments", fields: [productId], references: [id], onDelete: Cascade)
+
+  // Restrict: a customer with documents cannot be hard-deleted.
+  customerId String?   @db.Uuid
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  // Restrict: an enquiry with attachments cannot be hard-deleted.
+  enquiryId String?  @db.Uuid
+  enquiry   Enquiry? @relation(fields: [enquiryId], references: [id], onDelete: Restrict)
+
+  // Restrict: a quotation with documents cannot be hard-deleted.
+  quotationId   String?            @db.Uuid
+  quotation     Quotation?         @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  // The issued PDF a revision is pinned to.
+  pdfOfRevision QuotationRevision? @relation("RevisionPdf")
+
+  // Restrict: a proforma invoice with documents cannot be hard-deleted.
+  proformaInvoiceId String?          @db.Uuid
+  proformaInvoice   ProformaInvoice? @relation("ProformaDocuments", fields: [proformaInvoiceId], references: [id], onDelete: Restrict)
+  // The issued PDF a proforma invoice is pinned to.
+  pdfOfProforma     ProformaInvoice? @relation("ProformaPdf")
+  // Restrict: a final invoice with documents cannot be hard-deleted.
+  finalInvoiceId    String?          @db.Uuid
+  finalInvoice      FinalInvoice?    @relation("FinalInvoiceDocuments", fields: [finalInvoiceId], references: [id], onDelete: Restrict)
+  pdfOfFinalInvoice FinalInvoice?    @relation("FinalInvoicePdf")
+  // Restrict: a payment with documents cannot be hard-deleted (payments never are).
+  paymentId         String?          @db.Uuid
+  payment           Payment?         @relation("PaymentDocuments", fields: [paymentId], references: [id], onDelete: Restrict)
+  receiptOf         Payment?         @relation("PaymentReceipt")
+  deliveryId        String?          @db.Uuid
+  delivery          Delivery?        @relation("DeliveryDocuments", fields: [deliveryId], references: [id], onDelete: Restrict)
+  challanOf         Delivery?        @relation("DeliveryChallan")
+  packingListOf     Delivery?        @relation("DeliveryPackingList")
+
+  // Back-references for the product / model using this file as its image.
+  primaryImageOf Product?      @relation("ProductPrimaryImage")
+  modelImageOf   ProductModel? @relation("ProductModelImage")
+
+  uploadedById String? @db.Uuid
+  uploadedBy   User?   @relation("DocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  ocrJobs OcrJob[]
+
+  // Set on a new upload that replaces an older file. The older document is
+  // archived, not deleted, so the replacement chain stays auditable.
+  replacesDocumentId String?   @unique @db.Uuid
+  replaces           Document? @relation("DocumentReplacement", fields: [replacesDocumentId], references: [id], onDelete: SetNull)
+  replacedBy         Document? @relation("DocumentReplacement")
+
+  createdAt  DateTime  @default(now())
+  archivedAt DateTime?
+
+  @@index([vendorId])
+  @@index([productId])
+  @@index([customerId])
+  @@index([enquiryId])
+  @@index([quotationId])
+  @@index([kind])
+  @@index([proformaInvoiceId])
+  @@index([finalInvoiceId])
+  @@index([paymentId])
+  @@index([deliveryId])
+  @@map("documents")
+}
+
+enum OcrStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum OcrTargetType {
+  VENDOR
+}
+
+model OcrJob {
+  id         String        @id @default(uuid()) @db.Uuid
+  documentId String        @db.Uuid
+  targetType OcrTargetType @default(VENDOR)
+  provider   String
+  status     OcrStatus     @default(PENDING)
+
+  // Provider payload, kept for audit and re-mapping without re-billing OCR.
+  rawResult         Json?
+  // Provider-independent field map shown on the review screen.
+  normalizedResult  Json?
+  overallConfidence Float?
+  errorMessage      String?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  // Set when a user confirms the review and a vendor is actually created.
+  // Enforces "one OCR draft creates at most one vendor".
+  consumedAt        DateTime?
+  resultingVendorId String?   @unique @db.Uuid
+  resultingVendor   Vendor?   @relation(fields: [resultingVendorId], references: [id], onDelete: SetNull)
+
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  requestedById String?  @db.Uuid
+  requestedBy   User?    @relation("OcrRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([documentId])
+  @@index([status])
+  @@map("ocr_jobs")
+}
+
+model AuditLog {
+  id               String   @id @default(uuid()) @db.Uuid
+  actorUserId      String?  @db.Uuid
+  action           String // "vendor.create", "vendor.archive", "auth.login.failed"
+  entityType       String // "Vendor", "VendorProduct", "User"
+  entityId         String?
+  // The aggregate the entity belongs to, e.g. a VendorContact's Vendor. Lets
+  // a record's activity history include changes to its child rows. Later
+  // modules use the same pair (QuotationLine -> Quotation).
+  parentEntityType String?
+  parentEntityId   String?
+  summary          String?
+  before           Json?
+  after            Json?
+  ipAddress        String?
+  userAgent        String?
+  createdAt        DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([parentEntityType, parentEntityId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ===========================================================================
+// Inventory / stock (Module 2)
+//
+// Stock is an APPEND-ONLY LEDGER. There is no editable "quantity" column
+// anywhere: on-hand is always SUM(quantityDelta) over movements. A mistake is
+// corrected by posting a reversing movement, never by rewriting history, so
+// the ledger always explains how the current number was reached.
+//
+// Whether stock is tracked at all is a runtime setting
+// ("inventory.stockTrackingEnabled", default false) because the client has not
+// confirmed catalogue-only vs physical tracking. With it off the catalogue
+// works exactly as before and no movement can be posted.
+//
+// Still open, and deliberately absent: reserved/committed quantity (depends on
+// quotation and PI rules), purchase-order and goods-receipt linkage, and
+// multi-warehouse transfers. Each is additive - a new movement type or a new
+// location row - never a rewrite of what is here.
+// ===========================================================================
+
+model StockLocation {
+  id        String  @id @default(uuid()) @db.Uuid
+  name      String
+  code      String  @unique
+  address   String?
+  // Exactly one location is the default; movements use it unless told
+  // otherwise. Multi-warehouse support is adding rows, not changing the model.
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  movements StockMovement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("stock_locations")
+}
+
+enum StockMovementType {
+  // Initial count when a product starts being tracked.
+  OPENING_BALANCE
+  // Goods in. Posted manually today; a future GRN posts the same type with a
+  // reference once the procurement process is confirmed.
+  RECEIPT
+  // Goods out. A future delivery note posts this with a reference.
+  ISSUE
+  // Correction after a physical count. Requires a reason.
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  // Customer returns goods / goods returned to vendor.
+  RETURN_IN
+  RETURN_OUT
+}
+
+model StockMovement {
+  id         String            @id @default(uuid()) @db.Uuid
+  productId  String            @db.Uuid
+  locationId String            @db.Uuid
+  type       StockMovementType
+
+  // Signed: positive adds to stock, negative removes. Integer because hardware
+  // is counted in whole units, and integers cannot drift the way floats do.
+  quantityDelta Int
+  // Running total after this movement, captured at post time. Purely a
+  // convenience for displaying the ledger; the authoritative figure is always
+  // the SUM, which is what every balance query computes.
+  balanceAfter  Int
+
+  reason        String?
+  // Forward hooks for later modules: the document that caused this movement,
+  // e.g. ("DeliveryOrder", <id>). Unused while stock is posted manually.
+  referenceType String?
+  referenceId   String?
+
+  occurredAt DateTime @default(now())
+
+  product  Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  location StockLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("StockMovementCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  // No updatedAt and no archivedAt: the ledger is append-only by design.
+  createdAt DateTime @default(now())
+
+  @@index([productId, locationId])
+  @@index([occurredAt])
+  @@index([type])
+  @@index([referenceType, referenceId])
+  @@map("stock_movements")
+}
+
+// Runtime configuration, so business switches are not redeployments.
+model Setting {
+  id          String  @id @default(uuid()) @db.Uuid
+  key         String  @unique
+  value       Json
+  description String?
+
+  updatedById String? @db.Uuid
+  updatedBy   User?   @relation("SettingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// Concurrency-safe human-readable document numbers.
+// Allocation uses an atomic UPDATE inside the caller's transaction, so two
+// parallel requests can never receive the same number.
+model DocumentSequence {
+  id        String @id @default(uuid()) @db.Uuid
+  // "VENDOR", "PRODUCT", and later "QUOTATION:2025-26" etc.
+  key       String @unique
+  prefix    String
+  padding   Int    @default(4)
+  nextValue Int    @default(1)
+
+  updatedAt DateTime @updatedAt
+
+  @@map("document_sequences")
+}
+
+// ===========================================================================
+// Customer management (Module 3)
+//
+// The single source of customer information for enquiries, quotations, PIs,
+// payments and deliveries, which reference customers.id. Customer master
+// data is never copied into those transactions beyond print snapshots.
+// ===========================================================================
+
+enum CustomerType {
+  INDIVIDUAL
+  BUSINESS
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CustomerAddressType {
+  BILLING
+  SHIPPING
+  OFFICE
+  REGISTERED
+  OTHER
+}
+
+// Configurable grouping (Corporate, SME, Government, ...). Editable at runtime.
+model CustomerCategory {
+  id             String  @id @default(uuid()) @db.Uuid
+  name           String
+  normalizedName String  @unique
+  description    String?
+  isActive       Boolean @default(true)
+  sortOrder      Int     @default(0)
+
+  customers Customer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("customer_categories")
+}
+
+model Customer {
+  id             String         @id @default(uuid()) @db.Uuid
+  // Human-facing id allocated by DocumentSequence (KI/CUS/0001).
+  customerCode   String         @unique
+  customerType   CustomerType
+  // Person or company name.
+  name           String
+  normalizedName String
+  categoryId     String?        @db.Uuid
+  industry       String?
+  website        String?
+  description    String?
+  status         CustomerStatus @default(ACTIVE)
+
+  // Tax jurisdiction. Indian identifiers (GSTIN/PAN/CIN) are accepted only
+  // when this is India; other countries use taxRegistrationNumber.
+  taxCountry            String  @default("India")
+  // Unique when present; NULLs do not collide.
+  gstin                 String? @unique
+  pan                   String?
+  cin                   String?
+  taxRegistrationNumber String?
+  otherRegistration     String?
+
+  // Optional business profile (business customers only).
+  companySize         String?
+  businessType        String?
+  annualTurnoverRange String?
+  employeeCount       Int?
+
+  category         CustomerCategory?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  contacts         CustomerContact[]
+  addresses        CustomerAddress[]
+  interests        CustomerProductInterest[]
+  documents        Document[]
+  enquiries        Enquiry[]
+  quotations       Quotation[]
+  proformaInvoices ProformaInvoice[]
+
+  finalInvoices FinalInvoice[]
+  payments      Payment[]
+  deliveries    Delivery[]
+  createdById   String?        @db.Uuid
+  updatedById   String?        @db.Uuid
+  createdBy     User?          @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy     User?          @relation("CustomerUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([normalizedName])
+  @@index([customerType])
+  @@index([status])
+  @@index([categoryId])
+  @@index([industry])
+  @@index([pan])
+  @@index([createdAt])
+  @@map("customers")
+}
+
+// Exactly one primary contact per customer (enforced under a row lock).
+model CustomerContact {
+  id             String  @id @default(uuid()) @db.Uuid
+  customerId     String  @db.Uuid
+  name           String
+  designation    String?
+  department     String?
+  email          String?
+  phone          String?
+  alternatePhone String?
+  isPrimary      Boolean @default(false)
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  enquiries        Enquiry[]
+  followUps        EnquiryFollowUp[]
+  quotations       Quotation[]
+  proformaInvoices ProformaInvoice[]
+
+  finalInvoices FinalInvoice[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([customerId])
+  @@index([email])
+  @@index([phone])
+  @@map("customer_contacts")
+}
+
+// Many per customer; at most one default per address type (one default
+// billing, one default shipping, ...).
+model CustomerAddress {
+  id           String              @id @default(uuid()) @db.Uuid
+  customerId   String              @db.Uuid
+  addressType  CustomerAddressType
+  addressLine1 String
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String              @default("India")
+  isDefault    Boolean             @default(false)
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId, addressType])
+  @@index([city])
+  @@index([state])
+  @@index([country])
+  @@map("customer_addresses")
+}
+
+// Products / models a customer is interested in. References the shared
+// catalogue only; this is not an enquiry, order or sale.
+model CustomerProductInterest {
+  id             String  @id @default(uuid()) @db.Uuid
+  customerId     String  @db.Uuid
+  productId      String  @db.Uuid
+  // Null = interest in the product generally rather than one model.
+  productModelId String? @db.Uuid
+  notes          String?
+
+  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productModel ProductModel? @relation(fields: [productModelId], references: [id], onDelete: Restrict)
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("CustomerInterestCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([productId])
+  @@index([productModelId])
+  @@map("customer_product_interests")
+}
+
+// ===========================================================================
+// Enquiry management (Module 4)
+//
+// An enquiry always references an existing customer (Module 3) and existing
+// products / models (Module 2). Quotations (Module 5) will reference
+// enquiries.id; conversion is guarded so one enquiry converts once.
+// ===========================================================================
+
+enum EnquiryPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum EnquiryStatus {
+  NEW
+  ASSIGNED
+  IN_PROGRESS
+  FOLLOW_UP_PENDING
+  REQUIREMENT_CLARIFICATION
+  READY_FOR_QUOTATION
+  CONVERTED
+  ON_HOLD
+  LOST
+  CLOSED
+}
+
+enum FollowUpMethod {
+  PHONE
+  EMAIL
+  WHATSAPP
+  MEETING
+  OTHER
+}
+
+enum FollowUpOutcome {
+  INTERESTED
+  CLARIFICATION_NEEDED
+  AWAITING_RESPONSE
+  NEGOTIATION_REQUIRED
+  READY_FOR_QUOTATION
+  NOT_INTERESTED
+  OTHER
+}
+
+// Configurable (Website, Email, Phone Call, ...). Managed by administrators.
+model EnquirySource {
+  id             String  @id @default(uuid()) @db.Uuid
+  name           String
+  normalizedName String  @unique
+  description    String?
+  isActive       Boolean @default(true)
+  sortOrder      Int     @default(0)
+
+  enquiries Enquiry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("enquiry_sources")
+}
+
+model Enquiry {
+  id            String          @id @default(uuid()) @db.Uuid
+  // Human-facing id allocated by DocumentSequence (KI/ENQ/00001).
+  enquiryNumber String          @unique
+  enquiryDate   DateTime        @db.Date
+  status        EnquiryStatus   @default(NEW)
+  priority      EnquiryPriority @default(NORMAL)
+
+  customerId        String  @db.Uuid
+  customerContactId String? @db.Uuid
+  sourceId          String? @db.Uuid
+  assignedToId      String? @db.Uuid
+
+  description          String?
+  internalRemarks      String?
+  expectedDecisionDate DateTime? @db.Date
+
+  // Preliminary expectations only: never a price, tax or total.
+  expectedBudget           Decimal? @db.Decimal(14, 2)
+  currency                 String   @default("INR")
+  expectedDeliveryTimeline String?
+  paymentPreference        String?
+  commercialNotes          String?
+
+  // Date of the next planned follow-up, kept in step with the latest
+  // follow-up record so lists can sort and filter on it.
+  nextFollowUpDate DateTime? @db.Date
+
+  // Set exactly once, by Quotation Management, when a quotation is created
+  // from this enquiry (guarded update; repeated requests cannot convert twice).
+  convertedAt        DateTime?
+  convertedById      String?   @db.Uuid
+  // Opaque reference to the first quotation; Module 5 adds the real FK.
+  convertedReference String?
+
+  customer        Customer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  customerContact CustomerContact? @relation(fields: [customerContactId], references: [id], onDelete: SetNull)
+  source          EnquirySource?   @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  assignedTo      User?            @relation("EnquiryAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  convertedBy     User?            @relation("EnquiryConvertedBy", fields: [convertedById], references: [id], onDelete: SetNull)
+
+  items         EnquiryItem[]
+  followUps     EnquiryFollowUp[]
+  statusHistory EnquiryStatusHistory[]
+  documents     Document[]
+  // At most one quotation per enquiry (unique FK on quotations).
+  quotation     Quotation?
+
+  createdById String? @db.Uuid
+  updatedById String? @db.Uuid
+  createdBy   User?   @relation("EnquiryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?   @relation("EnquiryUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@index([priority])
+  @@index([sourceId])
+  @@index([assignedToId])
+  @@index([enquiryDate])
+  @@index([nextFollowUpDate])
+  @@map("enquiries")
+}
+
+// One requested product (optionally a specific model) on an enquiry.
+model EnquiryItem {
+  id                    String  @id @default(uuid()) @db.Uuid
+  enquiryId             String  @db.Uuid
+  productId             String  @db.Uuid
+  productModelId        String? @db.Uuid
+  quantity              Int
+  unit                  String  @default("Nos")
+  technicalRequirements String?
+  remarks               String?
+  sortOrder             Int     @default(0)
+
+  enquiry      Enquiry       @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productModel ProductModel? @relation(fields: [productModelId], references: [id], onDelete: Restrict)
+
+  quotationItems QuotationItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enquiryId])
+  @@index([productId])
+  @@index([productModelId])
+  @@map("enquiry_items")
+}
+
+// A recorded interaction with the customer. Edits and removals are audited
+// with full before-values, so history is never silently overwritten.
+model EnquiryFollowUp {
+  id                String          @id @default(uuid()) @db.Uuid
+  enquiryId         String          @db.Uuid
+  contactId         String?         @db.Uuid
+  followUpDate      DateTime
+  method            FollowUpMethod
+  discussionSummary String
+  customerResponse  String?
+  outcome           FollowUpOutcome
+  nextFollowUpDate  DateTime?       @db.Date
+  assignedToId      String?         @db.Uuid
+  internalNotes     String?
+
+  enquiry    Enquiry          @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  contact    CustomerContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  assignedTo User?            @relation("FollowUpAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("FollowUpCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enquiryId, followUpDate])
+  @@index([assignedToId])
+  @@index([followUpDate])
+  @@map("enquiry_follow_ups")
+}
+
+// Append-only record of every status change.
+model EnquiryStatusHistory {
+  id             String         @id @default(uuid()) @db.Uuid
+  enquiryId      String         @db.Uuid
+  previousStatus EnquiryStatus?
+  newStatus      EnquiryStatus
+  reason         String?
+
+  enquiry Enquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+
+  changedById String?  @db.Uuid
+  changedBy   User?    @relation("EnquiryStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt   DateTime @default(now())
+
+  @@index([enquiryId, changedAt])
+  @@map("enquiry_status_history")
+}
+
+// ===========================================================================
+// Quotation management (Module 5)
+//
+// A Quotation is the stable identity (one number); each QuotationRevision is
+// a complete, independent version (items, prices, terms, customer snapshot,
+// totals). Only a DRAFT revision can be edited; once issued it is frozen and
+// a change means a new revision. Money is Decimal(14,2), never floating
+// point. Tax and discount values are entered per item - no rate is assumed.
+// ===========================================================================
+
+enum QuotationStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SENT
+  UNDER_NEGOTIATION
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+  // An older revision replaced by a newer one; can never be accepted.
+  SUPERSEDED
+}
+
+enum DiscountType {
+  NONE
+  PERCENT
+  AMOUNT
+}
+
+model Quotation {
+  id              String  @id @default(uuid()) @db.Uuid
+  // Human-facing id allocated by DocumentSequence (KI/QT/00001).
+  quotationNumber String  @unique
+  customerId      String  @db.Uuid
+  // Unique: an enquiry converts into at most one quotation; later changes
+  // are revisions of that quotation.
+  enquiryId       String? @unique @db.Uuid
+  contactId       String? @db.Uuid
+  assignedToId    String? @db.Uuid
+  subject         String?
+  referenceNumber String?
+  currency        String  @default("INR")
+
+  // Mirrors of the current revision, for listing and filtering.
+  status                QuotationStatus @default(DRAFT)
+  currentRevisionNumber Int             @default(1)
+  currentTotal          Decimal         @default(0) @db.Decimal(14, 2)
+  // The revision the customer accepted (set once).
+  acceptedRevisionId    String?         @unique @db.Uuid
+
+  customer         Customer           @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  enquiry          Enquiry?           @relation(fields: [enquiryId], references: [id], onDelete: Restrict)
+  contact          CustomerContact?   @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  assignedTo       User?              @relation("QuotationAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  acceptedRevision QuotationRevision? @relation("AcceptedRevision", fields: [acceptedRevisionId], references: [id], onDelete: Restrict)
+
+  revisions        QuotationRevision[]      @relation("QuotationRevisions")
+  statusHistory    QuotationStatusHistory[]
+  communications   QuotationCommunication[]
+  emails           QuotationEmail[]
+  documents        Document[]
+  proformaInvoices ProformaInvoice[]
+
+  finalInvoices FinalInvoice[]
+  createdById   String?        @db.Uuid
+  updatedById   String?        @db.Uuid
+  createdBy     User?          @relation("QuotationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy     User?          @relation("QuotationUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([createdAt])
+  @@map("quotations")
+}
+
+model QuotationRevision {
+  id             String          @id @default(uuid()) @db.Uuid
+  quotationId    String          @db.Uuid
+  revisionNumber Int
+  status         QuotationStatus @default(DRAFT)
+  quotationDate  DateTime        @db.Date
+  validUntil     DateTime?       @db.Date
+
+  // Customer details as they were for this revision (frozen once issued).
+  customerSnapshot Json
+
+  internalRemarks    String?
+  termsAndConditions String?
+  paymentTerms       String?
+  deliveryTerms      String?
+  warrantyTerms      String?
+  notes              String?
+
+  subtotal           Decimal @default(0) @db.Decimal(14, 2)
+  itemDiscountTotal  Decimal @default(0) @db.Decimal(14, 2)
+  additionalDiscount Decimal @default(0) @db.Decimal(14, 2)
+  taxableAmount      Decimal @default(0) @db.Decimal(14, 2)
+  taxTotal           Decimal @default(0) @db.Decimal(14, 2)
+  otherChargesLabel  String?
+  otherCharges       Decimal @default(0) @db.Decimal(14, 2)
+  grandTotal         Decimal @default(0) @db.Decimal(14, 2)
+  // [{ label, rate, taxable, tax }] grouped from the items.
+  taxBreakdown       Json?
+
+  // Set when the revision leaves DRAFT; from then on it is immutable.
+  issuedAt      DateTime?
+  pdfDocumentId String?   @unique @db.Uuid
+  pdfDocument   Document? @relation("RevisionPdf", fields: [pdfDocumentId], references: [id], onDelete: SetNull)
+
+  quotation        Quotation                @relation("QuotationRevisions", fields: [quotationId], references: [id], onDelete: Cascade)
+  acceptedOf       Quotation?               @relation("AcceptedRevision")
+  proformaInvoices ProformaInvoice[]        @relation("ProformaSourceRevision")
+  finalInvoices    FinalInvoice[]           @relation("FinalInvoiceSourceRevision")
+  items            QuotationItem[]
+  statusHistory    QuotationStatusHistory[]
+  emails           QuotationEmail[]
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("RevisionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([quotationId, revisionNumber])
+  @@index([status])
+  @@index([quotationDate])
+  @@index([validUntil])
+  @@map("quotation_revisions")
+}
+
+model QuotationItem {
+  id             String  @id @default(uuid()) @db.Uuid
+  revisionId     String  @db.Uuid
+  sortOrder      Int     @default(0)
+  productId      String  @db.Uuid
+  productModelId String? @db.Uuid
+  // Traceability back to the enquiry requirement it answers, if any.
+  enquiryItemId  String? @db.Uuid
+
+  // Catalogue details as they were for this revision.
+  productName    String
+  productCode    String
+  brandName      String
+  modelName      String?
+  modelNumber    String?
+  description    String?
+  specifications Json?
+
+  quantity       Int
+  unit           String       @default("Nos")
+  unitPrice      Decimal      @db.Decimal(14, 2)
+  discountType   DiscountType @default(NONE)
+  discountValue  Decimal      @default(0) @db.Decimal(14, 2)
+  discountAmount Decimal      @default(0) @db.Decimal(14, 2)
+  taxLabel       String?
+  taxRate        Decimal      @default(0) @db.Decimal(5, 2)
+  taxAmount      Decimal      @default(0) @db.Decimal(14, 2)
+  lineTotal      Decimal      @default(0) @db.Decimal(14, 2)
+  remarks        String?
+
+  revision      QuotationRevision     @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  product       Product               @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productModel  ProductModel?         @relation(fields: [productModelId], references: [id], onDelete: Restrict)
+  enquiryItem   EnquiryItem?          @relation(fields: [enquiryItemId], references: [id], onDelete: SetNull)
+  proformaItems ProformaInvoiceItem[]
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([revisionId])
+  @@index([productId])
+  @@index([productModelId])
+  @@map("quotation_items")
+}
+
+// Every status change (including approvals) of every revision. Append-only.
+model QuotationStatusHistory {
+  id             String           @id @default(uuid()) @db.Uuid
+  quotationId    String           @db.Uuid
+  revisionId     String           @db.Uuid
+  previousStatus QuotationStatus?
+  newStatus      QuotationStatus
+  remarks        String?
+
+  quotation Quotation         @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  revision  QuotationRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+
+  changedById String?  @db.Uuid
+  changedBy   User?    @relation("QuotationStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt   DateTime @default(now())
+
+  @@index([quotationId, changedAt])
+  @@map("quotation_status_history")
+}
+
+// Manually logged customer communication. Recording "sent by email" here
+// does not send anything; the application has no outbound email.
+model QuotationCommunication {
+  id             String         @id @default(uuid()) @db.Uuid
+  quotationId    String         @db.Uuid
+  revisionNumber Int?
+  occurredAt     DateTime
+  channel        FollowUpMethod
+  contactName    String?
+  summary        String
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("QuotationCommunicationBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([quotationId, occurredAt])
+  @@map("quotation_communications")
+}
+
+// ---------------------------------------------------------------------------
+// Module 6 - Proforma Invoice
+// ---------------------------------------------------------------------------
+
+// Proforma invoice lifecycle. Payment states (partially / fully paid) are
+// deliberately absent: they will be derived from Payment records (Module 7),
+// never set by hand. A PI is not a tax invoice and not proof of payment.
+enum ProformaStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  ISSUED
+  SENT
+  CANCELLED
+}
+
+// A proforma invoice raised from the revision of a quotation the customer
+// accepted. Customer details, line items and totals are copied (snapshotted)
+// from that revision; issued documents never change afterwards.
+model ProformaInvoice {
+  id       String @id @default(uuid()) @db.Uuid
+  // Human-facing id allocated by DocumentSequence (KI/PI/00001).
+  piNumber String @unique
+
+  quotationId         String  @db.Uuid
+  quotationRevisionId String  @db.Uuid
+  // Equals quotationRevisionId while the PI is not cancelled, NULL after.
+  // Unique: one live PI per accepted revision; repeated or concurrent
+  // conversions fail on this constraint. A cancelled PI frees the slot for
+  // a replacement, which records the PI it replaces.
+  activeRevisionId    String? @unique @db.Uuid
+  replacesId          String? @unique @db.Uuid
+
+  customerId   String  @db.Uuid
+  contactId    String? @db.Uuid
+  assignedToId String? @db.Uuid
+
+  status          ProformaStatus @default(DRAFT)
+  piDate          DateTime       @db.Date
+  dueDate         DateTime?      @db.Date
+  currency        String
+  subject         String?
+  referenceNumber String?
+  internalRemarks String?
+
+  // Customer details as of creation; refreshed while a draft, frozen at issue.
+  customerSnapshot Json
+
+  // Commercial values copied from the accepted revision; never edited here.
+  subtotal           Decimal  @default(0) @db.Decimal(14, 2)
+  itemDiscountTotal  Decimal  @default(0) @db.Decimal(14, 2)
+  additionalDiscount Decimal  @default(0) @db.Decimal(14, 2)
+  taxableAmount      Decimal  @default(0) @db.Decimal(14, 2)
+  taxTotal           Decimal  @default(0) @db.Decimal(14, 2)
+  otherChargesLabel  String?
+  otherCharges       Decimal  @default(0) @db.Decimal(14, 2)
+  grandTotal         Decimal  @default(0) @db.Decimal(14, 2)
+  taxBreakdown       Json?
+  // Optional amount requested in advance; entered per PI, never assumed.
+  advanceAmount      Decimal? @db.Decimal(14, 2)
+
+  paymentTerms        String?
+  deliveryTerms       String?
+  warrantyTerms       String?
+  termsAndConditions  String?
+  notes               String?
+  paymentInstructions String?
+  // { bankName, accountName, accountNumber, ifsc, swift, branch } as printed.
+  bankDetails         Json?
+
+  issuedAt           DateTime?
+  issuedById         String?   @db.Uuid
+  cancelledAt        DateTime?
+  cancellationReason String?
+  pdfDocumentId      String?   @unique @db.Uuid
+
+  quotation         Quotation         @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  quotationRevision QuotationRevision @relation("ProformaSourceRevision", fields: [quotationRevisionId], references: [id], onDelete: Restrict)
+  replaces          ProformaInvoice?  @relation("ProformaReplacement", fields: [replacesId], references: [id], onDelete: Restrict)
+  replacedBy        ProformaInvoice?  @relation("ProformaReplacement")
+  customer          Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  contact           CustomerContact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  assignedTo        User?             @relation("ProformaAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  issuedBy          User?             @relation("ProformaIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  pdfDocument       Document?         @relation("ProformaPdf", fields: [pdfDocumentId], references: [id], onDelete: SetNull)
+
+  items         ProformaInvoiceItem[]
+  statusHistory ProformaInvoiceStatusHistory[]
+  documents     Document[]                     @relation("ProformaDocuments")
+  finalInvoices FinalInvoice[]
+
+  createdById String? @db.Uuid
+  updatedById String? @db.Uuid
+  createdBy   User?   @relation("ProformaCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?   @relation("ProformaUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([quotationId])
+  @@index([quotationRevisionId])
+  @@index([customerId])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([piDate])
+  @@index([createdAt])
+  @@map("proforma_invoices")
+}
+
+// A line copied from the accepted quotation revision (catalogue details,
+// quantity and prices exactly as accepted).
+model ProformaInvoiceItem {
+  id                String  @id @default(uuid()) @db.Uuid
+  proformaInvoiceId String  @db.Uuid
+  sortOrder         Int     @default(0)
+  quotationItemId   String? @db.Uuid
+  productId         String  @db.Uuid
+  productModelId    String? @db.Uuid
+
+  productName    String
+  productCode    String
+  brandName      String
+  modelName      String?
+  modelNumber    String?
+  description    String?
+  specifications Json?
+
+  quantity       Int
+  unit           String       @default("Nos")
+  unitPrice      Decimal      @db.Decimal(14, 2)
+  discountType   DiscountType @default(NONE)
+  discountValue  Decimal      @default(0) @db.Decimal(14, 2)
+  discountAmount Decimal      @default(0) @db.Decimal(14, 2)
+  taxLabel       String?
+  taxRate        Decimal      @default(0) @db.Decimal(5, 2)
+  taxAmount      Decimal      @default(0) @db.Decimal(14, 2)
+  lineTotal      Decimal      @default(0) @db.Decimal(14, 2)
+  remarks        String?
+
+  proformaInvoice   ProformaInvoice    @relation(fields: [proformaInvoiceId], references: [id], onDelete: Cascade)
+  quotationItem     QuotationItem?     @relation(fields: [quotationItemId], references: [id], onDelete: SetNull)
+  finalInvoiceItems FinalInvoiceItem[]
+  product           Product            @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productModel      ProductModel?      @relation(fields: [productModelId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([proformaInvoiceId])
+  @@index([productId])
+  @@index([productModelId])
+  @@map("proforma_invoice_items")
+}
+
+// Every status change of a proforma invoice. Append-only.
+model ProformaInvoiceStatusHistory {
+  id                String          @id @default(uuid()) @db.Uuid
+  proformaInvoiceId String          @db.Uuid
+  previousStatus    ProformaStatus?
+  newStatus         ProformaStatus
+  remarks           String?
+
+  proformaInvoice ProformaInvoice @relation(fields: [proformaInvoiceId], references: [id], onDelete: Cascade)
+
+  changedById String?  @db.Uuid
+  changedBy   User?    @relation("ProformaStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt   DateTime @default(now())
+
+  @@index([proformaInvoiceId, changedAt])
+  @@map("proforma_invoice_status_history")
+}
+
+// ---------------------------------------------------------------------------
+// Module 7 - Final Invoice (the actual customer invoice)
+// ---------------------------------------------------------------------------
+
+// Final invoice lifecycle. Payment states (partially / fully paid, overdue
+// by balance) are NOT statuses: they will be derived from Payment records
+// (Payment Management). Nobody can mark an invoice paid by hand.
+// Payment position of an invoice, derived from VERIFIED payments only.
+enum InvoicePaymentState {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+}
+
+enum FinalInvoiceStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  ISSUED
+  SENT
+  CANCELLED
+}
+
+// The customer invoice raised from an issued proforma invoice. Lines and
+// amounts are copied from the PI (which equals the accepted quotation
+// revision). The invoice number is allocated when the invoice is issued, so
+// deleted drafts never leave gaps and an issued number never changes.
+model FinalInvoice {
+  id            String  @id @default(uuid()) @db.Uuid
+  // Allocated at issue (KI/INV/00001 or a financial-year series). Null while unissued.
+  invoiceNumber String? @unique
+
+  proformaInvoiceId   String  @db.Uuid
+  // Equals proformaInvoiceId while the invoice is not cancelled, NULL after.
+  // Unique: one live invoice per PI; repeated or concurrent conversions fail
+  // on this constraint. A cancelled invoice frees the PI for a replacement.
+  activeProformaId    String? @unique @db.Uuid
+  replacesId          String? @unique @db.Uuid
+  // Traceability shortcuts (Enquiry -> Quotation -> Revision -> PI -> Invoice).
+  quotationId         String  @db.Uuid
+  quotationRevisionId String  @db.Uuid
+
+  customerId   String  @db.Uuid
+  contactId    String? @db.Uuid
+  assignedToId String? @db.Uuid
+
+  status              FinalInvoiceStatus @default(DRAFT)
+  invoiceDate         DateTime           @db.Date
+  dueDate             DateTime?          @db.Date
+  currency            String
+  subject             String?
+  purchaseOrderNumber String?
+  internalRemarks     String?
+
+  // Customer details; refreshed while a draft, frozen at issue.
+  customerSnapshot Json
+
+  // Commercial values copied from the proforma invoice; never edited here.
+  subtotal           Decimal @default(0) @db.Decimal(14, 2)
+  itemDiscountTotal  Decimal @default(0) @db.Decimal(14, 2)
+  additionalDiscount Decimal @default(0) @db.Decimal(14, 2)
+  taxableAmount      Decimal @default(0) @db.Decimal(14, 2)
+  taxTotal           Decimal @default(0) @db.Decimal(14, 2)
+  otherChargesLabel  String?
+  otherCharges       Decimal @default(0) @db.Decimal(14, 2)
+  grandTotal         Decimal @default(0) @db.Decimal(14, 2)
+  taxBreakdown       Json?
+
+  // Derived from VERIFIED payment allocations (Payment Management) and
+  // recomputed inside the same transaction as every payment status change.
+  // Never edited by hand.
+  amountReceived Decimal             @default(0) @db.Decimal(14, 2)
+  paymentState   InvoicePaymentState @default(UNPAID)
+
+  paymentTerms        String?
+  deliveryTerms       String?
+  warrantyTerms       String?
+  termsAndConditions  String?
+  notes               String?
+  paymentInstructions String?
+  bankDetails         Json?
+
+  issuedAt           DateTime?
+  issuedById         String?   @db.Uuid
+  cancelledAt        DateTime?
+  cancellationReason String?
+  pdfDocumentId      String?   @unique @db.Uuid
+
+  proformaInvoice   ProformaInvoice   @relation(fields: [proformaInvoiceId], references: [id], onDelete: Restrict)
+  quotation         Quotation         @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  quotationRevision QuotationRevision @relation("FinalInvoiceSourceRevision", fields: [quotationRevisionId], references: [id], onDelete: Restrict)
+  replaces          FinalInvoice?     @relation("FinalInvoiceReplacement", fields: [replacesId], references: [id], onDelete: Restrict)
+  replacedBy        FinalInvoice?     @relation("FinalInvoiceReplacement")
+  customer          Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  contact           CustomerContact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  assignedTo        User?             @relation("FinalInvoiceAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  issuedBy          User?             @relation("FinalInvoiceIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  pdfDocument       Document?         @relation("FinalInvoicePdf", fields: [pdfDocumentId], references: [id], onDelete: SetNull)
+
+  items              FinalInvoiceItem[]
+  statusHistory      FinalInvoiceStatusHistory[]
+  paymentAllocations PaymentAllocation[]
+  documents          Document[]                  @relation("FinalInvoiceDocuments")
+  deliveries         Delivery[]
+
+  createdById      String?           @db.Uuid
+  updatedById      String?           @db.Uuid
+  createdBy        User?             @relation("FinalInvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy        User?             @relation("FinalInvoiceUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  // One row per (invoice, due date, stage) the payment-alert sweep has raised.
+  paymentReminders PaymentReminder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([proformaInvoiceId])
+  @@index([quotationId])
+  @@index([customerId])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([invoiceDate])
+  @@index([dueDate])
+  @@index([paymentState])
+  @@index([createdAt])
+  @@map("final_invoices")
+}
+
+// A line copied from the proforma invoice.
+model FinalInvoiceItem {
+  id                    String  @id @default(uuid()) @db.Uuid
+  finalInvoiceId        String  @db.Uuid
+  sortOrder             Int     @default(0)
+  proformaInvoiceItemId String? @db.Uuid
+  productId             String  @db.Uuid
+  productModelId        String? @db.Uuid
+
+  productName    String
+  productCode    String
+  brandName      String
+  modelName      String?
+  modelNumber    String?
+  description    String?
+  specifications Json?
+
+  quantity       Int
+  unit           String       @default("Nos")
+  unitPrice      Decimal      @db.Decimal(14, 2)
+  discountType   DiscountType @default(NONE)
+  discountValue  Decimal      @default(0) @db.Decimal(14, 2)
+  discountAmount Decimal      @default(0) @db.Decimal(14, 2)
+  taxLabel       String?
+  taxRate        Decimal      @default(0) @db.Decimal(5, 2)
+  taxAmount      Decimal      @default(0) @db.Decimal(14, 2)
+  lineTotal      Decimal      @default(0) @db.Decimal(14, 2)
+  remarks        String?
+
+  finalInvoice        FinalInvoice         @relation(fields: [finalInvoiceId], references: [id], onDelete: Cascade)
+  proformaInvoiceItem ProformaInvoiceItem? @relation(fields: [proformaInvoiceItemId], references: [id], onDelete: SetNull)
+  product             Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productModel        ProductModel?        @relation(fields: [productModelId], references: [id], onDelete: Restrict)
+  deliveryItems       DeliveryItem[]
+
+  createdAt DateTime @default(now())
+
+  @@index([finalInvoiceId])
+  @@index([productId])
+  @@index([productModelId])
+  @@map("final_invoice_items")
+}
+
+// Every status change of a final invoice. Append-only.
+model FinalInvoiceStatusHistory {
+  id             String              @id @default(uuid()) @db.Uuid
+  finalInvoiceId String              @db.Uuid
+  previousStatus FinalInvoiceStatus?
+  newStatus      FinalInvoiceStatus
+  remarks        String?
+
+  finalInvoice FinalInvoice @relation(fields: [finalInvoiceId], references: [id], onDelete: Cascade)
+
+  changedById String?  @db.Uuid
+  changedBy   User?    @relation("FinalInvoiceStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt   DateTime @default(now())
+
+  @@index([finalInvoiceId, changedAt])
+  @@map("final_invoice_status_history")
+}
+
+// ---------------------------------------------------------------------------
+// Module 8 - Payment Management
+// ---------------------------------------------------------------------------
+
+// A recorded payment is only "money received" once VERIFIED. Rejected and
+// reversed payments stay on record (never deleted) and do not count.
+// Stage of a payment due alert, judged against the business date when the sweep runs.
+enum PaymentReminderStage {
+  DUE_SOON
+  DUE_TODAY
+  OVERDUE
+}
+
+// History of payment due alerts raised for an issued invoice. The unique key
+// makes each stage for a due date recorded once, however many sweeps run.
+// The alert shown to users is always computed from current data, so a paid
+// or re-dated invoice is never shown from an old row.
+model PaymentReminder {
+  id                String               @id @default(uuid()) @db.Uuid
+  finalInvoiceId    String               @db.Uuid
+  dueDate           DateTime             @db.Date
+  stage             PaymentReminderStage
+  daysRemaining     Int
+  outstandingAmount Decimal              @db.Decimal(14, 2)
+  createdAt         DateTime             @default(now())
+
+  finalInvoice FinalInvoice @relation(fields: [finalInvoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([finalInvoiceId, dueDate, stage])
+  @@index([createdAt])
+}
+
+enum PaymentStatus {
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
+  REVERSED
+}
+
+// Money received from a customer. What it settles is recorded in
+// PaymentAllocation (one allocation today; the table allows several later
+// without changing existing records).
+model Payment {
+  id            String @id @default(uuid()) @db.Uuid
+  // KI/RCT/00001, allocated when the payment is recorded (inside the same transaction).
+  receiptNumber String @unique
+  customerId    String @db.Uuid
+
+  paymentDate                 DateTime      @db.Date
+  amount                      Decimal       @db.Decimal(14, 2)
+  currency                    String
+  // Code from the configurable payment-method list (Settings).
+  method                      String
+  transactionReference        String?
+  // Lower-cased, trimmed reference for duplicate detection.
+  normalizedReference         String?
+  bankReference               String?
+  receivedById                String?       @db.Uuid
+  notes                       String?
+  status                      PaymentStatus @default(PENDING_VERIFICATION)
+  // Set when the user confirmed a possible duplicate reference.
+  duplicateReferenceConfirmed Boolean       @default(false)
+
+  verifiedAt        DateTime?
+  verifiedById      String?   @db.Uuid
+  rejectedAt        DateTime?
+  rejectedById      String?   @db.Uuid
+  rejectionReason   String?
+  reversedAt        DateTime?
+  reversedById      String?   @db.Uuid
+  reversalReason    String?
+  // Receipt PDF rendered and stored once, when the payment was verified.
+  receiptDocumentId String?   @unique @db.Uuid
+
+  customer        Customer  @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  receivedBy      User?     @relation("PaymentReceivedBy", fields: [receivedById], references: [id], onDelete: SetNull)
+  verifiedBy      User?     @relation("PaymentVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  rejectedBy      User?     @relation("PaymentRejectedBy", fields: [rejectedById], references: [id], onDelete: SetNull)
+  reversedBy      User?     @relation("PaymentReversedBy", fields: [reversedById], references: [id], onDelete: SetNull)
+  receiptDocument Document? @relation("PaymentReceipt", fields: [receiptDocumentId], references: [id], onDelete: SetNull)
+
+  allocations   PaymentAllocation[]
+  statusHistory PaymentStatusHistory[]
+  documents     Document[]             @relation("PaymentDocuments")
+
+  createdById String? @db.Uuid
+  updatedById String? @db.Uuid
+  createdBy   User?   @relation("PaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?   @relation("PaymentUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentDate])
+  @@index([method])
+  @@index([normalizedReference])
+  @@index([createdAt])
+  @@map("payments")
+}
+
+// The part of a payment applied to one final invoice.
+model PaymentAllocation {
+  id             String  @id @default(uuid()) @db.Uuid
+  paymentId      String  @db.Uuid
+  finalInvoiceId String  @db.Uuid
+  amount         Decimal @db.Decimal(14, 2)
+
+  payment      Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  finalInvoice FinalInvoice @relation(fields: [finalInvoiceId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@unique([paymentId, finalInvoiceId])
+  @@index([finalInvoiceId])
+  @@map("payment_allocations")
+}
+
+// Every status change of a payment. Append-only.
+model PaymentStatusHistory {
+  id             String         @id @default(uuid()) @db.Uuid
+  paymentId      String         @db.Uuid
+  previousStatus PaymentStatus?
+  newStatus      PaymentStatus
+  remarks        String?
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  changedById String?  @db.Uuid
+  changedBy   User?    @relation("PaymentStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt   DateTime @default(now())
+
+  @@index([paymentId, changedAt])
+  @@map("payment_status_history")
+}
+
+// ===========================================================================
+// Module 9 - Delivery Management
+// ===========================================================================
+
+enum DeliveryStatus {
+  DRAFT
+  SCHEDULED
+  READY_FOR_DISPATCH
+  DISPATCHED
+  IN_TRANSIT
+  PARTIALLY_DELIVERED
+  DELIVERED
+  DELIVERY_FAILED
+  RETURNED
+  CANCELLED
+}
+
+enum TransportMode {
+  DIRECT
+  OWN_VEHICLE
+  TRANSPORT
+  COURIER
+}
+
+enum DeliveryTrackingSource {
+  MANUAL
+  EXTERNAL
+}
+
+model Delivery {
+  id             String         @id @default(uuid()) @db.Uuid
+  deliveryNumber String         @unique
+  customerId     String         @db.Uuid
+  finalInvoiceId String         @db.Uuid
+  status         DeliveryStatus @default(DRAFT)
+
+  deliveryDate       DateTime  @db.Date
+  expectedDate       DateTime? @db.Date
+  actualDeliveryDate DateTime? @db.Date
+  deliveryAddress    String
+  contactPerson      String?
+  contactNumber      String?
+  internalRemarks    String?
+
+  dispatchDate    DateTime?      @db.Date
+  dispatchTime    String?
+  transporterName String?
+  transportMode   TransportMode?
+  vehicleNumber   String?
+  driverName      String?
+  driverContact   String?
+  courierCompany  String?
+  trackingNumber  String?
+  lrGrNumber      String?
+  dispatchRemarks String?
+
+  failureDate     DateTime? @db.Date
+  failureReason   String?
+  failureRemarks  String?
+  nextAttemptDate DateTime? @db.Date
+
+  dispatchedAt       DateTime?
+  returnReason       String?
+  cancelledAt        DateTime?
+  cancellationReason String?
+
+  // A new delivery raised for goods of a RETURNED delivery points at it.
+  redeliveryOfId String?    @db.Uuid
+  redeliveryOf   Delivery?  @relation("DeliveryRedelivery", fields: [redeliveryOfId], references: [id], onDelete: Restrict)
+  redeliveries   Delivery[] @relation("DeliveryRedelivery")
+
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  finalInvoice FinalInvoice @relation(fields: [finalInvoiceId], references: [id], onDelete: Restrict)
+
+  items            DeliveryItem[]
+  statusHistory    DeliveryStatusHistory[]
+  trackingEvents   ShipmentTrackingEvent[]
+  packingLists     PackingList[]
+  // Immutable: the original confirmation plus any amendments (never overwritten).
+  proofsOfDelivery ProofOfDelivery[]
+
+  challanDocumentId String?    @unique @db.Uuid
+  packingDocumentId String?    @unique @db.Uuid
+  challanDocument   Document?  @relation("DeliveryChallan", fields: [challanDocumentId], references: [id], onDelete: SetNull)
+  packingDocument   Document?  @relation("DeliveryPackingList", fields: [packingDocumentId], references: [id], onDelete: SetNull)
+  documents         Document[] @relation("DeliveryDocuments")
+
+  createdById String? @db.Uuid
+  updatedById String? @db.Uuid
+  createdBy   User?   @relation("DeliveryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?   @relation("DeliveryUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([finalInvoiceId])
+  @@index([status])
+  @@index([deliveryDate])
+  @@index([expectedDate])
+  @@index([dispatchDate])
+  @@index([actualDeliveryDate])
+  @@index([redeliveryOfId])
+  @@map("deliveries")
+}
+
+model DeliveryItem {
+  id             String  @id @default(uuid()) @db.Uuid
+  deliveryId     String  @db.Uuid
+  invoiceItemId  String  @db.Uuid
+  productId      String  @db.Uuid
+  productModelId String? @db.Uuid
+
+  productName       String
+  productCode       String
+  brandName         String
+  modelName         String?
+  modelNumber       String?
+  description       String?
+  quantity          Int
+  // Set on confirmation: what the customer actually received (<= quantity).
+  deliveredQuantity Int?
+  unit              String
+  packageCount      Int?
+  remarks           String?
+
+  delivery     Delivery          @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  invoiceItem  FinalInvoiceItem  @relation(fields: [invoiceItemId], references: [id], onDelete: Restrict)
+  packingItems PackingListItem[]
+
+  @@unique([deliveryId, invoiceItemId])
+  @@index([deliveryId])
+  @@index([invoiceItemId])
+  @@map("delivery_items")
+}
+
+model DeliveryStatusHistory {
+  id             String          @id @default(uuid()) @db.Uuid
+  deliveryId     String          @db.Uuid
+  previousStatus DeliveryStatus?
+  newStatus      DeliveryStatus
+  remarks        String?
+  delivery       Delivery        @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  changedById    String?         @db.Uuid
+  changedBy      User?           @relation("DeliveryStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt      DateTime        @default(now())
+
+  @@index([deliveryId, changedAt])
+  @@map("delivery_status_history")
+}
+
+model ShipmentTrackingEvent {
+  id                String                 @id @default(uuid()) @db.Uuid
+  deliveryId        String                 @db.Uuid
+  status            String
+  location          String?
+  remarks           String?
+  source            DeliveryTrackingSource @default(MANUAL)
+  // Courier integration that supplied an EXTERNAL event (null for manual ones).
+  provider          String?
+  externalReference String?
+  eventAt           DateTime               @default(now())
+  recordedById      String?                @db.Uuid
+  recordedBy        User?                  @relation("DeliveryTrackingRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+  createdAt         DateTime               @default(now())
+  delivery          Delivery               @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@unique([deliveryId, provider, externalReference])
+  @@index([deliveryId, eventAt])
+  @@map("shipment_tracking_events")
+}
+
+model PackingList {
+  id            String            @id @default(uuid()) @db.Uuid
+  deliveryId    String            @db.Uuid
+  packingNumber String            @unique
+  packageNumber Int
+  description   String?
+  weight        String?
+  dimensions    String?
+  remarks       String?
+  delivery      Delivery          @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  items         PackingListItem[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([deliveryId, packageNumber])
+  @@index([deliveryId])
+  @@map("packing_lists")
+}
+
+model PackingListItem {
+  id             String       @id @default(uuid()) @db.Uuid
+  packingListId  String       @db.Uuid
+  deliveryItemId String       @db.Uuid
+  quantity       Int
+  packingList    PackingList  @relation(fields: [packingListId], references: [id], onDelete: Cascade)
+  deliveryItem   DeliveryItem @relation(fields: [deliveryItemId], references: [id], onDelete: Cascade)
+
+  @@unique([packingListId, deliveryItemId])
+  @@index([packingListId])
+  @@index([deliveryItemId])
+  @@map("packing_list_items")
+}
+
+model ProofOfDelivery {
+  id                   String           @id @default(uuid()) @db.Uuid
+  deliveryId           String           @db.Uuid
+  receiverName         String
+  receiverContact      String?
+  actualDeliveryDate   DateTime         @db.Date
+  deliveryConfirmation Boolean          @default(false)
+  remarks              String?
+  confirmedById        String?          @db.Uuid
+  confirmedAt          DateTime         @default(now())
+  // An amendment is a new row pointing at the record it corrects; rows are never updated.
+  amendsId             String?          @unique @db.Uuid
+  amends               ProofOfDelivery? @relation("PodAmendment", fields: [amendsId], references: [id], onDelete: Restrict)
+  amendedBy            ProofOfDelivery? @relation("PodAmendment")
+  amendmentReason      String?
+  delivery             Delivery         @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+  confirmedBy          User?            @relation("DeliveryConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+
+  @@index([deliveryId])
+  @@map("proof_of_delivery")
+}
+
+enum QuotationEmailStatus {
+  PENDING
+  ACCEPTED
+  FAILED
+}
+
+enum EmailRecipientType {
+  CUSTOMER
+  VENDOR
+}
+
+/// One attempt to email an issued quotation revision. Written before sending,
+/// updated with the mail server's answer. ACCEPTED means the SMTP server took
+/// the message; it does not confirm delivery to the recipient.
+model QuotationEmail {
+  id             String               @id @default(uuid()) @db.Uuid
+  quotationId    String               @db.Uuid
+  revisionId     String               @db.Uuid
+  revisionNumber Int
+  recipientType  EmailRecipientType
+  recipientId    String?              @db.Uuid
+  recipientName  String
+  recipientEmail String
+  ccEmails       String[]             @default([])
+  subject        String
+  senderEmail    String
+  status         QuotationEmailStatus @default(PENDING)
+  messageId      String?
+  serverResponse String?
+  errorMessage   String?
+  // Client-generated per dialog opening; a repeated submit returns this row.
+  idempotencyKey String               @unique
+  sentById       String?              @db.Uuid
+  createdAt      DateTime             @default(now())
+  completedAt    DateTime?
+
+  quotation Quotation         @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  revision  QuotationRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
+  sentBy    User?             @relation("QuotationEmailSentBy", fields: [sentById], references: [id], onDelete: SetNull)
+
+  @@index([quotationId, createdAt])
+  @@map("quotation_emails")
+}
+
+/// The company logo shown in the app and on the sign-in page. One row (key
+/// "primary"); when absent the bundled default logo is used.
+model BrandLogo {
+  key       String   @id @default("primary") @db.VarChar(40)
+  data      Bytes    @db.ByteA
+  mimeType  String   @db.VarChar(50)
+  sizeBytes Int
+  width     Int
+  height    Int
+  sha256    String   @db.VarChar(64)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("brand_logo")
+}
