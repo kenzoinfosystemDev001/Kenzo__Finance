@@ -153,7 +153,7 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
                 </>
               );
               const rowClass = clsx(
-                'flex h-10 items-center gap-3 rounded-md px-3 text-sm font-bold transition-colors',
+                'relative flex h-10 items-center gap-3 rounded-md px-3 text-sm font-bold transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70',
                 item.child && !collapsed && 'pl-9',
                 collapsed && 'lg:justify-center lg:px-0',
@@ -177,7 +177,9 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
                     title={collapsed ? item.label : undefined}
                     className={clsx(
                       rowClass,
-                      active ? 'bg-sidebar-active text-white' : 'text-sidebar-ink hover:bg-sidebar-hover hover:text-white',
+                      active
+                        ? 'bg-sidebar-active text-white before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-sidebar-indicator'
+                        : 'text-sidebar-ink hover:bg-sidebar-hover hover:text-white',
                     )}
                   >
                     {content}

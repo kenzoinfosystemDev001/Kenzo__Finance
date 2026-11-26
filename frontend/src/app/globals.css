@@ -11,31 +11,59 @@
      #ECF0F1 Off White         -> --canvas, --surface-muted
    White is used for content surfaces. Semantic colours are for status only. */
 :root {
-  --canvas: 236 240 241;
-  --surface: 255 255 255;
-  --surface-muted: 236 240 241;
-  --border: 189 195 199;
-  --border-strong: 127 140 141;
-  --ink: 44 62 80;
-  --ink-muted: 52 73 94;
-  --ink-subtle: 127 140 141;
-  --accent: 44 62 80;
-  --accent-hover: 52 73 94;
-  --accent-subtle: 236 240 241;
+  /* Approved palette. Raw RGB channels so Tailwind opacity modifiers work. */
+  --ice-gray: 233 238 243;       /* #E9EEF3 page background */
+  --crisp-white: 255 255 255;    /* #FFFFFF cards, forms, tables */
+  --frosted: 245 246 249;        /* #F5F6F9 secondary surfaces */
+  --plum-indigo: 48 43 78;       /* #302B4E sidebar, primary branding */
+  --slate-gray: 102 112 133;     /* #667085 secondary text on white */
+  --sky-blue: 169 214 245;       /* #A9D6F5 secondary accents, primary chart series */
+  --lavender: 233 226 245;       /* #E9E2F5 soft highlighted sections */
+  --peach: 249 226 213;          /* #F9E2D5 informational backgrounds */
+  --orchid: 152 120 200;         /* #9878C8 analytics, secondary chart series */
+  --coral: 242 140 102;          /* #F28C66 important actions and highlights */
+  --dusty-blue: 113 134 154;     /* #71869A input borders, strong borders, icons */
+
+  /* Derived from the palette: hover, active and light-border tints, and a darker
+     slate for text on the grey page (#667085 there is 4.3:1, below AA 4.5:1). */
+  --plum-hover: 62 56 102;
+  --plum-active: 70 63 112;
+  --lavender-hover: 221 210 240;
+  --border-light: 201 211 222;
+  --slate-text: 84 94 114;
+
+  /* Semantic tokens. Components use these, never the raw palette. */
+  --canvas: var(--ice-gray);
+  --surface: var(--crisp-white);
+  --surface-muted: var(--frosted);
+  --border: var(--border-light);
+  --border-strong: var(--dusty-blue);
+  --ink: var(--plum-indigo);
+  --ink-muted: var(--slate-text);
+  --ink-subtle: var(--slate-text);
+  --accent: var(--plum-indigo);
+  --accent-hover: var(--plum-hover);
+  --accent-subtle: var(--lavender);
+  --info-subtle: var(--peach);
+  --highlight: var(--coral);
+  --chart-primary: var(--sky-blue);
+  --chart-secondary: var(--orchid);
+  --chart-highlight: var(--coral);
+
+  --sidebar: var(--plum-indigo);
+  --sidebar-hover: var(--plum-hover);
+  --sidebar-active: var(--plum-active);
+  --sidebar-indicator: var(--sky-blue);
+  --sidebar-ink: var(--crisp-white);
+  --sidebar-muted: var(--frosted);
+
+  /* Status colours are not part of the brand palette. */
   --danger: 180 35 24;
   --danger-subtle: 254 243 242;
   --warning: 181 71 8;
   --warning-subtle: 255 250 235;
   --success: 2 122 72;
   --success-subtle: 236 253 243;
-
-  /* The navigation rail uses the same palette in every theme. */
-  --sidebar: 44 62 80;
-  --sidebar-hover: 52 73 94;
-  --sidebar-ink: 236 240 241;
-  --sidebar-muted: 189 195 199;
-  /* Active menu item: restrained royal blue (#2157E8). */
-  --sidebar-active: 33 87 232;
 }
 
 html,
@@ -60,7 +88,7 @@ body {
   }
 
   .field-input {
-    @apply w-full rounded-md border border-border bg-surface px-3 py-2 text-base
+    @apply w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-base
            text-ink placeholder:text-ink-subtle
            focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20
            disabled:cursor-not-allowed disabled:bg-surface-muted;
@@ -85,7 +113,7 @@ body {
   }
 
   .btn-secondary {
-    @apply btn border-border-strong bg-surface text-ink hover:bg-surface-muted;
+    @apply btn border-transparent bg-accent-subtle text-ink hover:bg-lavender-hover;
   }
 
   .btn-danger {
