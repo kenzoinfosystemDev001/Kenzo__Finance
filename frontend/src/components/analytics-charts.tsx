@@ -92,7 +92,7 @@ export interface LineSeries {
   values: ChartDatum[];
 }
 
-const TONE = { accent: ['stroke-accent', 'fill-accent', 'bg-accent'], success: ['stroke-success', 'fill-success', 'bg-success'] } as const;
+const TONE = { accent: ['stroke-chart-primary', 'fill-chart-primary', 'bg-chart-primary'], success: ['stroke-success', 'fill-success', 'bg-success'] } as const;
 
 /** Line chart over shared buckets; one or two series of the same unit. */
 export function LineChart({ series, title, empty = 'No data for this selection.' }: { series: LineSeries[]; title?: string; empty?: string }) {

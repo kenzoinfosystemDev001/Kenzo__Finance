@@ -38,7 +38,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (session.status === 'authenticated') redirect('/dashboard');
 
   const branding = await getLoginBranding();
-  // Admin-chosen image (Admin -> Appearance, stored in the database). Without one, the navy gradient shows.
+  // Admin-chosen image (Admin -> Appearance, stored in the database). Without one, the solid navy panel shows.
   const background = branding.backgroundId ? loginBackgroundUrl(branding.backgroundId) : null;
   const year = new Date().getFullYear();
 
@@ -47,11 +47,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       {/* Brand panel, desktop and laptop. */}
       <section
         aria-label="Kenzo Infosystems"
-        className="relative hidden overflow-hidden bg-gradient-to-br from-sidebar via-sidebar to-[#0b2a6b] text-sidebar-ink lg:flex lg:w-[52%] lg:flex-col lg:justify-between lg:px-12 lg:py-12 xl:px-16"
+        className="relative hidden overflow-hidden bg-sidebar text-sidebar-ink lg:flex lg:w-[52%] lg:flex-col lg:justify-between lg:px-12 lg:py-12 xl:px-16"
       >
         <BackgroundImage src={background} overlayClassName="bg-sidebar/85" className="absolute inset-0" />
-        {/* Subtle royal-blue glow over the navy base. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(37,99,235,0.35),transparent_55%)]" />
+
+
 
         <div className="relative flex items-center gap-4">
           <BrandLogo className="h-16 w-16 shrink-0" priority />
@@ -64,7 +64,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <div className="relative max-w-xl">
           <p className="text-base font-medium text-sidebar-muted">Innovative Solutions. Smarter Business.</p>
           <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight xl:text-5xl">
-            Business Management <span className="text-sky-300">Software</span>
+            Business Management <span className="text-sky-blue">Software</span>
           </h1>
           <p className="mt-5 text-lg leading-relaxed text-sidebar-ink/90">
             Streamline your business operations with powerful, integrated solutions.
