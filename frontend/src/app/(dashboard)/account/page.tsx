@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth-actions';
+import { parseTheme, THEME_COOKIE } from '@/lib/theme';
+import { ThemePicker } from '@/components/theme-picker';
 import { actionLabel, groupByModule, humanizeCode, moduleLabel, parsePermissionCodes } from '@/lib/user-labels';
 import { DefinitionList, PageHeader, SectionCard } from '@/components/ui';
 import { ChangePasswordForm } from './change-password-form';
@@ -15,6 +18,7 @@ export default async function AccountPage() {
   if (!user) redirect('/login');
 
   const groups = groupByModule(parsePermissionCodes(user.permissions));
+  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
@@ -55,6 +59,10 @@ export default async function AccountPage() {
 
         <SectionCard title="Change password" description="Minimum 12 characters.">
           <ChangePasswordForm />
+        </SectionCard>
+
+        <SectionCard title="Appearance" description="Light, dark, or follow your device's setting.">
+          <ThemePicker initial={theme} />
         </SectionCard>
       </div>
 
