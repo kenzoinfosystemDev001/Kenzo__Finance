@@ -49,5 +49,6 @@ services:
         sync: false
       - key: CLOUDINARY_FOLDER
         value: kenzo-erp
+      # tesseract runs inside the API: free, needs no key, and documents never leave Render.
       - key: OCR_PROVIDER
-        value: stub
+        value: tesseract
