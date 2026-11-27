@@ -138,8 +138,9 @@ export const envSchema = z.object({
   CLOUDINARY_FOLDER: z.string().default('kenzo-erp'),
 
   // stub: reads text files only and never guesses at scanned documents.
+  // tesseract: free, open-source engine that runs in the API; reads PNG/JPEG/WEBP. No key needed.
   // google-vision: Google Cloud Vision REST API, requires OCR_API_KEY.
-  OCR_PROVIDER: z.enum(['stub', 'google-vision']).default('stub'),
+  OCR_PROVIDER: z.enum(['stub', 'tesseract', 'google-vision']).default('stub'),
   OCR_API_KEY: z.string().optional(),
 
   // Calendar day used for "today", default dates and overdue checks.
@@ -200,10 +201,11 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     }
   }
 
-  if (parsed.data.OCR_PROVIDER !== 'stub' && !parsed.data.OCR_API_KEY?.trim()) {
+  // Only the cloud provider needs a key; stub and tesseract run without one.
+  if (parsed.data.OCR_PROVIDER === 'google-vision' && !parsed.data.OCR_API_KEY?.trim()) {
     throw new Error(
       `OCR_PROVIDER=${parsed.data.OCR_PROVIDER} requires OCR_API_KEY. ` +
-        'Set the key, or use OCR_PROVIDER=stub.',
+        'Set the key, or use OCR_PROVIDER=tesseract.',
     );
   }
 
