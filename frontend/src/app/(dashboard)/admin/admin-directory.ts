@@ -130,11 +130,10 @@ export const MODULE_DIRECTORY: DirectoryModule[] = [
     ],
   },
   {
-    title: 'Settings and appearance',
+    title: 'Settings',
    
     links: [
       { label: 'Settings', href: '/settings' },
-      { label: 'Appearance', href: '/appearance' },
       { label: 'My account', href: '/account' },
     ],
   },

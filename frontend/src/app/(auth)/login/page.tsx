@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth-actions';
-import { getLoginBranding } from '@/lib/branding';
 import { ApiUnavailable } from '@/components/api-unavailable';
 import { BrandLogo } from '@/components/brand-logo';
 import { LoginForm } from './login-form';
@@ -36,7 +35,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (session.status === 'api-unavailable') return <ApiUnavailable detail={session.detail} />;
   if (session.status === 'authenticated') redirect('/dashboard');
 
-  const branding = await getLoginBranding();
   const year = new Date().getFullYear();
 
   return (
@@ -96,7 +94,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           )}
 
           <div className="mt-6">
-            <LoginForm supportEmail={branding.supportEmail} />
+            <LoginForm />
           </div>
 
           <p className="mt-8 border-t border-border pt-5 text-center text-xs text-ink-subtle">

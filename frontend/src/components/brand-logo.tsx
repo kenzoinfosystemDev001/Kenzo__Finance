@@ -1,9 +1,7 @@
 import clsx from 'clsx';
 
 /**
- * The company logo. Served from /brand-logo, which returns the logo uploaded
- * in Admin -> Appearance (stored in the database) or, if none, the bundled
- * default. A plain <img> so the browser always asks the server, never a stale copy.
+ * The company logo, served from the bundled public/logo.png.
  *
  * Decorative wherever it sits next to the written company name, so it is
  * hidden from screen readers by default; pass `label` where the logo stands alone.
@@ -18,9 +16,9 @@ export function BrandLogo({
   priority?: boolean;
 }) {
   return (
-    // Plain <img>: /brand-logo is a same-origin route, not a static asset.
+    // Plain <img> for the bundled static logo.
     <img
-      src="/brand-logo"
+      src="/logo.png"
       alt={label ?? ''}
       aria-hidden={label ? undefined : true}
       width={307}

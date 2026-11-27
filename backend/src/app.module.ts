@@ -16,7 +16,6 @@ import { NumberingModule } from './numbering/numbering.module';
 import { StorageModule } from './storage/storage.module';
 import { SettingsModule } from './settings/settings.module';
 import { StockModule } from './stock/stock.module';
-import { BrandingModule } from './branding/branding.module';
 import { ProfilePhotoModule } from './profile-photo/profile-photo.module';
 import { CustomersModule } from './customers/customers.module';
 import { EnquiriesModule } from './enquiries/enquiries.module';
@@ -58,7 +57,6 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     StockModule,
     DocumentsModule,
     OcrModule,
-    BrandingModule,
     ProfilePhotoModule,
     CustomersModule,
     EnquiriesModule,

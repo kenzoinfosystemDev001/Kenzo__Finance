@@ -15,7 +15,7 @@ export const viewport: Viewport = {
 };
 
 /**
- * Every page depends on the signed-in user and on live appearance settings.
+ * Every page depends on the signed-in user and on live settings.
  * Rendering them at build time baked in the state of the build machine, so
  * each route is rendered per request.
  */

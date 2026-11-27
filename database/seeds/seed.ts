@@ -24,7 +24,7 @@ import {
   PERMISSION_DEFINITIONS,
   ROLE_CODES,
   ROLE_DEFINITIONS,
-} from '../src/common/authz/permissions';
+} from '../../backend/src/common/authz/permissions';
 
 /** Starting vendor categories. Editable by a Super Admin at runtime. */
 const VENDOR_CATEGORIES = [

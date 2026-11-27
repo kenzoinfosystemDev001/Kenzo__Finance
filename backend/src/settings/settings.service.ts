@@ -52,8 +52,6 @@ export const SETTING_KEYS = {
  * through the generic boolean PATCH /settings.
  */
 export const BRANDING_SETTING_KEYS = {
-  /** Address behind the login page's "Contact Administrator", or null. */
-  SUPPORT_EMAIL: 'branding.supportEmail',
   /** Company details printed on quotation PDFs: { name, address, phone, email, website, gstin, pan }. */
   COMPANY_PROFILE: 'branding.companyProfile',
   /** Default terms copied into new quotations (empty until an administrator sets them). */
@@ -73,7 +71,6 @@ export const BRANDING_SETTING_KEYS = {
 export const SETTING_DEFAULTS: Record<string, unknown> = {
   [SETTING_KEYS.STOCK_TRACKING_ENABLED]: false,
   [SETTING_KEYS.ALLOW_NEGATIVE_STOCK]: false,
-  [BRANDING_SETTING_KEYS.SUPPORT_EMAIL]: null,
   [SETTING_KEYS.QUOTATION_APPROVAL_REQUIRED]: false,
   [BRANDING_SETTING_KEYS.COMPANY_PROFILE]: null,
   [BRANDING_SETTING_KEYS.QUOTATION_DEFAULT_TERMS]: null,
@@ -91,8 +88,6 @@ export const SETTING_DESCRIPTIONS: Record<string, string> = {
     'Track physical stock quantities. When off, products are a catalogue only.',
   [SETTING_KEYS.ALLOW_NEGATIVE_STOCK]:
     'Allow stock movements that take on-hand quantity below zero.',
-  [BRANDING_SETTING_KEYS.SUPPORT_EMAIL]:
-    'Email address users are directed to from the sign-in page for access or password help.',
   [SETTING_KEYS.QUOTATION_APPROVAL_REQUIRED]:
     'Quotations must be approved by a user with quotation approval permission before they can be sent.',
   [BRANDING_SETTING_KEYS.COMPANY_PROFILE]: 'Company name, address and registration details printed on quotations.',
