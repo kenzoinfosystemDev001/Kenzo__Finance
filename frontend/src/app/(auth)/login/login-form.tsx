@@ -3,7 +3,7 @@
 import { useActionState, useState, type FormEvent } from 'react';
 import { useFormStatus } from 'react-dom';
 import { loginAction, type LoginState } from '@/lib/auth-actions';
-import { IconArrowRight, IconEye, IconMail, IconShield } from '@/components/icons';
+import { IconArrowRight, IconEye, IconMail } from '@/components/icons';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -81,7 +81,7 @@ function FieldError({ id, message }: { id: string; message?: string }) {
   );
 }
 
-export function LoginForm({ supportEmail }: { supportEmail: string | null }) {
+export function LoginForm() {
   const [state, formAction] = useActionState<LoginState, FormData>(loginAction, {});
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -179,19 +179,6 @@ export function LoginForm({ supportEmail }: { supportEmail: string | null }) {
       </label>
 
       <SubmitButton />
-
-      {supportEmail && (
-        <div className="flex flex-col items-center gap-3 pt-1 text-sm text-ink-subtle">
-          <span>Need access or help?</span>
-          <a
-            href={`mailto:${supportEmail}`}
-            className="flex items-center gap-2 font-medium text-accent hover:underline"
-          >
-            <IconShield size={16} />
-            Contact administrator
-          </a>
-        </div>
-      )}
     </form>
   );
 }

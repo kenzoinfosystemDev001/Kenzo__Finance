@@ -9,6 +9,7 @@
     "esModuleInterop": true,
     "target": "ES2022",
     "sourceMap": true,
+    "rootDir": "./src",
     "outDir": "./dist",
     "incremental": false,
     "skipLibCheck": true,
@@ -21,6 +22,6 @@
     "resolveJsonModule": true,
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src/**/*", "../database/**/*", "test/**/*"],
+  "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist"]
 }
