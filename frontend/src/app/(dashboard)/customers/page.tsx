@@ -146,7 +146,15 @@ async function AllCustomersPage({ searchParams }: { searchParams: Promise<Partia
                         </td>
                         <td>{CUSTOMER_TYPE_LABELS[customer.customerType]}</td>
                         <td className="whitespace-nowrap">{contact?.name ?? dash}</td>
-                        <td className="whitespace-nowrap tabular-nums">{contact?.phone ? formatPhone(contact.phone) : dash}</td>
+                        <td className="whitespace-nowrap tabular-nums">
+                          {contact?.phone ? (
+                            <a href={`tel:${contact.phone}`} className="hover:text-accent hover:underline" aria-label={`Call ${customer.name}`}>
+                              {formatPhone(contact.phone)}
+                            </a>
+                          ) : (
+                            dash
+                          )}
+                        </td>
                         <td className="max-w-[220px] truncate">{contact?.email ?? dash}</td>
                         <td>{address?.city ?? dash}</td>
                         <td>{address?.country ?? dash}</td>

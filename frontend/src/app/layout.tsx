@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { cookies } from 'next/headers';
 import './globals.css';
-import { THEME_COOKIE } from '@/lib/theme';
 
 export const metadata: Metadata = {
   title: {
@@ -23,18 +21,13 @@ export const viewport: Viewport = {
  */
 export const dynamic = 'force-dynamic';
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Light or dark is set on <html> while rendering, so the page never flashes
-  // the wrong theme. "system" leaves the attribute off and the device setting applies.
-  const stored = (await cookies()).get(THEME_COOKIE)?.value;
-  const theme = stored === 'light' || stored === 'dark' ? stored : undefined;
-
   return (
-    <html lang="en" data-theme={theme}>
+    <html lang="en">
       <body className="min-h-screen bg-canvas font-sans text-base text-ink">
         {children}
       </body>

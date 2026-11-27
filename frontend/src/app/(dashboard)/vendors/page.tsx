@@ -247,7 +247,13 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
                           {primary?.designation && <p className="text-xs text-ink-subtle">{primary.designation}</p>}
                         </td>
                         <td className="whitespace-nowrap tabular-nums">
-                          {phone ? formatPhone(phone) : <span className="text-ink-subtle">&mdash;</span>}
+                          {phone ? (
+                            <a href={`tel:${phone}`} className="hover:text-accent hover:underline" aria-label={`Call ${vendor.businessName}`}>
+                              {formatPhone(phone)}
+                            </a>
+                          ) : (
+                            <span className="text-ink-subtle">&mdash;</span>
+                          )}
                         </td>
                         <td className="max-w-[220px] truncate">
                           {email ?? <span className="text-ink-subtle">&mdash;</span>}

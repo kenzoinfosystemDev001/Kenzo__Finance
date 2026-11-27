@@ -123,8 +123,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         ) : null}
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-5">
-        <div className="xl:col-span-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="min-w-0">
           <SectionCard
             title="Recently added vendors"
             padded={false}
@@ -186,7 +186,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
 
         {canSeeSales && (
-          <div className="xl:col-span-3">
+          <div className="min-w-0">
             <SectionCard title="Sales analytics" description={`Invoiced sales by month · ${rangeLabel}`}>
               {!sales ? (
                 <SectionError what="Sales analytics" />
@@ -224,7 +224,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <p className="mt-1 text-xl font-semibold tabular-nums text-ink">{paymentAlerts.summary.dueSoon}</p>
               </Link>
               <Link href="/final-invoices" className="rounded-lg border border-border bg-surface-muted p-3 hover:border-border-strong">
-                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Still outstanding</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Outstanding in alerts</p>
                 <p className="mt-1 text-xl font-semibold tabular-nums text-ink">{paymentAlerts.summary.totalOutstanding}</p>
               </Link>
             </div>
