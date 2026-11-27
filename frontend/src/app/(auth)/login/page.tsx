@@ -1,10 +1,9 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth-actions';
-import { getLoginBranding, loginBackgroundUrl } from '@/lib/branding';
+import { getLoginBranding } from '@/lib/branding';
 import { ApiUnavailable } from '@/components/api-unavailable';
 import { BrandLogo } from '@/components/brand-logo';
-import { BackgroundImage } from '@/components/background-image';
 import { LoginForm } from './login-form';
 
 export const metadata: Metadata = { title: 'Sign in' };
@@ -38,8 +37,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (session.status === 'authenticated') redirect('/dashboard');
 
   const branding = await getLoginBranding();
-  // Admin-chosen image (Admin -> Appearance, stored in the database). Without one, the solid navy panel shows.
-  const background = branding.backgroundId ? loginBackgroundUrl(branding.backgroundId) : null;
   const year = new Date().getFullYear();
 
   return (
@@ -49,10 +46,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         aria-label="Kenzo Infosystems"
         className="relative hidden overflow-hidden bg-sidebar text-sidebar-ink lg:flex lg:w-[52%] lg:flex-col lg:justify-between lg:px-12 lg:py-12 xl:px-16"
       >
-        <BackgroundImage src={background} overlayClassName="bg-sidebar/85" className="absolute inset-0" />
-
-
-
         <div className="relative flex items-center gap-4">
           <BrandLogo className="h-16 w-16 shrink-0" priority />
           <div>

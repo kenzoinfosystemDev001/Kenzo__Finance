@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import { getCurrentUser } from '@/lib/auth-actions';
-import { getAppearanceConfig, getLoginBranding, loginBackgroundUrl } from '@/lib/branding';
-import { appearanceImageUrl } from '@/lib/appearance-types';
+import { getLoginBranding } from '@/lib/branding';
 import { PageHeader, SectionCard } from '@/components/ui';
-import { AppearanceImageCard, SupportEmailForm } from './appearance-cards';
+import { SupportEmailForm } from './support-email-form';
 import { LogoCard } from './logo-card';
 
 export const metadata: Metadata = { title: 'Appearance' };
@@ -22,8 +21,7 @@ async function hasCustomLogo(): Promise<boolean> {
 }
 
 /**
- * Admin -> Appearance. The one place that controls the look of the sign-in
- * page, the sidebar and the main workspace. Each image is independent.
+ * Admin -> Appearance: the company logo and the sign-in page contact address.
  */
 export default async function AppearancePage() {
   const user = await getCurrentUser();
@@ -40,19 +38,11 @@ export default async function AppearancePage() {
     );
   }
 
-  const [appearance, login] = await Promise.all([getAppearanceConfig(), getLoginBranding()]);
+  const login = await getLoginBranding();
 
   return (
     <div className="w-full space-y-6">
-      <PageHeader
-        title="Appearance"
-      />
-
-      {!appearance && (
-        <div role="alert" className="rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2.5 text-sm text-warning">
-          The current appearance could not be loaded. Showing defaults; try again in a moment before making changes.
-        </div>
-      )}
+      <PageHeader title="Appearance" />
 
       <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
         <div className="2xl:col-span-2">
@@ -60,34 +50,10 @@ export default async function AppearancePage() {
         </div>
 
         <div className="2xl:col-span-2">
-          <AppearanceImageCard
-            kind="login"
-            title="Login page background"
-            defaultDescription="The plain slate panel is shown."
-            defaultSwatchClass="bg-sidebar"
-            summary={appearance?.login ?? null}
-            currentUrl={login.backgroundId ? loginBackgroundUrl(login.backgroundId) : null}
-            footer={<SupportEmailForm supportEmail={login.supportEmail} canManage={canManage} />}
-          />
+          <SectionCard title="Sign-in page contact" description="Where users are directed for access or password help.">
+            <SupportEmailForm supportEmail={login.supportEmail} canManage={canManage} />
+          </SectionCard>
         </div>
-
-        <AppearanceImageCard
-          kind="sidebar"
-          title="Sidebar background"
-          defaultDescription="The default slate colour is used."
-          defaultSwatchClass="bg-sidebar"
-          summary={appearance?.sidebar ?? null}
-          currentUrl={appearance?.sidebar ? appearanceImageUrl('sidebar', appearance.sidebar.documentId) : null}
-        />
-
-        <AppearanceImageCard
-          kind="workspace"
-          title="Main workspace background"
-          defaultDescription="The default off-white is used."
-          defaultSwatchClass="bg-canvas"
-          summary={appearance?.workspace ?? null}
-          currentUrl={appearance?.workspace ? appearanceImageUrl('workspace', appearance.workspace.documentId) : null}
-        />
       </div>
     </div>
   );
