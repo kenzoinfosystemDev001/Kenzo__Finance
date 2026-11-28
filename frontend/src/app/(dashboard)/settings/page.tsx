@@ -144,33 +144,6 @@ export default async function SettingsPage() {
           <PaymentSettingsPanel settings={paymentSettings} canManage={canManage} />
         </SectionCard>
       )}
-
-      <SectionCard
-        title="All settings"
-        description="Current effective values."
-        padded={false}
-      >
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th scope="col">Key</th>
-                <th scope="col">Value</th>
-                <th scope="col">Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              {settings.map((setting) => (
-                <tr key={setting.key}>
-                  <td className="font-mono text-sm">{setting.key}</td>
-                  <td className="font-mono text-sm">{setting.value === null ? '—' : typeof setting.value === 'object' ? JSON.stringify(setting.value) : String(setting.value)}</td>
-                  <td className="text-ink-muted">{setting.description}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </SectionCard>
     </div>
   );
 }

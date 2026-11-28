@@ -641,7 +641,6 @@ export function VendorForm({
             <SearchSelect
               label="Brands supplied"
               multiple
-              placeholder="Search brands..."
               search={brandSearch}
               selected={brands}
               onChange={setBrands}
@@ -658,7 +657,6 @@ export function VendorForm({
               <SearchSelect
                 label="Products supplied"
                 multiple
-                placeholder="Search by product name, model or code..."
                 search={productSearch}
                 selected={products}
                 onChange={(next) => {
@@ -806,7 +804,7 @@ export function QuickProductModal({
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <SearchSelect label="Brand *" placeholder="Search brands..." search={brandSearch} selected={brand} onChange={setBrand} />
+          <SearchSelect label="Brand *" search={brandSearch} selected={brand} onChange={setBrand} />
         </div>
         <TextField className="sm:col-span-2" label="Product Name" required value={name} onChange={setName} placeholder="Enter product name" />
         <TextField label="First Model Name" value={modelName} onChange={setModelName} placeholder="Enter model name" hint="Optional; more models can be added in Product Management" />

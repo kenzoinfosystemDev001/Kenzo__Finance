@@ -80,7 +80,6 @@ export function CustomerToolbar({ categories, exportHref }: { categories: Custom
             value={text.search}
             onChange={(e) => setText((t) => ({ ...t, search: e.target.value }))}
             onBlur={() => commitText('search')}
-            placeholder="Name, code, contact, phone, email, GSTIN, city"
             className="field-input h-10 pl-10"
           />
         </form>

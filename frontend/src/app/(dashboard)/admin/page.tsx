@@ -145,7 +145,7 @@ async function CustomersSection({ page, pageSize, q, permissions }: { page: numb
         <input type="hidden" name="s" value="customers" />
         <label className="flex min-w-[14rem] flex-1 flex-col gap-1 text-xs font-medium text-ink-muted">
           Search
-          <input name="q" defaultValue={q ?? ''} placeholder="Name or customer code" className="field-input h-9" />
+          <input name="q" defaultValue={q ?? ''} className="field-input h-9" />
         </label>
         <button type="submit" className="btn-secondary h-9">Search</button>
       </form>
@@ -225,7 +225,7 @@ async function VendorsSection({ page, pageSize, q, permissions }: { page: number
         <input type="hidden" name="s" value="vendors" />
         <label className="flex min-w-[14rem] flex-1 flex-col gap-1 text-xs font-medium text-ink-muted">
           Search
-          <input name="q" defaultValue={q ?? ''} placeholder="Vendor name, code or phone" className="field-input h-9" />
+          <input name="q" defaultValue={q ?? ''} className="field-input h-9" />
         </label>
         <button type="submit" className="btn-secondary h-9">Search</button>
       </form>

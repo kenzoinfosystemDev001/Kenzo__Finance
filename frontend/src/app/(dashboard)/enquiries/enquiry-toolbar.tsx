@@ -74,7 +74,6 @@ export function EnquiryToolbar({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onBlur={commitSearch}
-            placeholder="Enquiry ID, customer, contact, phone, product or model"
             className="field-input h-10 pl-10"
           />
         </form>

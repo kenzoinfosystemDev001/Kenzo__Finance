@@ -44,6 +44,8 @@ const config: Config = {
         'sidebar-surface': withAlpha('--sidebar-surface'),
         'sidebar-border': withAlpha('--sidebar-border'),
         'sky-blue': withAlpha('--sky-blue'),
+        'gold-tint': withAlpha('--gold-tint'),
+        'gold-tint-hover': withAlpha('--gold-tint-hover'),
         'lavender-hover': withAlpha('--lavender-hover'),
         'info-subtle': withAlpha('--info-subtle'),
         highlight: withAlpha('--highlight'),
@@ -52,7 +54,7 @@ const config: Config = {
         'chart-highlight': withAlpha('--chart-highlight'),
       },
       fontFamily: {
-        sans: ['ui-sans-serif', 'system-ui', 'Segoe UI', 'Roboto', 'Arial', 'sans-serif'],
+        sans: ['var(--font-sans)', 'Segoe UI', 'Arial', 'sans-serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Consolas', 'monospace'],
       },
       fontSize: {

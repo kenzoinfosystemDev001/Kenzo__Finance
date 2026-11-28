@@ -415,7 +415,7 @@ export function CustomerProductsPanel({ customer, canManage, canViewProducts }: 
             footer={<><button type="button" className="btn-secondary" onClick={reset} disabled={pending}>Cancel</button><button type="button" className="btn-primary" onClick={save} disabled={pending || !product[0]}>{pending ? 'Saving...' : 'Add'}</button></>}
           >
             <div className="space-y-4">
-              <SearchSelect label="Product" placeholder="Search by product, code or model..." search={productSearch} selected={product} onChange={pickProduct} emptyText="No active products found" />
+              <SearchSelect label="Product" search={productSearch} selected={product} onChange={pickProduct} emptyText="No active products found" />
               {product[0] && (
                 models.length === 0 ? (
                   <p className="text-sm text-ink-subtle">{pending ? 'Loading models...' : 'This product has no models; the interest will be recorded for the product.'}</p>

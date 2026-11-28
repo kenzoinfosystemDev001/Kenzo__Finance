@@ -60,7 +60,6 @@ export default async function CompaniesPage({
               type="search"
               defaultValue={params.search ?? ''}
               className="field-input"
-              placeholder="Search brands"
             />
           </div>
           <button type="submit" className="btn-primary">

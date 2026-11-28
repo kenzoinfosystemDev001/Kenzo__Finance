@@ -564,7 +564,6 @@ export function VendorsPanel({
               <SearchSelect
                 label="Vendors"
                 multiple
-                placeholder="Search vendors by name or code..."
                 search={vendorSearch}
                 selected={selected}
                 onChange={setSelected}

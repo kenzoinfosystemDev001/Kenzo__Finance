@@ -169,7 +169,7 @@ export default async function SalesHistoryPage({
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-ink-muted sm:col-span-2 lg:col-span-1">
           Search
-          <input name="search" defaultValue={scope.search ?? ''} placeholder="Product, customer or invoice" className="field-input h-9" />
+          <input name="search" defaultValue={scope.search ?? ''} className="field-input h-9" />
         </label>
         <div className="flex items-end gap-2">
           <button type="submit" className="btn-primary h-9">Apply</button>

@@ -173,7 +173,6 @@ export function BrandsPanel({
               <SearchSelect
                 label="Brands"
                 multiple
-                placeholder="Search brands..."
                 search={brandSearch}
                 selected={selected}
                 onChange={setSelected}
@@ -487,7 +486,6 @@ export function ProductsPanel({
               <SearchSelect
                 label="Products / models"
                 multiple
-                placeholder="Search by name, model number or product code..."
                 search={productSearch}
                 selected={selected}
                 onChange={setSelected}
