@@ -1,4 +1,4 @@
-import { PayloadTooLargeException, UnsupportedMediaTypeException, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Logger, PayloadTooLargeException, UnsupportedMediaTypeException } from '@nestjs/common';
 import { DocumentKind } from '@prisma/client';
 import { BACKGROUND_MAX_BYTES, BrandingService } from './branding.service';
 import { BrandingController } from './branding.controller';
@@ -148,9 +148,16 @@ describe('BrandingService', () => {
 
   it('a storage failure during cleanup does not fail the change', async () => {
     const { service, storageService } = setup();
-    storageService.remove.mockRejectedValueOnce(new Error('cloudinary down'));
-    await service.setBackground('sidebar', { buffer: PNG, originalname: 'a.png' }, ADMIN);
-    await expect(service.removeBackground('sidebar', ADMIN)).resolves.toMatchObject({ sidebar: null });
+    storageService.remove.mockRejectedValueOnce(new Error('storage down'));
+    // The failed cleanup is expected here; capture the warning instead of printing it.
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    try {
+      await service.setBackground('sidebar', { buffer: PNG, originalname: 'a.png' }, ADMIN);
+      await expect(service.removeBackground('sidebar', ADMIN)).resolves.toMatchObject({ sidebar: null });
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('Could not delete the stored file'));
+    } finally {
+      warn.mockRestore();
+    }
   });
 });
 
