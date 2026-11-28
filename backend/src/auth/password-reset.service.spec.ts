@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 import {
   FORGOT_PASSWORD_MESSAGE,
   INVALID_RESET_TOKEN_MESSAGE,
@@ -113,19 +113,30 @@ describe('PasswordResetService', () => {
       );
     });
 
-    it('still answers generically when email is not configured', async () => {
-      prisma.user.findFirst.mockResolvedValue(activeUser);
-      mailer.missingSettings.mockReturnValue(['SMTP_HOST']);
-      await expect(service.requestReset('a@b.c', context)).resolves.toEqual({ message: FORGOT_PASSWORD_MESSAGE });
-      await flush();
-      expect(mailer.send).not.toHaveBeenCalled();
-    });
+    describe('when email cannot be sent', () => {
+      // These failures are expected; capture the warnings instead of printing them.
+      let warn: jest.SpyInstance;
+      beforeEach(() => {
+        warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      });
+      afterEach(() => warn.mockRestore());
 
-    it('still answers generically when the mail server refuses', async () => {
-      prisma.user.findFirst.mockResolvedValue(activeUser);
-      mailer.send.mockRejectedValue(Object.assign(new Error('refused'), { code: 'AUTH' }));
-      await expect(service.requestReset('a@b.c', context)).resolves.toEqual({ message: FORGOT_PASSWORD_MESSAGE });
-      await flush();
+      it('still answers generically when email is not configured', async () => {
+        prisma.user.findFirst.mockResolvedValue(activeUser);
+        mailer.missingSettings.mockReturnValue(['SMTP_HOST']);
+        await expect(service.requestReset('a@b.c', context)).resolves.toEqual({ message: FORGOT_PASSWORD_MESSAGE });
+        await flush();
+        expect(mailer.send).not.toHaveBeenCalled();
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('email sending is not configured'));
+      });
+
+      it('still answers generically when the mail server refuses', async () => {
+        prisma.user.findFirst.mockResolvedValue(activeUser);
+        mailer.send.mockRejectedValue(Object.assign(new Error('refused'), { code: 'AUTH' }));
+        await expect(service.requestReset('a@b.c', context)).resolves.toEqual({ message: FORGOT_PASSWORD_MESSAGE });
+        await flush();
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('was not sent'));
+      });
     });
   });
 

@@ -48,8 +48,14 @@ export class DatabaseStorageDriver implements StorageDriver {
 
   async createReadStream(storageKey: string): Promise<Readable> {
     const id = this.idFromKey(storageKey);
-    const row = id ? await this.prisma.storedFile.findUnique({ where: { id }, select: { content: true } }) : null;
+    if (!id) {
+      // Not a key this driver ever wrote: a caller bug, not lost data.
+      this.logger.warn(`Rejected malformed database storage key ${storageKey}`);
+      throw new NotFoundException('The file for this document is no longer available in storage.');
+    }
+    const row = await this.prisma.storedFile.findUnique({ where: { id }, select: { content: true } });
     if (!row) {
+      // A document points at a file that is gone: a data-integrity problem worth alerting on.
       this.logger.error(`Stored file missing for key ${storageKey}`);
       throw new NotFoundException('The file for this document is no longer available in storage.');
     }

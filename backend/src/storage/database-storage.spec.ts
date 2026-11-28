@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { Logger, NotFoundException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import type { Readable } from 'node:stream';
 import { DatabaseStorageDriver, isDatabaseKey } from './drivers/database-storage.driver';
@@ -43,11 +43,22 @@ describe('DatabaseStorageDriver', () => {
   });
 
   it('reports a missing or malformed key as not found, without querying for garbage', async () => {
-    const prisma = prismaMock(null);
-    const driver = new DatabaseStorageDriver(prisma as never);
-    await expect(driver.createReadStream(`db:${ID}`)).rejects.toBeInstanceOf(NotFoundException);
-    await expect(driver.createReadStream('db:not-a-uuid')).rejects.toBeInstanceOf(NotFoundException);
-    expect(prisma.storedFile.findUnique).toHaveBeenCalledTimes(1);
+    // These failures are expected here; capture the log instead of printing it.
+    const error = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    try {
+      const prisma = prismaMock(null);
+      const driver = new DatabaseStorageDriver(prisma as never);
+      await expect(driver.createReadStream(`db:${ID}`)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(driver.createReadStream('db:not-a-uuid')).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.storedFile.findUnique).toHaveBeenCalledTimes(1);
+      // A missing file is an error worth alerting on; a malformed key is only a warning.
+      expect(error).toHaveBeenCalledWith(`Stored file missing for key db:${ID}`);
+      expect(warn).toHaveBeenCalledWith('Rejected malformed database storage key db:not-a-uuid');
+    } finally {
+      error.mockRestore();
+      warn.mockRestore();
+    }
   });
 
   it('removes idempotently and ignores keys it does not own', async () => {
