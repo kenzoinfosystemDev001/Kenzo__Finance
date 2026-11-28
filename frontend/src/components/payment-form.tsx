@@ -217,7 +217,6 @@ export function RecordPaymentForm({
             <SearchSelect
               label="Customer"
               hideLabel
-              placeholder="Search customers"
               search={customerSearch}
               selected={customer ? [{ id: customer.id, label: customer.name, detail: customer.customerCode }] : []}
               onChange={(next) => {

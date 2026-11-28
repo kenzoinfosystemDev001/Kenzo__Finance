@@ -10,6 +10,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
+import { clientIp } from '../common/utils/client-ip';
 import { AuthService, type RequestContext } from './auth.service';
 import {
   ChangePasswordDto,
@@ -109,7 +110,7 @@ export class AuthController {
 
   private contextOf(request: Request): RequestContext {
     return {
-      ipAddress: request.ip ?? null,
+      ipAddress: clientIp(request),
       userAgent: request.headers['user-agent'] ?? null,
     };
   }

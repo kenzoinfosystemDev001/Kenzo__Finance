@@ -9,25 +9,6 @@ import { LoginForm } from './login-form';
 
 export const metadata: Metadata = { title: 'Sign in' };
 
-const HIGHLIGHTS = [
-  { label: 'Boost Productivity', icon: 'M4 17l5-5 4 4 7-8M15 8h5v5' },
-  { label: 'Ensure Security', icon: 'M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6l8-3zM9 12l2 2 4-4' },
-  { label: 'Grow Your Business', icon: 'M3 18h18M6 18V11M11 18V6M16 18v-9M21 18v-4' },
-] as const;
-
-function Highlight({ label, icon }: { label: string; icon: string }) {
-  return (
-    <li className="flex flex-col items-center gap-2 text-center">
-      <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15">
-        <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="text-sidebar-ink">
-          <path d={icon} />
-        </svg>
-      </span>
-      <span className="text-sm font-medium text-sidebar-ink">{label}</span>
-    </li>
-  );
-}
-
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ reason?: string }> }) {
   const { reason } = await searchParams;
   const session = await getSession();
@@ -51,27 +32,18 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       >
         <BackgroundImage src={background} overlayClassName="bg-sidebar/85" className="absolute inset-0" />
 
-        <div className="relative flex items-center gap-4">
-          <BrandLogo className="h-16 w-16 shrink-0" priority />
-          <div>
-            <p className="text-2xl font-bold leading-tight tracking-[0.14em]">KENZO</p>
-            <p className="text-xs font-medium tracking-[0.42em] text-sidebar-muted">INFOSYSTEMS</p>
-          </div>
+        <div className="relative flex items-center gap-3">
+          <BrandLogo className="h-14 w-14 shrink-0" priority />
+          <p className="text-xl font-semibold tracking-[0.01em]">
+            Kenzo Infosystems <span className="text-sidebar-indicator">Pvt Ltd</span>
+          </p>
         </div>
 
         <div className="relative max-w-xl">
-          <p className="text-base font-medium text-sidebar-muted">Innovative Solutions. Smarter Business.</p>
-          <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight xl:text-5xl">
-            Business Management <span className="text-sky-blue">Software</span>
-          </h1>
-          <p className="mt-5 text-lg leading-relaxed text-sidebar-ink/90">
-            Streamline your business operations with powerful, integrated solutions.
+          <h1 className="text-4xl font-semibold leading-tight tracking-tight xl:text-5xl">Business Management Software</h1>
+          <p className="mt-5 text-lg leading-relaxed text-sidebar-muted">
+            Vendors, products, customers, quotations, invoices, payments and deliveries in one system.
           </p>
-          <ul className="mt-10 grid grid-cols-3 gap-4">
-            {HIGHLIGHTS.map((item) => (
-              <Highlight key={item.label} label={item.label} icon={item.icon} />
-            ))}
-          </ul>
         </div>
 
         <p className="relative text-sm text-sidebar-muted">&copy; {year} Kenzo Infosystems. All rights reserved.</p>
@@ -81,13 +53,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <section className="flex flex-1 items-center justify-center px-4 py-10 sm:px-8">
         <div className="w-full max-w-md rounded-2xl bg-surface px-6 py-8 shadow-popover ring-1 ring-border sm:px-10 sm:py-10">
           <div className="flex flex-col items-center text-center">
-            <BrandLogo className="h-20 w-20" priority />
-            <p className="mt-3 text-xl font-extrabold tracking-[0.16em] text-sidebar">KENZO</p>
-            <p className="text-xs font-medium tracking-[0.42em] text-ink-subtle">INFOSYSTEMS</p>
+            <BrandLogo className="h-16 w-16" priority />
+            <p className="mt-3 text-lg font-semibold text-ink">
+              Kenzo Infosystems <span className="text-highlight">Pvt Ltd</span>
+            </p>
           </div>
 
-          <h2 className="mt-8 text-center text-3xl font-semibold text-ink">Welcome Back!</h2>
-          <p className="mt-2 text-center text-sm text-ink-subtle">Sign in to your account to continue.</p>
+          <h2 className="mt-8 text-center text-2xl font-semibold text-ink">Sign in</h2>
 
           {reason === 'session-expired' && (
             <div role="status" className="mt-6 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2 text-sm text-warning">

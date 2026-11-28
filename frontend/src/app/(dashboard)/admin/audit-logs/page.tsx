@@ -122,7 +122,7 @@ export default async function AuditLogsPage({ searchParams }: { searchParams: Pr
       <form method="get" role="search" className="card grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-6">
         <label className="flex flex-col gap-1 text-xs font-medium text-ink-muted xl:col-span-2">
           Search summary
-          <input name="search" defaultValue={filters.search ?? ''} placeholder="e.g. Shree Computers" className="field-input h-9" maxLength={200} />
+          <input name="search" defaultValue={filters.search ?? ''} className="field-input h-9" maxLength={200} />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-ink-muted">
           Entity type

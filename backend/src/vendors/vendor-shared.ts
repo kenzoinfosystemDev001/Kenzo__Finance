@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { Prisma, VendorAddressType, VendorContactType } from '@prisma/client';
 import type { Request } from 'express';
+import { clientIp } from '../common/utils/client-ip';
 import {
   cleanOptional,
   normalizeEmail,
@@ -21,7 +22,7 @@ export const VENDOR_ENTITY = 'Vendor';
 
 export function contextOf(request: Request): RequestContext {
   return {
-    ipAddress: request.ip ?? null,
+    ipAddress: clientIp(request),
     userAgent: request.headers['user-agent'] ?? null,
   };
 }

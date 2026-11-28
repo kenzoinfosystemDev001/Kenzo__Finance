@@ -2,75 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Kenzo Infosystems palette. Raw RGB channels so Tailwind opacity modifiers work.
-   Brand palette (source of truth):
-     #2C3E50 Dark Slate Blue   -> --accent, --sidebar, --ink
-     #34495E Slate Blue        -> --accent-hover, --sidebar-hover
-     #7F8C8D Muted Grey        -> --ink-subtle
-     #BDC3C7 Light Grey        -> --border, --sidebar-muted
-     #ECF0F1 Off White         -> --canvas, --surface-muted
-   White is used for content surfaces. Semantic colours are for status only. */
+/* Kenzo Infosystems palette: royal indigo with antique gold on warm ivory.
+   Raw RGB channels so Tailwind opacity modifiers work. Components use the
+   semantic tokens below, never the raw palette. Status colours (danger,
+   warning, success) are kept separate from the brand palette. */
 :root {
-  /* Approved palette. Raw RGB channels so Tailwind opacity modifiers work. */
-  --ice-gray: 233 238 243;       /* #E9EEF3 page background */
-  --crisp-white: 255 255 255;    /* #FFFFFF cards, forms, tables */
-  --frosted: 245 246 249;        /* #F5F6F9 secondary surfaces */
-  --plum-indigo: 48 43 78;       /* #302B4E sidebar, primary branding */
-  --slate-gray: 102 112 133;     /* #667085 secondary text on white */
-  --sky-blue: 169 214 245;       /* #A9D6F5 secondary accents, primary chart series */
-  --lavender: 233 226 245;       /* #E9E2F5 soft highlighted sections */
-  --peach: 249 226 213;          /* #F9E2D5 informational backgrounds */
-  --orchid: 152 120 200;         /* #9878C8 analytics, secondary chart series */
-  --coral: 242 140 102;          /* #F28C66 important actions and highlights */
-  --dusty-blue: 113 134 154;     /* #71869A input borders, strong borders, icons */
+  /* Raw palette */
+  --ivory: 248 246 241;          /* #F8F6F1 page background */
+  --white: 255 255 255;          /* #FFFFFF cards, forms, tables */
+  --parchment: 242 239 232;      /* #F2EFE8 secondary surfaces */
+  --royal-ink: 27 22 58;         /* #1B163A primary text */
+  --royal-slate: 82 76 108;      /* #524C6C secondary text (AA on ivory and white) */
+  --royal: 46 36 112;            /* #2E2470 royal indigo: primary actions, headers */
+  --royal-hover: 61 48 140;      /* #3D308C */
+  --amethyst: 236 232 247;       /* #ECE8F7 soft royal tint */
+  --amethyst-hover: 222 214 242; /* #DED6F2 */
+  --gold: 168 132 52;            /* #A88434 antique gold: accents, highlights */
+  --gold-bright: 212 175 55;     /* #D4AF37 gold on dark backgrounds */
+  --gold-subtle: 245 236 212;    /* #F5ECD4 gold tint: create actions */
+  --gold-hover: 238 223 184;     /* #EEDFB8 */
+  --linen: 250 234 224;          /* #FAEAE0 informational backgrounds */
+  --stone: 226 221 211;          /* #E2DDD3 light borders */
+  --heather: 150 143 168;        /* #968FA8 input borders, strong borders */
+  --violet: 108 92 210;          /* #6C5CD2 primary chart series */
 
-  /* Derived from the palette: hover, active and light-border tints, and a darker
-     slate for text on the grey page (#667085 there is 4.3:1, below AA 4.5:1). */
-  --plum-hover: 62 56 102;
-  --plum-active: 70 63 112;
-  --lavender-hover: 221 210 240;
-  --border-light: 201 211 222;
-  --slate-text: 84 94 114;
+  /* Semantic tokens */
+  --canvas: var(--ivory);
+  --surface: var(--white);
+  --surface-muted: var(--parchment);
+  --border: var(--stone);
+  --border-strong: var(--heather);
+  --ink: var(--royal-ink);
+  --ink-muted: var(--royal-slate);
+  --ink-subtle: var(--royal-slate);
+  --accent: var(--royal);
+  --accent-hover: var(--royal-hover);
+  --accent-subtle: var(--amethyst);
+  --lavender-hover: var(--amethyst-hover);
+  --info-subtle: var(--linen);
+  --highlight: var(--gold);
+  --gold-tint: var(--gold-subtle);
+  --gold-tint-hover: var(--gold-hover);
+  --sky-blue: var(--violet);     /* legacy name, kept for existing classes */
+  --chart-primary: var(--violet);
+  --chart-secondary: var(--gold-bright);
+  --chart-highlight: 181 72 93;  /* #B5485D deep rose */
 
-  /* Semantic tokens. Components use these, never the raw palette. */
-  --canvas: var(--ice-gray);
-  --surface: var(--crisp-white);
-  --surface-muted: var(--frosted);
-  --border: var(--border-light);
-  --border-strong: var(--dusty-blue);
-  --ink: var(--plum-indigo);
-  --ink-muted: var(--slate-text);
-  --ink-subtle: var(--slate-text);
-  --accent: var(--plum-indigo);
-  --accent-hover: var(--plum-hover);
-  --accent-subtle: var(--lavender);
-  --info-subtle: var(--peach);
-  --highlight: var(--coral);
-  --chart-primary: var(--sky-blue);
-  --chart-secondary: var(--orchid);
-  --chart-highlight: var(--coral);
+  /* Navigation (sidebar and sign-in brand panel) */
+  --sidebar: 23 18 58;           /* #17123A */
+  --sidebar-deep: 34 26 82;      /* #221A52 lower gradient stop */
+  --sidebar-surface: 42 33 96;   /* #2A2160 profile and footer cards */
+  --sidebar-hover: 54 43 120;    /* #362B78 hover, expanded parent */
+  --sidebar-active: 75 59 181;   /* #4B3BB5 active item */
+  --sidebar-indicator: var(--gold-bright);
+  --sidebar-border: 58 48 112;   /* #3A3070 subtle borders */
+  --sidebar-ink: var(--white);
+  --sidebar-muted: 196 189 226;  /* #C4BDE2 secondary text */
 
-  /* Navigation palette (sidebar and sign-in brand panel). */
-  --navy-deep: 23 26 69;         /* #171A45 sidebar base */
-  --navy-indigo: 32 36 81;       /* #202451 sidebar lower gradient stop */
-  --navy-surface: 37 41 82;      /* #252952 profile and footer cards */
-  --navy-secondary: 48 54 101;   /* #303665 hover, expanded parent */
-  --active-blue: 40 104 240;     /* #2868F0 active item */
-  --bright-blue: 22 139 255;     /* #168BFF indicator, accents */
-  --navy-text: 184 194 226;      /* #B8C2E2 secondary text */
-  --navy-border: 55 61 114;      /* #373D72 subtle borders */
-
-  --sidebar: var(--navy-deep);
-  --sidebar-deep: var(--navy-indigo);
-  --sidebar-surface: var(--navy-surface);
-  --sidebar-hover: var(--navy-secondary);
-  --sidebar-active: var(--active-blue);
-  --sidebar-indicator: var(--bright-blue);
-  --sidebar-border: var(--navy-border);
-  --sidebar-ink: var(--crisp-white);
-  --sidebar-muted: var(--navy-text);
-
-  /* Status colours are not part of the brand palette. */
+  /* Status colours */
   --danger: 180 35 24;
   --danger-subtle: 254 243 242;
   --warning: 181 71 8;
@@ -171,10 +160,10 @@ body {
      Clickable text. Every link or text action uses one of these, so it is
      recognisable as clickable everywhere and looks the same in every module.
      Colour carries intent; never apply these to static text.
-       .link-pill          navigation / view (Pale Lavender)
-       .link-pill-create   add, new, record, import (Soft Sky Blue)
-       .link-pill-neutral  edit, back, secondary (Dusty Blue-Gray tint)
-       .link-pill-danger   delete, remove, discard (Warm Pastel Peach)
+       .link-pill          navigation / view (amethyst)
+       .link-pill-create   add, new, record, import (gold tint)
+       .link-pill-neutral  edit, back, secondary (heather tint)
+       .link-pill-danger   delete, remove, discard (linen, red text)
        .link-pill-on-tint  inside a coloured status message
      --------------------------------------------------------------------- */
   .link-pill {
@@ -186,7 +175,7 @@ body {
   }
 
   .link-pill-create {
-    @apply link-pill bg-sky-blue/45 text-ink hover:bg-sky-blue/75 active:bg-sky-blue/90;
+    @apply link-pill bg-gold-tint text-ink hover:bg-gold-tint-hover active:bg-gold-tint-hover;
   }
 
   .link-pill-neutral {
@@ -214,7 +203,7 @@ body {
     @apply bg-white/25 text-white;
   }
 
-  /* Tabs: white with a border; the selected tab is Deep Plum-Indigo. */
+  /* Tabs: white with a border; the selected tab is royal indigo. */
   .tab-link {
     @apply inline-flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-surface
            px-3.5 py-2 text-base font-medium text-ink-muted transition-colors duration-150

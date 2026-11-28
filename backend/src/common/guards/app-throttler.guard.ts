@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { createHash } from 'node:crypto';
+import { clientIp } from '../utils/client-ip';
 
 function digest(value: string): string {
   return createHash('sha256').update(value).digest('hex').slice(0, 32);
@@ -20,7 +21,8 @@ function digest(value: string): string {
  * - sign-in: the e-mail being tried, so brute force on one account is still
  *   capped at the login limit
  * - refresh: the refresh token's hash
- * - anything else: the client address
+ * - anything else: the client address (the browser's, when the Next.js
+ *   server vouches for it with INTERNAL_PROXY_TOKEN - see client-ip.ts)
  */
 @Injectable()
 export class AppThrottlerGuard extends ThrottlerGuard {
@@ -38,6 +40,6 @@ export class AppThrottlerGuard extends ThrottlerGuard {
       return `refresh:${digest(body.refreshToken)}`;
     }
 
-    return `ip:${req.ip ?? 'unknown'}`;
+    return `ip:${clientIp(req) ?? 'unknown'}`;
   }
 }

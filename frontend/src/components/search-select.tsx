@@ -21,7 +21,7 @@ export interface SearchOption {
  */
 export function SearchSelect({
   label,
-  placeholder = 'Search...',
+  placeholder = '',
   search,
   selected,
   onChange,
@@ -166,7 +166,6 @@ export function SearchSelect({
                 setOpen(false);
               }
             }}
-            placeholder={placeholder}
             role="combobox"
             aria-expanded
             aria-controls={`${id}-list`}
@@ -218,7 +217,7 @@ export function SearchSelect({
               type="button"
               onClick={create}
               disabled={creating}
-              className="flex w-full items-center gap-2 border-t border-border bg-sky-blue/20 px-3 py-2 text-left text-sm font-medium text-ink transition-colors hover:bg-sky-blue/45 focus-visible:bg-sky-blue/45 focus-visible:outline-none disabled:opacity-60"
+              className="flex w-full items-center gap-2 border-t border-border bg-gold-tint/60 px-3 py-2 text-left text-sm font-medium text-ink transition-colors hover:bg-gold-tint-hover focus-visible:bg-gold-tint-hover focus-visible:outline-none disabled:opacity-60"
             >
               <IconPlus size={14} />
               {creating ? 'Creating...' : createLabel(term.trim())}

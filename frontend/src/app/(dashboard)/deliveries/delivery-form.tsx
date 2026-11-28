@@ -364,7 +364,6 @@ export function CreateDeliveryForm({
           <SearchSelect
             label="Customer"
             hideLabel
-            placeholder="Search customers"
             search={customerSearch}
             selected={customer ? [customer] : []}
             onChange={(next) => {

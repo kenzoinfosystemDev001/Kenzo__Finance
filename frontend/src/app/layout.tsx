@@ -1,5 +1,17 @@
 import type { Metadata, Viewport } from 'next';
+import { IBM_Plex_Sans } from 'next/font/google';
 import './globals.css';
+
+/**
+ * IBM Plex Sans: a typeface designed for business software. Self-hosted by
+ * Next.js at build time, so no request goes to Google from the browser.
+ */
+const plexSans = IBM_Plex_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-sans',
+});
 
 export const metadata: Metadata = {
   title: {
@@ -27,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={plexSans.variable}>
       <body className="min-h-screen bg-canvas font-sans text-base text-ink">
         {children}
       </body>

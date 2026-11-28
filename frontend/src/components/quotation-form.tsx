@@ -409,7 +409,6 @@ export function QuotationForm({
               <div>
                 <SearchSelect
                   label="Customer *"
-                  placeholder="Search by name, code, GSTIN or contact..."
                   search={customerSearch}
                   selected={customerOption}
                   onChange={pickCustomer}

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
+import { clientIp } from '../common/utils/client-ip';
 import { StockService } from './stock.service';
 import {
   CreateStockLocationDto,
@@ -131,7 +132,7 @@ export class StockController {
     @Req() request: Request,
   ) {
     return this.stockService.postMovement(productId, dto, user, {
-      ipAddress: request.ip ?? null,
+      ipAddress: clientIp(request),
       userAgent: request.headers['user-agent'] ?? null,
     });
   }

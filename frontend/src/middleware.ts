@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { forwardingHeadersFrom } from './lib/client-forwarding';
 
 /**
  * Keeps the session alive.
@@ -64,7 +65,7 @@ export async function middleware(request: NextRequest) {
   try {
     response = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...forwardingHeadersFrom(request.headers) },
       body: JSON.stringify({ refreshToken }),
       // A sleeping API must not hold every page load open.
       signal: AbortSignal.timeout(8000),

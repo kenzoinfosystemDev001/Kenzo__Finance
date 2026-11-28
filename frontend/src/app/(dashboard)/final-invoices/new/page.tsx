@@ -39,7 +39,7 @@ export default async function NewFinalInvoicePage({ searchParams }: { searchPara
       <form className="card relative p-3" role="search" action="/final-invoices/new">
         <label htmlFor="eligible-search" className="sr-only">Search issued proforma invoices</label>
         <IconSearch className="pointer-events-none absolute left-6 top-1/2 -translate-y-1/2 text-ink-subtle" />
-        <input id="eligible-search" name="search" type="search" defaultValue={search} placeholder="PI number, quotation number or customer" className="field-input h-10 pl-10" />
+        <input id="eligible-search" name="search" type="search" defaultValue={search} className="field-input h-10 pl-10" />
       </form>
       <div className="card overflow-hidden">
         {data.items.length === 0 ? (

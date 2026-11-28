@@ -73,7 +73,7 @@ export default async function NewPaymentPage({ searchParams }: { searchParams: P
       <div><h1 className="text-xl font-bold text-ink">Record Payment</h1><p className="text-sm text-ink-muted">Allocate a payment to an eligible customer final invoice.</p></div>
       <form className="card grid gap-4 p-5 md:grid-cols-2" method="get">
         <label className="text-sm font-medium">Find customer
-          <input name="customerSearch" defaultValue={params.customerSearch ?? ''} className="form-input mt-1 w-full" placeholder="Name, code, phone or email" maxLength={200} />
+          <input name="customerSearch" defaultValue={params.customerSearch ?? ''} className="form-input mt-1 w-full" maxLength={200} />
           {customerTotal > customers.length && <span className="mt-1 block text-xs text-ink-subtle">Showing {customers.length} of {customerTotal} active customers. Search to narrow the list.</span>}
         </label>
         <div className="flex items-end"><button type="submit" formNoValidate className="btn-secondary">Search</button></div>

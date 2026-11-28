@@ -51,12 +51,7 @@ export default async function DashboardLayout({
             solid workspace-colour tint keeps text readable; cards stay white. */}
         <BackgroundImage src={workspaceUrl} overlayClassName="bg-canvas/85" className="fixed inset-0 -z-10" />
 
-        <AppHeader
-          user={accountUser}
-          canSearchVendors={user.permissions.includes('vendor.read')}
-          logoutAction={logoutAction}
-          alerts={paymentAlerts}
-        />
+        <AppHeader permissions={user.permissions} alerts={paymentAlerts} />
 
         <main className="relative flex-1 px-4 py-6 lg:px-8">{children}</main>
       </div>

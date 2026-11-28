@@ -101,7 +101,7 @@ export async function CustomerRankingsView({
         <input type="hidden" name="sortDir" value={sortDir} />
         <label className="flex min-w-[14rem] flex-1 flex-col gap-1 text-xs font-medium text-ink-muted">
           Search
-          <input name="search" defaultValue={search ?? ''} placeholder="Name or customer code" className="field-input h-9" />
+          <input name="search" defaultValue={search ?? ''} className="field-input h-9" />
         </label>
         <button type="submit" className="btn-secondary h-9">Search</button>
       </form>

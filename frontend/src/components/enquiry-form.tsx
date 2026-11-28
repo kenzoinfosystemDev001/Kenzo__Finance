@@ -148,7 +148,6 @@ export function RequirementFields({
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       <SearchSelect
         label="Brand"
-        placeholder="Search brands..."
         search={brandSearch}
         selected={row.brand}
         onChange={(next) => {
@@ -161,7 +160,6 @@ export function RequirementFields({
       <div>
         <SearchSelect
           label="Product *"
-          placeholder={brandId ? 'Search products of this brand...' : 'Search products...'}
           search={productSearch}
           selected={row.product}
           onChange={(next) => {
@@ -541,7 +539,6 @@ export function EnquiryForm({
             <div>
               <SearchSelect
                 label="Customer *"
-                placeholder="Search by name, code, GSTIN or contact..."
                 search={customerSearch}
                 selected={customerOption}
                 onChange={pickCustomer}

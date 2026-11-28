@@ -166,6 +166,16 @@ export const envSchema = z.object({
     .min(16, 'PAYMENT_ALERT_CRON_TOKEN must be at least 16 characters')
     .optional()
     .or(z.literal('')),
+
+  // Shared secret between the Next.js server and this API. When set, the
+  // Next server sends the browser's address in x-client-ip together with
+  // x-internal-proxy-token, and the API uses it for audit logs and rate
+  // limits (see common/utils/client-ip.ts). Unset: req.ip is used.
+  INTERNAL_PROXY_TOKEN: z
+    .string()
+    .min(32, 'INTERNAL_PROXY_TOKEN must be at least 32 characters')
+    .optional()
+    .or(z.literal('')),
 });
 
 export type Env = z.infer<typeof envSchema>;

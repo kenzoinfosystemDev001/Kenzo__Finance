@@ -173,7 +173,6 @@ export default async function InventoryPage({
               type="search"
               defaultValue={params.search ?? ''}
               className="field-input"
-              placeholder="Product name, code or model"
             />
           </div>
 

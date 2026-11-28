@@ -24,6 +24,7 @@ import { ProformaInvoicesModule } from './proforma-invoices/proforma-invoices.mo
 import { FinalInvoicesModule } from './final-invoices/final-invoices.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PaymentAlertsModule } from './payment-alerts/payment-alerts.module';
+import { SearchModule } from './search/search.module';
 import { SalesModule } from './sales/sales.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
 import { AnalyticsModule } from './analytics/analytics.module';
@@ -66,6 +67,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     FinalInvoicesModule,
     PaymentsModule,
     PaymentAlertsModule,
+    SearchModule,
     SalesModule,
     DeliveriesModule,
     AnalyticsModule,

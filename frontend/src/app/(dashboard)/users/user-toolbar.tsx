@@ -51,7 +51,6 @@ export function UserToolbar({ roles }: { roles: Array<{ code: string; name: stri
             id="user-search"
             type="search"
             value={search}
-            placeholder="Search by name, email or phone"
             maxLength={200}
             onChange={(event) => setSearch(event.target.value)}
             onBlur={() => {

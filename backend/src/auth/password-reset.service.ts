@@ -54,40 +54,56 @@ export class PasswordResetService {
       return { message: FORGOT_PASSWORD_MESSAGE };
     }
 
-    const now = new Date();
-    await this.prisma.$transaction(async (tx) => {
-      // A new request supersedes every earlier unused link.
-      await tx.passwordResetToken.updateMany({
-        where: { userId: user.id, usedAt: null },
-        data: { usedAt: now },
-      });
-      await tx.passwordResetToken.create({
-        data: {
-          userId: user.id,
-          tokenHash,
-          expiresAt: new Date(now.getTime() + RESET_TOKEN_TTL_MS),
-          requestedIp: context.ipAddress ?? null,
-        },
-      });
-      await this.auditService.record(
-        {
-          actorUserId: user.id,
-          action: 'auth.password.reset_requested',
-          entityType: 'User',
-          entityId: user.id,
-          summary: `Password reset link requested for ${user.email}`,
-          ipAddress: context.ipAddress,
-          userAgent: context.userAgent,
-        },
-        tx,
-      );
-    });
-
-    // Sent in the background: waiting for the mail server would make the
-    // response for a real account measurably slower than for an unknown one.
-    void this.sendResetEmail(user, rawToken);
+    // Issued and sent in the background: awaiting the token writes (or the
+    // mail server) would make the answer for a real account measurably
+    // slower than for an unknown one, revealing which addresses exist.
+    void this.issueAndSend(user, rawToken, tokenHash, context);
 
     return { message: FORGOT_PASSWORD_MESSAGE };
+  }
+
+  private async issueAndSend(
+    user: { id: string; email: string; fullName: string },
+    rawToken: string,
+    tokenHash: string,
+    context: RequestContext,
+  ): Promise<void> {
+    const now = new Date();
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // A new request supersedes every earlier unused link.
+        await tx.passwordResetToken.updateMany({
+          where: { userId: user.id, usedAt: null },
+          data: { usedAt: now },
+        });
+        await tx.passwordResetToken.create({
+          data: {
+            userId: user.id,
+            tokenHash,
+            expiresAt: new Date(now.getTime() + RESET_TOKEN_TTL_MS),
+            requestedIp: context.ipAddress ?? null,
+          },
+        });
+        await this.auditService.record(
+          {
+            actorUserId: user.id,
+            action: 'auth.password.reset_requested',
+            entityType: 'User',
+            entityId: user.id,
+            summary: `Password reset link requested for ${user.email}`,
+            ipAddress: context.ipAddress,
+            userAgent: context.userAgent,
+          },
+          tx,
+        );
+      });
+    } catch (error) {
+      const code = (error as { code?: string })?.code ?? 'UNKNOWN';
+      this.logger.error(`Password reset token for user ${user.id} could not be issued (${code}).`);
+      return;
+    }
+
+    await this.sendResetEmail(user, rawToken);
   }
 
   async resetPassword(rawToken: string, newPassword: string, context: RequestContext): Promise<{ reset: true }> {

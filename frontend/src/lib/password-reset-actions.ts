@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { forwardingHeaders } from './api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
 
@@ -16,7 +17,7 @@ async function post(path: string, body: unknown): Promise<Response | { networkEr
   try {
     return await fetch(`${API_URL}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await forwardingHeaders()) },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(TIMEOUT_MS),
       cache: 'no-store',

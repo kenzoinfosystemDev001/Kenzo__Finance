@@ -11,11 +11,12 @@ const nextConfig: NextConfig = {
   },
   // Baseline security headers for every page and route handler. A full
   // Content-Security-Policy needs per-request nonces for Next's inline
-  // scripts, so only the framing directive is set here (clickjacking).
+  // scripts, so script-src is not set; only directives that cannot affect
+  // Next's own scripts are (clickjacking, <base> hijack, plugins, form posts).
   async headers() {
     const headers = [
       { key: 'X-Frame-Options', value: 'DENY' },
-      { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
+      { key: 'Content-Security-Policy', value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'" },
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },

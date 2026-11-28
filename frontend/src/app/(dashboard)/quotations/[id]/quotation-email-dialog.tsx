@@ -185,7 +185,6 @@ function QuotationEmailDialog({
 
         <SearchSelect
           label={type === 'CUSTOMER' ? 'Customer' : 'Vendor'}
-          placeholder={type === 'CUSTOMER' ? 'Search customers by name or code' : 'Search vendors by name or code'}
           search={search}
           selected={selected}
           onChange={pick}
