@@ -105,6 +105,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except static assets (incl. the logo and icons) and the health probe.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/health|.*\.(?:png|jpg|jpeg|gif|svg|webp|ico)$).*)'],
+  // Everything except static assets (incl. the logo and icons), the health
+  // probe and the public login background.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/health|login/background|.*\.(?:png|jpg|jpeg|gif|svg|webp|ico)$).*)'],
 };

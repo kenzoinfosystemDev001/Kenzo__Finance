@@ -316,12 +316,28 @@ export class DocumentsService {
         customerId: true,
         enquiryId: true,
         quotationId: true,
+        uploadedById: true,
+        ocrJobs: { select: { id: true }, take: 1 },
       },
     });
     if (!document) throw new NotFoundException(`Document ${id} was not found`);
     if (user.roles.includes(ROLE_CODES.SUPER_ADMIN)) return;
 
     const has = (permission: PermissionCode) => user.permissions.includes(permission);
+
+    // An upload not yet attached to any record (e.g. a vendor-onboarding scan
+    // awaiting OCR review) is private to its uploader. OCR reviewers may read
+    // OCR sources, and settings administrators may read anything unattached.
+    // Branding images are shown to every signed-in user anyway.
+    const unattached = !document.vendorId && !document.productId && !document.customerId && !document.enquiryId && !document.quotationId;
+    if (action === 'read' && unattached && document.kind !== DocumentKind.BRANDING_IMAGE) {
+      const allowed =
+        document.uploadedById === user.id ||
+        has(PERMISSIONS.SETTINGS_MANAGE) ||
+        (document.ocrJobs.length > 0 && has(PERMISSIONS.OCR_READ));
+      if (!allowed) throw new NotFoundException(`Document ${id} was not found`);
+      return;
+    }
 
     if (action === 'read') {
       const required: PermissionCode | null = document.vendorId

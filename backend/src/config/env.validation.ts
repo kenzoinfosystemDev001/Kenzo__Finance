@@ -114,9 +114,11 @@ export const envSchema = z.object({
     .regex(/^\d+[smhd]$/, 'AUTH_REFRESH_TTL must look like 15m, 2h or 7d')
     .default('7d'),
 
-  // 'local' needs a persistent disk in production; 'cloudinary' survives an
-  // ephemeral container such as Render.
-  STORAGE_DRIVER: z.enum(['local', 'cloudinary']).default('local'),
+  // Where NEW files are written. 'database' (default) keeps every file in
+  // PostgreSQL (table stored_files). 'local' needs a persistent disk;
+  // 'cloudinary' is a remote file service. Files saved earlier stay readable
+  // whichever is chosen.
+  STORAGE_DRIVER: z.enum(['database', 'local', 'cloudinary']).default('database'),
   STORAGE_LOCAL_ROOT: z.string().default('./storage'),
   UPLOAD_MAX_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
 
@@ -145,6 +147,25 @@ export const envSchema = z.object({
 
   // Calendar day used for "today", default dates and overdue checks.
   BUSINESS_TIMEZONE: z.string().trim().optional(),
+
+  // Outgoing mail (quotation emails). Sending is refused with a 503 until
+  // SMTP_HOST is set; the API still starts without it.
+  SMTP_HOST: z.string().trim().optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).optional(),
+  SMTP_SECURE: z.enum(['true', 'false']).optional(),
+  SMTP_USER: z.string().trim().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_FROM: z.string().trim().email('SMTP_FROM must be an email address').optional().or(z.literal('')),
+
+  // Payment reminders. Besides the hourly in-process timer, an external
+  // scheduler may call POST /api/v1/payment-alerts/cron with header
+  // x-alert-token = PAYMENT_ALERT_CRON_TOKEN (min 16 chars, else off).
+  PAYMENT_ALERTS_ENABLED: z.enum(['true', 'false']).optional(),
+  PAYMENT_ALERT_CRON_TOKEN: z
+    .string()
+    .min(16, 'PAYMENT_ALERT_CRON_TOKEN must be at least 16 characters')
+    .optional()
+    .or(z.literal('')),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -180,6 +201,10 @@ export function validateEnv(raw: Record<string, unknown>): Env {
         throw new Error(`${key} still holds the .env.example placeholder. Generate a random secret (e.g. openssl rand -base64 48).`);
       }
     }
+    // schema.prisma declares directUrl = env("DIRECT_URL"); migrations fail without it.
+    if (!parsed.data.DIRECT_URL?.trim()) {
+      throw new Error('DIRECT_URL is required in production (the non-pooled Neon connection string used for migrations).');
+    }
   }
 
   // Both checks fail at startup rather than on the user's first upload, when
@@ -196,7 +221,7 @@ export function validateEnv(raw: Record<string, unknown>): Env {
         'STORAGE_DRIVER=cloudinary requires either CLOUDINARY_URL, or all of ' +
           'CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET.\n' +
           describeCloudinaryEnv(raw) +
-          '\n  Or set STORAGE_DRIVER=local to run without remote storage.',
+          '\n  Or set STORAGE_DRIVER=database to keep files in PostgreSQL.',
       );
     }
   }

@@ -51,6 +51,20 @@ export function classifyPaymentAlert(input: {
   return null;
 }
 
+/** While an invoice stays overdue, the reminder repeats every this many days. */
+export const OVERDUE_REPEAT_DAYS = 3;
+
+/**
+ * Which reminder cycle an alert belongs to. Due-soon and due-today are sent
+ * once (cycle 0). Overdue repeats: days 1-3 overdue are cycle 0, days 4-6
+ * cycle 1, and so on, so a new reminder starts every OVERDUE_REPEAT_DAYS.
+ */
+export function reminderCycle(state: PaymentAlertState): number {
+  if (state.stage !== 'OVERDUE') return 0;
+  const daysOverdue = -state.daysRemaining;
+  return Math.max(0, Math.floor((daysOverdue - 1) / OVERDUE_REPEAT_DAYS));
+}
+
 /** Adds whole days to a UTC-midnight date. */
 export function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * DAY_MS);

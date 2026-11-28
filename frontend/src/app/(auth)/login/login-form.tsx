@@ -3,7 +3,9 @@
 import { useActionState, useState, type FormEvent } from 'react';
 import { useFormStatus } from 'react-dom';
 import { loginAction, type LoginState } from '@/lib/auth-actions';
+import Link from 'next/link';
 import { IconArrowRight, IconEye, IconMail } from '@/components/icons';
+import { IconEyeOff, IconLock } from '../auth-ui';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -25,25 +27,6 @@ function SubmitButton() {
         </>
       )}
     </button>
-  );
-}
-
-function IconLock({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="4" y="10" width="16" height="11" rx="2" />
-      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-    </svg>
-  );
-}
-
-function IconEyeOff({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M3 3l18 18" />
-      <path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6" />
-      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
-    </svg>
   );
 }
 
@@ -167,16 +150,21 @@ export function LoginForm() {
         <FieldError id="password-error" message={fieldErrors.password} />
       </div>
 
-      <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-ink">
-        <input
-          type="checkbox"
-          name="remember"
-          checked={remember}
-          onChange={(event) => setRemember(event.target.checked)}
-          className="h-4 w-4 rounded accent-accent"
-        />
-        Remember me
-      </label>
+      <div className="flex items-center justify-between gap-4">
+        <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            name="remember"
+            checked={remember}
+            onChange={(event) => setRemember(event.target.checked)}
+            className="h-4 w-4 rounded accent-accent"
+          />
+          Remember me
+        </label>
+        <Link href="/forgot-password" className="text-sm font-semibold text-accent hover:text-accent-hover hover:underline">
+          Forgot password?
+        </Link>
+      </div>
 
       <SubmitButton />
     </form>

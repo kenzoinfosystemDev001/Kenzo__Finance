@@ -45,3 +45,26 @@ export class AuthTokensDto {
   @ApiProperty({ description: 'Access token lifetime in seconds' })
   expiresIn!: number;
 }
+
+export class ForgotPasswordDto {
+  @ApiProperty({ example: 'user@kenzoinfosystems.com' })
+  @IsEmail({}, { message: 'A valid email address is required' })
+  @MaxLength(320)
+  @Transform(({ value }) => String(value ?? '').trim().toLowerCase())
+  email!: string;
+}
+
+export class ResetPasswordWithTokenDto {
+  @ApiProperty({ description: 'Token from the emailed reset link' })
+  @IsString()
+  @IsNotEmpty({ message: 'Reset token is required' })
+  @MaxLength(128)
+  token!: string;
+
+  // Same policy as ChangePasswordDto and the admin ResetPasswordDto.
+  @ApiProperty({ minLength: 12 })
+  @IsString()
+  @MinLength(12, { message: 'New password must be at least 12 characters' })
+  @MaxLength(256)
+  newPassword!: string;
+}

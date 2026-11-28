@@ -44,10 +44,11 @@ model User {
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
 
-  roles         UserRole[]
-  refreshTokens RefreshToken[]
-  auditLogs     AuditLog[]     @relation("AuditActor")
-  profilePhoto  UserProfilePhoto?
+  roles               UserRole[]
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  auditLogs           AuditLog[]           @relation("AuditActor")
+  profilePhoto        UserProfilePhoto?
 
   createdVendors         Vendor[]                       @relation("VendorCreatedBy")
   updatedVendors         Vendor[]                       @relation("VendorUpdatedBy")
@@ -59,6 +60,7 @@ model User {
   createdModels          ProductModel[]                 @relation("ProductModelCreatedBy")
   createdCustomers       Customer[]                     @relation("CustomerCreatedBy")
   updatedCustomers       Customer[]                     @relation("CustomerUpdatedBy")
+  favouritedCustomers    Customer[]                     @relation("CustomerFavouritedBy")
   customerInterests      CustomerProductInterest[]      @relation("CustomerInterestCreatedBy")
   assignedEnquiries      Enquiry[]                      @relation("EnquiryAssignedTo")
   createdEnquiries       Enquiry[]                      @relation("EnquiryCreatedBy")
@@ -142,15 +144,15 @@ model Permission {
 /// re-encoded image bytes (WebP, 512x512); `sha256` is the ETag source, so a
 /// replaced photo is never served from a stale cache.
 model UserProfilePhoto {
-  userId    String   @id @db.Uuid
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @id @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  data      Bytes    @db.ByteA
-  mimeType  String   @db.VarChar(50)
+  data      Bytes  @db.ByteA
+  mimeType  String @db.VarChar(50)
   sizeBytes Int
   width     Int
   height    Int
-  sha256    String   @db.VarChar(64)
+  sha256    String @db.VarChar(64)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -199,6 +201,24 @@ model RefreshToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_tokens")
+}
+
+/// Self-service password reset. Only the SHA-256 of the emailed token is stored;
+/// a token is single-use and short-lived.
+model PasswordResetToken {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+  requestedIp String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 // ===========================================================================
@@ -1004,6 +1024,14 @@ model Customer {
   updatedById   String?        @db.Uuid
   createdBy     User?          @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   updatedBy     User?          @relation("CustomerUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  // Added by migration 20261201090000_customer_favourites. Read and written via
+  // raw SQL in CustomerRankingsService; declared here so the schema matches the
+  // database and `prisma migrate dev` does not generate a migration dropping them.
+  isFavourite    Boolean   @default(false)
+  favouritedAt   DateTime?
+  favouritedById String?   @db.Uuid
+  favouritedBy   User?     @relation("CustomerFavouritedBy", fields: [favouritedById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1897,23 +1925,48 @@ enum PaymentReminderStage {
   OVERDUE
 }
 
+// Customer email for one reminder (an outbox: recorded first, sent after).
+// PENDING -> SENDING -> SENT | FAILED; SKIPPED when there is nothing to send
+// (no contact email, already paid, expired, or recorded before emailing existed).
+enum PaymentReminderEmailStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
 // History of payment due alerts raised for an issued invoice. The unique key
-// makes each stage for a due date recorded once, however many sweeps run.
-// The alert shown to users is always computed from current data, so a paid
-// or re-dated invoice is never shown from an old row.
+// makes each stage for a due date recorded once per cycle, however many
+// sweeps run. DUE_SOON and DUE_TODAY have a single cycle (0); OVERDUE starts a
+// new cycle every OVERDUE_REPEAT_DAYS until paid. The alert shown to users is
+// always computed from current data, so a paid or re-dated invoice is never
+// shown from an old row.
 model PaymentReminder {
   id                String               @id @default(uuid()) @db.Uuid
   finalInvoiceId    String               @db.Uuid
   dueDate           DateTime             @db.Date
   stage             PaymentReminderStage
+  cycle             Int                  @default(0)
   daysRemaining     Int
   outstandingAmount Decimal              @db.Decimal(14, 2)
   createdAt         DateTime             @default(now())
 
+  // Customer email delivery. "SENT" means the mail server accepted it, not
+  // that it reached the inbox.
+  emailStatus    PaymentReminderEmailStatus @default(SKIPPED)
+  recipientEmail String?
+  emailAttempts  Int                        @default(0)
+  emailMessageId String?
+  emailError     String?
+  emailedAt      DateTime?
+  updatedAt      DateTime                   @default(now()) @updatedAt
+
   finalInvoice FinalInvoice @relation(fields: [finalInvoiceId], references: [id], onDelete: Restrict)
 
-  @@unique([finalInvoiceId, dueDate, stage])
+  @@unique([finalInvoiceId, dueDate, stage, cycle])
   @@index([createdAt])
+  @@index([emailStatus, createdAt])
 }
 
 enum PaymentStatus {
@@ -2295,16 +2348,35 @@ model QuotationEmail {
 /// The company logo shown in the app and on the sign-in page. One row (key
 /// "primary"); when absent the bundled default logo is used.
 model BrandLogo {
-  key       String   @id @default("primary") @db.VarChar(40)
-  data      Bytes    @db.ByteA
-  mimeType  String   @db.VarChar(50)
+  key       String @id @default("primary") @db.VarChar(40)
+  data      Bytes  @db.ByteA
+  mimeType  String @db.VarChar(50)
   sizeBytes Int
   width     Int
   height    Int
-  sha256    String   @db.VarChar(64)
+  sha256    String @db.VarChar(64)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("brand_logo")
+}
+
+/// The bytes of every uploaded or generated file (vendor documents, product
+/// images, quotation/invoice PDFs, receipts, challans, appearance images,
+/// OCR sources). Document.storageKey points here as "db:<id>". Metadata
+/// (owner record, kind, uploader, archive state) stays on Document; this
+/// table only holds content, so listing documents never loads file bytes.
+model StoredFile {
+  id               String   @id @default(uuid()) @db.Uuid
+  folder           String   @db.VarChar(60)
+  originalFilename String   @db.VarChar(255)
+  mimeType         String   @db.VarChar(120)
+  sizeBytes        Int
+  checksumSha256   String   @db.VarChar(64)
+  content          Bytes    @db.ByteA
+  createdAt        DateTime @default(now())
+
+  @@index([checksumSha256])
+  @@map("stored_files")
 }

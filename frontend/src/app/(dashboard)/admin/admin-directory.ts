@@ -6,6 +6,8 @@
 export interface DirectoryLink {
   label: string;
   href: string;
+  /** Shown only to users holding this permission. */
+  permission?: string;
 }
 
 export interface DirectoryModule {
@@ -130,11 +132,20 @@ export const MODULE_DIRECTORY: DirectoryModule[] = [
     ],
   },
   {
-    title: 'Settings',
+    title: 'Settings and appearance',
    
     links: [
       { label: 'Settings', href: '/settings' },
+      { label: 'Appearance', href: '/appearance' },
       { label: 'My account', href: '/account' },
+    ],
+  },
+  {
+    title: 'Administration',
+    links: [
+      { label: 'Users', href: '/users', permission: 'user.read' },
+      { label: 'Roles and permissions', href: '/users/roles', permission: 'role.read' },
+      { label: 'Audit log', href: '/admin/audit-logs', permission: 'audit.read' },
     ],
   },
 ];

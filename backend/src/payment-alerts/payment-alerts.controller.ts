@@ -1,4 +1,4 @@
-import { Controller, Get, Headers, HttpCode, HttpStatus, NotFoundException, Post, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Headers, HttpCode, HttpStatus, NotFoundException, Param, ParseUUIDPipe, Post, UnauthorizedException } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { timingSafeEqual } from 'crypto';
 import { Public, RequirePermissions } from '../common/decorators';
@@ -25,6 +25,15 @@ export class PaymentAlertsController {
   @ApiOperation({ summary: 'Open payment due alerts (due soon, due today, overdue)' })
   async list() {
     return this.alerts.openAlerts();
+  }
+
+  /** Reminders recorded for one invoice, with the customer email outcome. */
+  @Get('invoices/:finalInvoiceId/reminders')
+  @ApiBearerAuth()
+  @RequirePermissions(PERMISSIONS.INVOICE_READ)
+  @ApiOperation({ summary: 'Payment reminder history of an invoice' })
+  async history(@Param('finalInvoiceId', ParseUUIDPipe) finalInvoiceId: string) {
+    return this.alerts.history(finalInvoiceId);
   }
 
   /** Records alert stages for today. Administrators run it on demand. */

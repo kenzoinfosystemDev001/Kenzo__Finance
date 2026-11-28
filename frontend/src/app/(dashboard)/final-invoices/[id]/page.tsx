@@ -334,7 +334,78 @@ async function InvoicePaymentsTab({ invoiceId, customerId, currency, canReadPaym
           ))}</tbody></table></div>
         )}
       </section>
+      <PaymentRemindersSection invoiceId={invoiceId} currency={currency} />
     </div>
+  );
+}
+
+interface PaymentReminderEntry {
+  id: string;
+  stage: 'DUE_SOON' | 'DUE_TODAY' | 'OVERDUE';
+  cycle: number;
+  dueDate: string;
+  daysRemaining: number;
+  outstandingAmount: string;
+  createdAt: string;
+  emailStatus: 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'SKIPPED';
+  recipientEmail: string | null;
+  emailError: string | null;
+  emailedAt: string | null;
+}
+
+const REMINDER_STAGE_LABELS: Record<PaymentReminderEntry['stage'], string> = {
+  DUE_SOON: 'Due soon',
+  DUE_TODAY: 'Due today',
+  OVERDUE: 'Overdue',
+};
+
+// "Accepted" is what the mail server confirmed - not delivery to the inbox.
+const REMINDER_EMAIL_LABELS: Record<PaymentReminderEntry['emailStatus'], string> = {
+  PENDING: 'Queued',
+  SENDING: 'Sending',
+  SENT: 'Accepted by mail server',
+  FAILED: 'Failed',
+  SKIPPED: 'Not emailed',
+};
+
+function reminderTiming(entry: PaymentReminderEntry): string {
+  if (entry.stage === 'DUE_TODAY') return 'On the due date';
+  if (entry.stage === 'DUE_SOON') return `${entry.daysRemaining} day${entry.daysRemaining === 1 ? '' : 's'} before`;
+  const overdue = -entry.daysRemaining;
+  return `${overdue} day${overdue === 1 ? '' : 's'} overdue`;
+}
+
+async function PaymentRemindersSection({ invoiceId, currency }: { invoiceId: string; currency: string }) {
+  let reminders: PaymentReminderEntry[];
+  try {
+    reminders = await apiFetch<PaymentReminderEntry[]>(`/payment-alerts/invoices/${invoiceId}/reminders`);
+  } catch (error) {
+    return <ErrorState title="Could not load payment reminders" message={error instanceof ApiError ? error.messages[0] : 'The server could not be reached.'} />;
+  }
+  return (
+    <section className="card overflow-hidden">
+      <PanelHeader
+        title="Payment reminders"
+        description="Sent automatically 5 days before the due date, on the due date, and every 3 days while overdue, until the invoice is fully paid."
+      />
+      {reminders.length === 0 ? (
+        <EmptyStateClient title="No reminders yet" description="Reminders appear here once the invoice is within 5 days of its due date." />
+      ) : (
+        <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Recorded</th><th>Stage</th><th>Timing</th><th>Outstanding then</th><th>Customer email</th></tr></thead><tbody>{reminders.map((r) => (
+          <tr key={r.id}>
+            <td>{formatDateTime(r.createdAt)}</td>
+            <td>{REMINDER_STAGE_LABELS[r.stage]}</td>
+            <td>{reminderTiming(r)}</td>
+            <td className="tabular-nums">{formatMoney(r.outstandingAmount, currency)}</td>
+            <td>
+              <p className="font-medium text-ink">{REMINDER_EMAIL_LABELS[r.emailStatus]}</p>
+              {r.recipientEmail && <p className="text-xs text-ink-subtle">{r.recipientEmail}{r.emailedAt ? ` · ${formatDateTime(r.emailedAt)}` : ''}</p>}
+              {r.emailError && r.emailStatus !== 'SENT' && <p className="text-xs text-ink-muted">{r.emailError}</p>}
+            </td>
+          </tr>
+        ))}</tbody></table></div>
+      )}
+    </section>
   );
 }
 

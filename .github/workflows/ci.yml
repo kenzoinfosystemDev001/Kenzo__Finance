@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [updates, main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Placeholders only: nothing here connects to a database. prisma
+      # validate/generate need the variables to exist, not to resolve.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+      NEXT_PUBLIC_BUSINESS_TIMEZONE: Asia/Kolkata
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci --include=dev
+
+      - name: Validate Prisma schema
+        run: npx prisma validate --schema database/prisma/schema.prisma
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Typecheck API
+        run: npx tsc --noEmit -p backend/tsconfig.json
+
+      - name: Typecheck web
+        run: npm run typecheck --workspace @kenzo-erp/web
+
+      - name: Test API
+        run: npm run api:test
+
+      - name: Build API
+        run: npm run api:build
+
+      - name: Build web
+        run: npm run web:build
+
+  migrations:
+    # Applies every migration to an empty database and checks the result
+    # matches schema.prisma, catching drift and out-of-order migrations.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --include=dev
+      - name: Apply migrations to an empty database
+        run: npm run db:deploy
+      - name: Check schema matches migrations
+        run: >-
+          npx prisma migrate diff
+          --from-schema-datasource database/prisma/schema.prisma
+          --to-schema-datamodel database/prisma/schema.prisma
+          --exit-code
+      - name: Seed runs cleanly (twice, to prove it is idempotent)
+        run: npm run db:seed && npm run db:seed

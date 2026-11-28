@@ -91,7 +91,7 @@ export class MailerService {
       return { messageId: info.messageId, serverResponse: String(info.response ?? '').slice(0, 500), senderAddress: this.senderAddress };
     } catch (error) {
       const failure = describeMailFailure(error);
-      this.logger.warn(`Quotation email not accepted (${failure.code}).`);
+      this.logger.warn(`Email not accepted by the mail server (${failure.code}).`);
       throw Object.assign(new Error(failure.message), { code: failure.code, safe: true });
     } finally {
       transport.close();

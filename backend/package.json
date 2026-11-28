@@ -4,6 +4,7 @@
   "private": true,
   "description": "Kenzo Infosystems ERP - NestJS API",
   "scripts": {
+    "storage:migrate-to-db": "ts-node --transpile-only src/storage/migrate-files-to-database.ts",
     "build": "prisma generate --schema ../database/prisma/schema.prisma && nest build",
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",

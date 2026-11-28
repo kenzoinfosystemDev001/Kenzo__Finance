@@ -18,7 +18,7 @@ describe('validateEnv', () => {
     const env = validateEnv({ ...base });
 
     expect(env.NODE_ENV).toBe('development');
-    expect(env.STORAGE_DRIVER).toBe('local');
+    expect(env.STORAGE_DRIVER).toBe('database');
     expect(env.API_PORT).toBe(4000);
   });
 
@@ -35,6 +35,38 @@ describe('validateEnv', () => {
     const placeholder = { AUTH_ACCESS_SECRET: 'replace-with-a-long-random-secret', AUTH_REFRESH_SECRET: 'replace-with-a-different-long-random-secret' };
     expect(() => validateEnv({ ...base, ...placeholder, NODE_ENV: 'production', WEB_URL: 'https://app.example.org' })).toThrow(/placeholder/i);
     expect(() => validateEnv({ ...base, ...placeholder })).not.toThrow();
+  });
+
+  it('requires DIRECT_URL in production only', () => {
+    const prod = { ...base, NODE_ENV: 'production', WEB_URL: 'https://app.kenzo.test' };
+    expect(() => validateEnv(prod)).toThrow(/DIRECT_URL/);
+    expect(() => validateEnv({ ...prod, DIRECT_URL: 'postgresql://u:p@host/db' })).not.toThrow();
+    expect(() => validateEnv({ ...base })).not.toThrow();
+  });
+
+  describe('smtp and payment alerts', () => {
+    it('accepts a full SMTP configuration', () => {
+      const env = validateEnv({
+        ...base,
+        SMTP_HOST: 'smtp.kenzo.test',
+        SMTP_PORT: '465',
+        SMTP_SECURE: 'true',
+        SMTP_USER: 'sender',
+        SMTP_PASSWORD: 'pw',
+        SMTP_FROM: 'sender@kenzo.test',
+      });
+      expect(env.SMTP_PORT).toBe(465);
+    });
+
+    it('rejects a malformed SMTP_FROM and port', () => {
+      expect(() => validateEnv({ ...base, SMTP_FROM: 'not-an-email' })).toThrow(/SMTP_FROM/);
+      expect(() => validateEnv({ ...base, SMTP_PORT: '70000' })).toThrow(/SMTP_PORT/);
+    });
+
+    it('allows an empty cron token (endpoint off) but rejects a short one', () => {
+      expect(() => validateEnv({ ...base, PAYMENT_ALERT_CRON_TOKEN: '' })).not.toThrow();
+      expect(() => validateEnv({ ...base, PAYMENT_ALERT_CRON_TOKEN: 'short' })).toThrow(/PAYMENT_ALERT_CRON_TOKEN/);
+    });
   });
 
   describe('cloudinary storage', () => {

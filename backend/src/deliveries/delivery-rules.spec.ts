@@ -1,5 +1,5 @@
 import { DeliveryStatus, TransportMode } from '@prisma/client';
-import { CONFIRMED_STATES, DISPATCHED_STATES, EDITABLE, RELEASED, TRANSITIONS, dispatchProblems, invoiceDeliveryState } from './delivery-rules';
+import { CONFIRMED_STATES, DISPATCHED_STATES, EDITABLE, RELEASED, TRANSITIONS, dispatchProblems, invoiceDeliveryState, reservedQuantity } from './delivery-rules';
 
 describe('delivery rules', () => {
   it('final states have no outgoing transitions', () => {
@@ -43,5 +43,24 @@ describe('delivery rules', () => {
     expect(invoiceDeliveryState(10, 0)).toBe('NOT_DELIVERED');
     expect(invoiceDeliveryState(10, 4)).toBe('PARTIALLY_DELIVERED');
     expect(invoiceDeliveryState(10, 10)).toBe('DELIVERED');
+  });
+
+  describe('reservedQuantity', () => {
+    it('reserves the full quantity while a delivery is open or fully delivered', () => {
+      expect(reservedQuantity(DeliveryStatus.DRAFT, 5, null)).toBe(5);
+      expect(reservedQuantity(DeliveryStatus.DISPATCHED, 5, null)).toBe(5);
+      expect(reservedQuantity(DeliveryStatus.DELIVERED, 5, 5)).toBe(5);
+    });
+
+    it('releases everything for cancelled and returned deliveries', () => {
+      expect(reservedQuantity(DeliveryStatus.CANCELLED, 5, null)).toBe(0);
+      expect(reservedQuantity(DeliveryStatus.RETURNED, 5, 3)).toBe(0);
+    });
+
+    it('releases the shortfall of a partial delivery so it can be dispatched again', () => {
+      expect(reservedQuantity(DeliveryStatus.PARTIALLY_DELIVERED, 10, 6)).toBe(6);
+      expect(reservedQuantity(DeliveryStatus.PARTIALLY_DELIVERED, 10, null)).toBe(0);
+      expect(reservedQuantity(DeliveryStatus.PARTIALLY_DELIVERED, 10, 12)).toBe(10);
+    });
   });
 });

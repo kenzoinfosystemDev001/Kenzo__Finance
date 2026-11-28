@@ -52,6 +52,12 @@ export const SETTING_KEYS = {
  * through the generic boolean PATCH /settings.
  */
 export const BRANDING_SETTING_KEYS = {
+  /** Document id of the login-page background image, or null for the solid default. */
+  LOGIN_BACKGROUND_DOCUMENT_ID: 'branding.loginBackgroundDocumentId',
+  /** Document id of the sidebar background image, or null for the solid default. */
+  SIDEBAR_BACKGROUND_DOCUMENT_ID: 'branding.sidebarBackgroundDocumentId',
+  /** Document id of the main workspace background image, or null for the solid default. */
+  WORKSPACE_BACKGROUND_DOCUMENT_ID: 'branding.workspaceBackgroundDocumentId',
   /** Company details printed on quotation PDFs: { name, address, phone, email, website, gstin, pan }. */
   COMPANY_PROFILE: 'branding.companyProfile',
   /** Default terms copied into new quotations (empty until an administrator sets them). */
@@ -71,6 +77,9 @@ export const BRANDING_SETTING_KEYS = {
 export const SETTING_DEFAULTS: Record<string, unknown> = {
   [SETTING_KEYS.STOCK_TRACKING_ENABLED]: false,
   [SETTING_KEYS.ALLOW_NEGATIVE_STOCK]: false,
+  [BRANDING_SETTING_KEYS.LOGIN_BACKGROUND_DOCUMENT_ID]: null,
+  [BRANDING_SETTING_KEYS.SIDEBAR_BACKGROUND_DOCUMENT_ID]: null,
+  [BRANDING_SETTING_KEYS.WORKSPACE_BACKGROUND_DOCUMENT_ID]: null,
   [SETTING_KEYS.QUOTATION_APPROVAL_REQUIRED]: false,
   [BRANDING_SETTING_KEYS.COMPANY_PROFILE]: null,
   [BRANDING_SETTING_KEYS.QUOTATION_DEFAULT_TERMS]: null,
@@ -88,6 +97,10 @@ export const SETTING_DESCRIPTIONS: Record<string, string> = {
     'Track physical stock quantities. When off, products are a catalogue only.',
   [SETTING_KEYS.ALLOW_NEGATIVE_STOCK]:
     'Allow stock movements that take on-hand quantity below zero.',
+  [BRANDING_SETTING_KEYS.LOGIN_BACKGROUND_DOCUMENT_ID]:
+    'Image shown behind the sign-in page. Empty uses the plain sidebar colour.',
+  [BRANDING_SETTING_KEYS.SIDEBAR_BACKGROUND_DOCUMENT_ID]: 'Image behind the navigation sidebar. Empty uses the default solid colour.',
+  [BRANDING_SETTING_KEYS.WORKSPACE_BACKGROUND_DOCUMENT_ID]: 'Image behind the main workspace of every module. Empty uses the default solid colour.',
   [SETTING_KEYS.QUOTATION_APPROVAL_REQUIRED]:
     'Quotations must be approved by a user with quotation approval permission before they can be sent.',
   [BRANDING_SETTING_KEYS.COMPANY_PROFILE]: 'Company name, address and registration details printed on quotations.',

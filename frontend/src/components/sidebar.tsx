@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { BrandLogo } from './brand-logo';
+import { BackgroundImage } from './background-image';
 import {
   IconBox,
   IconChart,
@@ -13,6 +14,7 @@ import {
   IconHandshake,
   IconFile,
   IconHome,
+  IconImage,
   IconInbox,
   IconInvoice,
   IconMenu,
@@ -54,13 +56,21 @@ const NAV: NavItem[] = [
   { label: 'Reports & Analytics', href: '/reports', icon: IconChart, permission: 'analytics.dashboard' },
   { label: 'Sales History', href: '/sales-history', icon: IconChart, permission: 'analytics.products' },
   { label: 'Admin Console', href: '/admin', icon: IconShield, permission: 'settings.manage' },
+  { label: 'Appearance', href: '/appearance', icon: IconImage, permission: 'settings.manage', child: true },
   { label: 'Settings', href: '/settings', icon: IconSettings },
 ];
 
 /** Desktop preference only (not a credential). Read after mount so server and client markup match. */
 const COLLAPSED_KEY = 'kenzo.sidebar.collapsed';
 
-export function Sidebar({ permissions }: { permissions: string[] }) {
+export function Sidebar({
+  permissions,
+  backgroundUrl = null,
+}: {
+  permissions: string[];
+  /** Admin-chosen sidebar image (Admin -> Appearance), or null for the solid colour. */
+  backgroundUrl?: string | null;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -126,9 +136,12 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
           open ? 'translate-x-0' : '-translate-x-full',
         )}
       >
+        {/* Solid sidebar-colour tint over the image keeps the navigation readable. */}
+        <BackgroundImage src={backgroundUrl} overlayClassName="bg-sidebar/85" className="absolute inset-0" />
+
         <div
           className={clsx(
-            'flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-4',
+            'relative flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-4',
             collapsed && 'lg:justify-center lg:px-0',
           )}
         >
@@ -139,7 +152,7 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Main">
+        <nav className="relative flex-1 overflow-y-auto px-2 py-3" aria-label="Main">
           <ul className="space-y-1">
             {visible.map((item) => {
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -188,7 +201,7 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
           </ul>
         </nav>
 
-        <div className="shrink-0 border-t border-white/10 px-2 py-2">
+        <div className="relative shrink-0 border-t border-white/10 px-2 py-2">
           <button
             type="button"
             onClick={toggleCollapsed}

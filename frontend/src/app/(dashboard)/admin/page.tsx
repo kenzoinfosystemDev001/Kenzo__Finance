@@ -87,7 +87,12 @@ export default async function AdminConsolePage({
 
       {section === 'modules' && (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
-          {MODULE_DIRECTORY.map((module) => (
+          {MODULE_DIRECTORY.map((module) => ({
+            ...module,
+            links: module.links.filter((link) => !link.permission || permissions.includes(link.permission)),
+          }))
+            .filter((module) => module.links.length > 0)
+            .map((module) => (
             <SectionCard key={module.title} title={module.title}>
               <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
                 {module.links.map((link) => (

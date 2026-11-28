@@ -1,6 +1,18 @@
 import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { addDays, assertDueDateChangeAllowed, classifyPaymentAlert, daysBetween } from './payment-alert.rules';
+import { addDays, assertDueDateChangeAllowed, classifyPaymentAlert, daysBetween, reminderCycle } from './payment-alert.rules';
+
+describe('reminderCycle', () => {
+  it('sends due-soon and due-today once', () => {
+    expect(reminderCycle({ stage: 'DUE_SOON', daysRemaining: 5 })).toBe(0);
+    expect(reminderCycle({ stage: 'DUE_TODAY', daysRemaining: 0 })).toBe(0);
+  });
+
+  it('repeats overdue every three days', () => {
+    const cycles = [1, 2, 3, 4, 6, 7, 10].map((d) => reminderCycle({ stage: 'OVERDUE', daysRemaining: -d }));
+    expect(cycles).toEqual([0, 0, 0, 1, 1, 2, 3]);
+  });
+});
 
 const TODAY = new Date('2026-06-10T00:00:00.000Z');
 const d = (offset: number) => addDays(TODAY, offset);

@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { FinalInvoiceStatus, InvoicePaymentState, Prisma } from '@prisma/client';
+import { FinalInvoiceStatus, InvoicePaymentState, PaymentReminderEmailStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { businessToday } from '../common/utils/business-date';
-import { addDays, classifyPaymentAlert, DUE_SOON_WINDOW_DAYS, type PaymentAlertStage } from './payment-alert.rules';
+import { addDays, classifyPaymentAlert, DUE_SOON_WINDOW_DAYS, reminderCycle, type PaymentAlertStage } from './payment-alert.rules';
+import { PaymentReminderOutboxService, type OutboxResult } from './payment-reminder-outbox.service';
 
 /** Issued invoices are the only ones that can owe money; drafts and cancelled invoices never raise alerts. */
 const ALERT_STATUSES: FinalInvoiceStatus[] = [FinalInvoiceStatus.ISSUED, FinalInvoiceStatus.SENT];
@@ -43,7 +44,10 @@ export interface PaymentAlertSummary {
 export class PaymentAlertsService {
   private readonly logger = new Logger(PaymentAlertsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly outbox: PaymentReminderOutboxService,
+  ) {}
 
   async openAlerts(now: Date = new Date()): Promise<{ alerts: PaymentAlertItem[]; summary: PaymentAlertSummary }> {
     const today = businessToday(now);
@@ -106,26 +110,56 @@ export class PaymentAlertsService {
   }
 
   /**
-   * Records each alert stage that applies today. Idempotent: a stage already
-   * recorded for an invoice and due date is skipped. Returns how many new
-   * records were written.
+   * Records each alert stage that applies today, then emails the customer for
+   * every newly recorded reminder. Idempotent: a stage already recorded for an
+   * invoice, due date and cycle is skipped, so it is never emailed twice.
+   * Overdue invoices get a new cycle every OVERDUE_REPEAT_DAYS until paid.
    */
-  async sweep(now: Date = new Date()): Promise<{ evaluated: number; recorded: number }> {
+  async sweep(now: Date = new Date()): Promise<{ evaluated: number; recorded: number; emails: OutboxResult }> {
     const { alerts } = await this.openAlerts(now);
-    if (alerts.length === 0) return { evaluated: 0, recorded: 0 };
+    let recorded = 0;
 
-    const result = await this.prisma.paymentReminder.createMany({
-      data: alerts.map((alert) => ({
-        finalInvoiceId: alert.finalInvoiceId,
-        dueDate: new Date(`${alert.dueDate}T00:00:00.000Z`),
-        stage: alert.stage,
-        daysRemaining: alert.daysRemaining,
-        outstandingAmount: alert.outstanding,
-      })),
-      skipDuplicates: true,
+    if (alerts.length > 0) {
+      const result = await this.prisma.paymentReminder.createMany({
+        data: alerts.map((alert) => ({
+          finalInvoiceId: alert.finalInvoiceId,
+          dueDate: new Date(`${alert.dueDate}T00:00:00.000Z`),
+          stage: alert.stage,
+          cycle: reminderCycle(alert),
+          daysRemaining: alert.daysRemaining,
+          outstandingAmount: alert.outstanding,
+          emailStatus: PaymentReminderEmailStatus.PENDING,
+        })),
+        skipDuplicates: true,
+      });
+      recorded = result.count;
+      if (recorded > 0) this.logger.log(`Payment alerts: recorded ${recorded} new reminder(s) from ${alerts.length} open alert(s).`);
+    }
+
+    // Also retries reminders whose email failed on an earlier run.
+    const emails = await this.outbox.deliverPending(now);
+    return { evaluated: alerts.length, recorded, emails };
+  }
+
+  /** Reminder history of one invoice, newest first, including email status. */
+  async history(finalInvoiceId: string) {
+    return this.prisma.paymentReminder.findMany({
+      where: { finalInvoiceId },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        stage: true,
+        cycle: true,
+        dueDate: true,
+        daysRemaining: true,
+        outstandingAmount: true,
+        createdAt: true,
+        emailStatus: true,
+        recipientEmail: true,
+        emailError: true,
+        emailedAt: true,
+      },
     });
-
-    if (result.count > 0) this.logger.log(`Payment alerts: recorded ${result.count} new reminder(s) from ${alerts.length} open alert(s).`);
-    return { evaluated: alerts.length, recorded: result.count };
   }
 }
