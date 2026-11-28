@@ -25,7 +25,7 @@ import type {
   TrackingDto,
   UpdateDeliveryDto,
 } from './dto/delivery.dto';
-import { CONFIRMED_STATES, dispatchProblems, DISPATCHED_STATES, EDITABLE, invoiceDeliveryState, label, OPEN_STATES, RELEASED, TRANSITIONS } from './delivery-rules';
+import { CONFIRMED_STATES, dispatchProblems, DISPATCHED_STATES, EDITABLE, invoiceDeliveryState, label, OPEN_STATES, RELEASED, reservedQuantity, TRANSITIONS } from './delivery-rules';
 import { DeliveryPdfService } from './delivery-pdf.service';
 
 export const DELIVERY_ENTITY = 'Delivery';
@@ -84,15 +84,18 @@ export class DeliveriesService {
 
   /** Per invoice item: invoiced, reserved by other deliveries (not released), and what is left. */
   private async positions(tx: Tx | PrismaService, invoiceId: string, excludeDeliveryId?: string) {
-    const [items, allocated] = await Promise.all([
+    const [items, lines] = await Promise.all([
       tx.finalInvoiceItem.findMany({ where: { finalInvoiceId: invoiceId }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }),
-      tx.deliveryItem.groupBy({
-        by: ['invoiceItemId'],
+      tx.deliveryItem.findMany({
         where: { delivery: { finalInvoiceId: invoiceId, status: { notIn: RELEASED }, ...(excludeDeliveryId ? { id: { not: excludeDeliveryId } } : {}) } },
-        _sum: { quantity: true },
+        select: { invoiceItemId: true, quantity: true, deliveredQuantity: true, delivery: { select: { status: true } } },
       }),
     ]);
-    const reserved = new Map(allocated.map((a) => [a.invoiceItemId, a._sum.quantity ?? 0]));
+    const reserved = new Map<string, number>();
+    for (const line of lines) {
+      const held = reservedQuantity(line.delivery.status, line.quantity, line.deliveredQuantity);
+      reserved.set(line.invoiceItemId, (reserved.get(line.invoiceItemId) ?? 0) + held);
+    }
     return items.map((i) => ({ item: i, reserved: reserved.get(i.id) ?? 0, remaining: i.quantity - (reserved.get(i.id) ?? 0) }));
   }
 

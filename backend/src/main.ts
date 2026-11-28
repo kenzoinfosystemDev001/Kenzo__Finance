@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
@@ -9,7 +10,13 @@ import { PrismaService } from './database/prisma.service';
 
 async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule, { bufferLogs: false });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: false });
+
+  // Production hosts terminate TLS at one proxy hop (a load balancer or
+  // reverse proxy). Without this,
+  // req.ip is the proxy's address, so audit logs record the wrong IP and every
+  // client shares a single rate-limit bucket.
+  app.set('trust proxy', 1);
 
   const configService = app.get(ConfigService);
   // A platform-injected PORT takes precedence over the local API_PORT.

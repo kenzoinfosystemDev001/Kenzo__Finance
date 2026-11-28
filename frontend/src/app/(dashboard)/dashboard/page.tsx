@@ -1,10 +1,23 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, ApiError } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth-actions';
 import { BUSINESS_TIME_ZONE } from '@/lib/vendor-labels';
-import type { Company, PaginatedResponse, Product, VendorListItem, VendorSummary } from '@/lib/types';
+import type { Company, CustomerListItem, PaginatedResponse, Product, VendorListItem, VendorSummary } from '@/lib/types';
 import { SectionCard } from '@/components/ui';
+import { FavouriteBadge } from '@/components/favourite-customer';
+import {
+  IconBox,
+  IconChart,
+  IconFile,
+  IconHandshake,
+  IconInbox,
+  IconQuote,
+  IconTruck,
+  IconUsers,
+  IconWallet,
+} from '@/components/icons';
+import { formatMoney } from '@/lib/quotation-labels';
 import { PaymentAlertTable } from '@/components/payment-alert-rows';
 import { getPaymentAlerts } from '@/lib/payment-alerts';
 import { RangeFilter } from './range-filter';
@@ -23,6 +36,46 @@ interface TopSellersResponse {
   byValue: Array<{ productId: string; name: string; productCode: string; currency: string; quantity: number; saleAmount: string }>;
 }
 
+/** One row of GET /customers/rankings (issued and sent final invoices only, per currency). */
+interface CustomerRankingRow {
+  customer: { id: string; name: string; customerCode: string; status: string };
+  currency: string | null;
+  orders: number;
+  invoicedAmount: string;
+  lastInvoiceDate: string | null;
+  favourite: boolean;
+}
+
+interface CustomerRankingsResponse {
+  items: CustomerRankingRow[];
+  favouritesAvailable: boolean;
+}
+
+/** Rankings fetch result: `unavailable` is the API's 409 while the favourites column is not yet in the database. */
+type RankingsResult = { data: CustomerRankingsResponse } | { unavailable: true } | null;
+
+function fetchRankings(view: 'top' | 'favourite'): Promise<RankingsResult> {
+  return apiFetch<CustomerRankingsResponse>(`/customers/rankings?view=${view}&sortBy=invoiced&sortDir=desc&pageSize=5`).then(
+    (data) => ({ data }),
+    (error: unknown) => (error instanceof ApiError && error.status === 409 ? { unavailable: true as const } : null),
+  );
+}
+
+const QUICK_LINKS = [
+  { label: 'Vendors', href: '/vendors', permission: 'vendor.read', icon: IconHandshake },
+  { label: 'Products', href: '/products', permission: 'product.read', icon: IconBox },
+  { label: 'Customers', href: '/customers', permission: 'customer.read', icon: IconUsers },
+  { label: 'Enquiries', href: '/enquiries', permission: 'enquiry.read', icon: IconInbox },
+  { label: 'Quotations', href: '/quotations', permission: 'quotation.read', icon: IconQuote },
+  { label: 'Invoices', href: '/final-invoices', permission: 'invoice.read', icon: IconFile },
+  { label: 'Payments', href: '/payments', permission: 'payment.read', icon: IconWallet },
+  { label: 'Deliveries', href: '/deliveries', permission: 'delivery.read', icon: IconTruck },
+  { label: 'Reports', href: '/reports', permission: 'analytics.dashboard', icon: IconChart },
+] as const;
+
+const shortDate = (value: string) =>
+  new Date(value).toLocaleDateString('en-IN', { timeZone: BUSINESS_TIME_ZONE, day: '2-digit', month: 'short', year: 'numeric' });
+
 /** A section that failed to load shows a plain message rather than breaking the page. */
 function SectionError({ what }: { what: string }) {
   return (
@@ -32,18 +85,69 @@ function SectionError({ what }: { what: string }) {
   );
 }
 
+function SectionEmpty({ children }: { children: React.ReactNode }) {
+  return <p className="px-4 py-8 text-center text-sm text-ink-muted">{children}</p>;
+}
+
+function ViewAll({ href, label = 'View all' }: { href: string; label?: string }) {
+  return (
+    <Link href={href} className="text-sm text-accent hover:underline">
+      {label}
+    </Link>
+  );
+}
+
+/** Customer ranking rows as a compact table. `numbered` is the top-customers ranking, which also flags favourites. */
+function RankingTable({ rows, numbered }: { rows: CustomerRankingRow[]; numbered?: boolean }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="data-table">
+        <thead>
+          <tr>
+            {numbered && <th scope="col" className="w-10">#</th>}
+            <th scope="col">Customer</th>
+            <th scope="col" className="text-right">Invoices</th>
+            <th scope="col" className="text-right">Invoiced</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={`${row.customer.id}-${row.currency ?? 'none'}`}>
+              {numbered && <td className="tabular-nums text-ink-subtle">{index + 1}</td>}
+              <td>
+                <Link href={`/customers/${row.customer.id}`} className="font-medium text-accent hover:underline">
+                  {row.customer.name}
+                </Link>{' '}
+                <span className="font-mono text-xs text-ink-subtle">{row.customer.customerCode}</span>
+                {numbered && row.favourite && <FavouriteBadge />}
+              </td>
+              <td className="text-right tabular-nums">{row.orders || '—'}</td>
+              <td className="whitespace-nowrap text-right tabular-nums">
+                {row.currency && row.orders > 0 ? formatMoney(row.invoicedAmount, row.currency) : '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function KpiCard({
   label,
   value,
   note,
   href,
   tone,
+  failed,
 }: {
   label: string;
   value: string;
   note?: string;
   href: string;
   tone: 'accent' | 'success' | 'warning' | 'info';
+  /** The figure could not be loaded: shows a dash and an error note instead of a misleading 0. */
+  failed?: boolean;
 }) {
   const bar = {
     accent: 'bg-accent',
@@ -55,8 +159,14 @@ function KpiCard({
     <Link href={href} className="card relative overflow-hidden p-5 transition-colors hover:border-border-strong">
       <span aria-hidden className={`absolute inset-y-0 left-0 w-1 ${bar}`} />
       <p className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tabular-nums text-ink">{value}</p>
-      {note && <p className="mt-1 text-sm text-ink-muted">{note}</p>}
+      <p className="mt-2 text-2xl font-semibold tabular-nums text-ink">{failed ? '—' : value}</p>
+      {failed ? (
+        <p role="alert" className="mt-1 text-sm text-danger">
+          Could not be loaded. Refresh to try again.
+        </p>
+      ) : (
+        note && <p className="mt-1 text-sm text-ink-muted">{note}</p>
+      )}
     </Link>
   );
 }
@@ -76,16 +186,30 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const canSeeSales = permissions.includes('analytics.invoices') && permissions.includes('analytics.financial');
   const canSeeTopSellers = permissions.includes('analytics.products') && permissions.includes('analytics.invoices');
 
-  const [summary, companies, products, recent, paymentAlerts, sales, topSellers] = await Promise.all([
-    permissions.includes('vendor.read') ? apiFetch<VendorSummary>('/vendors/summary').catch(() => null) : Promise.resolve(null),
-    apiFetch<PaginatedResponse<Company>>('/companies?pageSize=1').catch(() => null),
-    apiFetch<PaginatedResponse<Product>>('/products?pageSize=1').catch(() => null),
-    apiFetch<PaginatedResponse<VendorListItem>>('/vendors?pageSize=5&sortBy=createdAt&sortDir=desc').catch(() => null),
+  const can = (permission: string) => permissions.includes(permission);
+  const canSeeVendors = can('vendor.read');
+  const canSeeCompanies = can('company.read');
+  const canSeeProducts = can('product.read');
+  const canSeeCustomers = can('customer.read');
+  const quickLinks = QUICK_LINKS.filter((link) => can(link.permission));
+
+  const [summary, companies, products, recent, paymentAlerts, sales, topSellers, recentCustomers, topCustomers, favouriteCustomers] = await Promise.all([
+    canSeeVendors ? apiFetch<VendorSummary>('/vendors/summary').catch(() => null) : Promise.resolve(null),
+    canSeeCompanies ? apiFetch<PaginatedResponse<Company>>('/companies?pageSize=1').catch(() => null) : Promise.resolve(null),
+    canSeeProducts ? apiFetch<PaginatedResponse<Product>>('/products?pageSize=1').catch(() => null) : Promise.resolve(null),
+    canSeeVendors
+      ? apiFetch<PaginatedResponse<VendorListItem>>('/vendors?pageSize=5&sortBy=createdAt&sortDir=desc').catch(() => null)
+      : Promise.resolve(null),
     permissions.includes('invoice.read') ? getPaymentAlerts().catch(() => null) : Promise.resolve(null),
     canSeeSales ? apiFetch<SalesResponse>(`/analytics/sales?preset=${range}`).catch(() => null) : Promise.resolve(null),
     canSeeTopSellers
       ? apiFetch<TopSellersResponse>(`/sales/top-sellers?preset=${range}`).catch(() => null)
       : Promise.resolve(null),
+    canSeeCustomers
+      ? apiFetch<PaginatedResponse<CustomerListItem>>('/customers?pageSize=5&sortBy=createdAt&sortDir=desc').catch(() => null)
+      : Promise.resolve(null),
+    canSeeCustomers ? fetchRankings('top') : Promise.resolve(null),
+    canSeeCustomers ? fetchRankings('favourite') : Promise.resolve(null),
   ]);
 
   // Sales are reported per currency. The headline and chart use the first currency returned.
@@ -102,21 +226,44 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <RangeFilter current={range} />
       </header>
 
+      {quickLinks.length > 0 && (
+        <nav aria-label="Quick navigation" className="mb-4 flex flex-wrap gap-2">
+          {quickLinks.map(({ label, href, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-ink transition-colors hover:border-border-strong hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            >
+              <Icon size={16} className="text-accent" />
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          label="Active vendors"
-          value={String(summary?.vendors.active ?? 0)}
-          note={summary ? `${summary.vendors.inactive} inactive` : undefined}
-          href="/vendors?status=ACTIVE"
-          tone="accent"
-        />
-        <KpiCard label="Brands" value={String(companies?.meta.totalItems ?? 0)} href="/companies" tone="info" />
-        <KpiCard label="Products" value={String(products?.meta.totalItems ?? 0)} href="/products" tone="success" />
+        {canSeeVendors && (
+          <KpiCard
+            label="Active vendors"
+            value={summary ? String(summary.vendors.active) : '—'}
+            note={summary ? `${summary.vendors.inactive} inactive` : undefined}
+            failed={!summary}
+            href="/vendors?status=ACTIVE"
+            tone="accent"
+          />
+        )}
+        {canSeeCompanies && (
+          <KpiCard label="Brands" value={companies ? String(companies.meta.totalItems) : '—'} failed={!companies} href="/companies" tone="info" />
+        )}
+        {canSeeProducts && (
+          <KpiCard label="Products" value={products ? String(products.meta.totalItems) : '—'} failed={!products} href="/products" tone="success" />
+        )}
         {canSeeSales ? (
           <KpiCard
             label={`Invoiced sales · ${rangeLabel}`}
             value={primary ? `${primary.currency} ${Number(primary.total).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
             note={primary ? `${primary.count} final invoice${primary.count === 1 ? '' : 's'}` : sales ? 'No invoices in this period' : undefined}
+            failed={!sales}
             href="/final-invoices"
             tone="warning"
           />
@@ -124,66 +271,68 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <div className="min-w-0">
-          <SectionCard
-            title="Recently added vendors"
-            padded={false}
-            actions={
-              <Link href="/vendors" className="text-sm text-accent hover:underline">
-                View all
-              </Link>
-            }
-          >
-            {!recent ? (
-              <SectionError what="Recent vendors" />
-            ) : recent.items.length === 0 ? (
-              <div className="px-4 py-10 text-center">
-                <p className="text-base text-ink-muted">No vendors yet.</p>
-                {permissions.includes('vendor.create') && (
-                  <Link href="/vendors/new" className="btn-primary mt-4">
-                    Add the first vendor
-                  </Link>
-                )}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Code</th>
-                      <th scope="col">Vendor</th>
-                      <th scope="col">Location</th>
-                      <th scope="col" className="text-right">Products</th>
-                      <th scope="col">Added</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recent.items.map((vendor) => (
-                      <tr key={vendor.id}>
-                        <td className="whitespace-nowrap font-mono text-sm text-ink-muted">{vendor.vendorCode}</td>
-                        <td>
-                          <Link href={`/vendors/${vendor.id}`} className="font-medium text-accent hover:underline">
-                            {vendor.businessName}
-                          </Link>
-                        </td>
-                        <td>{[vendor.city, vendor.state].filter(Boolean).join(', ') || '-'}</td>
-                        <td className="text-right tabular-nums">{vendor._count.products}</td>
-                        <td className="whitespace-nowrap">
-                          {new Date(vendor.createdAt).toLocaleDateString('en-IN', {
-                            timeZone: BUSINESS_TIME_ZONE,
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </td>
+        {canSeeVendors && (
+          <div className="min-w-0">
+            <SectionCard
+              title="Recently added vendors"
+              padded={false}
+              actions={
+                <Link href="/vendors" className="text-sm text-accent hover:underline">
+                  View all
+                </Link>
+              }
+            >
+              {!recent ? (
+                <SectionError what="Recent vendors" />
+              ) : recent.items.length === 0 ? (
+                <div className="px-4 py-10 text-center">
+                  <p className="text-base text-ink-muted">No vendors yet.</p>
+                  {permissions.includes('vendor.create') && (
+                    <Link href="/vendors/new" className="btn-primary mt-4">
+                      Add the first vendor
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Code</th>
+                        <th scope="col">Vendor</th>
+                        <th scope="col">Location</th>
+                        <th scope="col" className="text-right">Products</th>
+                        <th scope="col">Added</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </SectionCard>
-        </div>
+                    </thead>
+                    <tbody>
+                      {recent.items.map((vendor) => (
+                        <tr key={vendor.id}>
+                          <td className="whitespace-nowrap font-mono text-sm text-ink-muted">{vendor.vendorCode}</td>
+                          <td>
+                            <Link href={`/vendors/${vendor.id}`} className="font-medium text-accent hover:underline">
+                              {vendor.businessName}
+                            </Link>
+                          </td>
+                          <td>{[vendor.city, vendor.state].filter(Boolean).join(', ') || '-'}</td>
+                          <td className="text-right tabular-nums">{vendor._count.products}</td>
+                          <td className="whitespace-nowrap">
+                            {new Date(vendor.createdAt).toLocaleDateString('en-IN', {
+                              timeZone: BUSINESS_TIME_ZONE,
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </SectionCard>
+          </div>
+        )}
 
         {canSeeSales && (
           <div className="min-w-0">
@@ -197,6 +346,92 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </div>
         )}
       </div>
+
+      {canSeeCustomers && (
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+          <div className="min-w-0">
+            <SectionCard title="Recent customers" description="Latest customers added" padded={false} actions={<ViewAll href="/customers" />}>
+              {!recentCustomers ? (
+                <SectionError what="Recent customers" />
+              ) : recentCustomers.items.length === 0 ? (
+                <div className="px-4 py-8 text-center">
+                  <p className="text-sm text-ink-muted">No customers yet.</p>
+                  {can('customer.create') && (
+                    <Link href="/customers/new" className="btn-primary mt-4">
+                      Add the first customer
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Customer</th>
+                        <th scope="col">Location</th>
+                        <th scope="col">Added</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentCustomers.items.map((customer) => {
+                        const address = customer.addresses[0];
+                        return (
+                          <tr key={customer.id}>
+                            <td>
+                              <Link href={`/customers/${customer.id}`} className="font-medium text-accent hover:underline">
+                                {customer.name}
+                              </Link>{' '}
+                              <span className="font-mono text-xs text-ink-subtle">{customer.customerCode}</span>
+                            </td>
+                            <td>{address ? [address.city, address.state].filter(Boolean).join(', ') || address.country : '-'}</td>
+                            <td className="whitespace-nowrap">{shortDate(customer.createdAt)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </SectionCard>
+          </div>
+
+          <div className="min-w-0">
+            <SectionCard
+              title="Top customers"
+              description="By issued final invoices, all time"
+              padded={false}
+              actions={<ViewAll href="/customers?view=top" />}
+            >
+              {!topCustomers || 'unavailable' in topCustomers ? (
+                <SectionError what="Top customers" />
+              ) : topCustomers.data.items.length === 0 ? (
+                <SectionEmpty>No final invoices have been issued yet.</SectionEmpty>
+              ) : (
+                <RankingTable rows={topCustomers.data.items} numbered />
+              )}
+            </SectionCard>
+          </div>
+
+          <div className="min-w-0 lg:col-span-2 2xl:col-span-1">
+            <SectionCard
+              title="Favourite customers"
+              description="Marked by an administrator"
+              padded={false}
+              actions={<ViewAll href="/customers?view=favourite" />}
+            >
+              {!favouriteCustomers ? (
+                <SectionError what="Favourite customers" />
+              ) : 'unavailable' in favouriteCustomers ? (
+                <SectionEmpty>Favourite customers are not available yet. They appear here once the database update that adds them is applied.</SectionEmpty>
+              ) : favouriteCustomers.data.items.length === 0 ? (
+                <SectionEmpty>No favourite customers yet.</SectionEmpty>
+              ) : (
+                <RankingTable rows={favouriteCustomers.data.items} />
+              )}
+            </SectionCard>
+          </div>
+        </div>
+      )}
 
       {paymentAlerts && (
         <div className="mt-4">

@@ -13,16 +13,22 @@ import type { Request } from 'express';
 import { AuthService, type RequestContext } from './auth.service';
 import {
   ChangePasswordDto,
+  ForgotPasswordDto,
   LoginDto,
   RefreshTokenDto,
+  ResetPasswordWithTokenDto,
 } from './dto/auth.dto';
+import { PasswordResetService } from './password-reset.service';
 import { CurrentUser, Public, RequirePermissions } from '../common/decorators';
 import type { AuthenticatedUser } from '../common/authz/authenticated-user';
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly passwordResetService: PasswordResetService,
+  ) {}
 
   @Public()
   // Tighter than the global limit: login is the brute-force target.
@@ -53,6 +59,26 @@ export class AuthController {
   @ApiOperation({ summary: 'Revoke a refresh token' })
   async logout(@Body() dto: RefreshTokenDto): Promise<void> {
     await this.authService.logout(dto.refreshToken);
+  }
+
+  @Public()
+  // Strict: each request can send an email. The throttler keys this route by
+  // the submitted address (see AppThrottlerGuard), falling back to the client IP.
+  @Throttle({ default: { limit: 5, ttl: 15 * 60_000 } })
+  @Post('password/forgot')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Email a password reset link (same answer whether or not the account exists)' })
+  async forgotPassword(@Body() dto: ForgotPasswordDto, @Req() request: Request) {
+    return this.passwordResetService.requestReset(dto.email, this.contextOf(request));
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 15 * 60_000 } })
+  @Post('password/reset')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Set a new password with an emailed reset token; revokes all sessions' })
+  async resetPassword(@Body() dto: ResetPasswordWithTokenDto, @Req() request: Request) {
+    return this.passwordResetService.resetPassword(dto.token, dto.newPassword, this.contextOf(request));
   }
 
   @ApiBearerAuth()

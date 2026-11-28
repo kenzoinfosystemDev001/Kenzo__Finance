@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { StorageService } from './storage.service';
 import { LocalStorageDriver } from './drivers/local-storage.driver';
 import { CloudinaryStorageDriver } from './drivers/cloudinary-storage.driver';
+import { DatabaseStorageDriver } from './drivers/database-storage.driver';
 import {
   STORAGE_DRIVER_TOKEN,
   type StorageDriver,
@@ -10,21 +11,26 @@ import {
 
 @Module({
   providers: [
+    DatabaseStorageDriver,
     LocalStorageDriver,
     CloudinaryStorageDriver,
     {
-      // The active driver is chosen by configuration. Adding S3 later means
-      // one more class and one more case here, with no change to any caller.
+      // The driver NEW files are written to. Existing files are always read
+      // from wherever their key says they live (see StorageService), so
+      // changing this never orphans files saved earlier.
       provide: STORAGE_DRIVER_TOKEN,
-      inject: [ConfigService, LocalStorageDriver, CloudinaryStorageDriver],
+      inject: [ConfigService, DatabaseStorageDriver, LocalStorageDriver, CloudinaryStorageDriver],
       useFactory: (
         configService: ConfigService,
+        database: DatabaseStorageDriver,
         local: LocalStorageDriver,
         cloudinaryDriver: CloudinaryStorageDriver,
       ): StorageDriver => {
-        const configured = configService.get<string>('STORAGE_DRIVER', 'local');
+        const configured = configService.get<string>('STORAGE_DRIVER', 'database');
 
         switch (configured) {
+          case 'database':
+            return database;
           case 'local':
             return local;
           case 'cloudinary':
@@ -32,7 +38,7 @@ import {
           default:
             throw new Error(
               `STORAGE_DRIVER="${configured}" is not implemented. ` +
-                'Supported values: local, cloudinary.',
+                'Supported values: database, local, cloudinary.',
             );
         }
       },

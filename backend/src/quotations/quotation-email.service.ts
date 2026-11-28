@@ -99,6 +99,9 @@ function toRecord(row: EmailRow): QuotationEmailRecord {
   };
 }
 
+/** A send still PENDING after this long was interrupted (SMTP timeouts total under a minute). */
+export const STALE_PENDING_MS = 5 * 60 * 1000;
+
 /**
  * Emails an issued quotation revision as a PDF attachment, from the configured
  * administrator address. The attached file is the stored PDF of that revision,
@@ -171,7 +174,23 @@ export class QuotationEmailService {
         throw new ConflictException('This send request was already used for another revision.');
       }
       if (existing.status === QuotationEmailStatus.PENDING) {
-        throw new ConflictException('This email is still being sent. Wait for the result before trying again.');
+        // SMTP timeouts total under a minute. A row still PENDING well past
+        // that belongs to a send the server never finished (crash/restart);
+        // close it as FAILED so the user can retry with a new request instead
+        // of being refused forever.
+        const closed = await this.prisma.quotationEmail.updateMany({
+          where: { idempotencyKey: dto.idempotencyKey, status: QuotationEmailStatus.PENDING, createdAt: { lt: new Date(Date.now() - STALE_PENDING_MS) } },
+          data: {
+            status: QuotationEmailStatus.FAILED,
+            errorMessage: 'The send was interrupted before the mail server answered. It may not have been sent; check before sending again.',
+            completedAt: new Date(),
+          },
+        });
+        if (closed.count === 0) {
+          throw new ConflictException('This email is still being sent. Wait for the result before trying again.');
+        }
+        const updated = await this.prisma.quotationEmail.findUniqueOrThrow({ where: { idempotencyKey: dto.idempotencyKey }, select: emailSelect });
+        return toRecord(updated);
       }
       return toRecord(existing);
     }

@@ -27,7 +27,9 @@ function build(rows: unknown[], createManyCounts: number[]) {
     finalInvoice: { findMany: jest.fn().mockResolvedValue(rows) },
     paymentReminder: { createMany },
   };
-  return { service: new PaymentAlertsService(prisma as never), prisma, createMany };
+  const NO_EMAILS = { sent: 0, failed: 0, skipped: 0, notConfigured: false };
+  const outbox = { deliverPending: jest.fn().mockResolvedValue(NO_EMAILS) };
+  return { service: new PaymentAlertsService(prisma as never, outbox as never), prisma, createMany, outbox };
 }
 
 describe('PaymentAlertsService', () => {
@@ -70,21 +72,37 @@ describe('PaymentAlertsService', () => {
     const first = await service.sweep(NOW);
     const second = await service.sweep(NOW);
 
-    expect(first).toEqual({ evaluated: 1, recorded: 1 });
-    expect(second).toEqual({ evaluated: 1, recorded: 0 });
+    expect(first).toMatchObject({ evaluated: 1, recorded: 1 });
+    expect(second).toMatchObject({ evaluated: 1, recorded: 0 });
     for (const call of createMany.mock.calls) {
       expect(call[0].skipDuplicates).toBe(true);
     }
     expect(createMany.mock.calls[0][0].data[0]).toMatchObject({
       finalInvoiceId: 'E',
       stage: 'OVERDUE',
+      cycle: 0,
       daysRemaining: -1,
+      emailStatus: 'PENDING',
     });
+  });
+
+  it('starts a new overdue cycle every three days so the reminder repeats', async () => {
+    const { service, createMany } = build([invoice('G', { dueOffset: -4 }), invoice('H', { dueOffset: -7 })], [2]);
+    await service.sweep(NOW);
+    const data = createMany.mock.calls[0][0].data;
+    expect(data.find((d: { finalInvoiceId: string }) => d.finalInvoiceId === 'G').cycle).toBe(1);
+    expect(data.find((d: { finalInvoiceId: string }) => d.finalInvoiceId === 'H').cycle).toBe(2);
+  });
+
+  it('delivers pending emails on every sweep, even with no new alerts (retries)', async () => {
+    const { service, outbox } = build([], []);
+    await service.sweep(NOW);
+    expect(outbox.deliverPending).toHaveBeenCalledWith(NOW);
   });
 
   it('writes nothing when no invoice has an open alert', async () => {
     const { service, createMany } = build([], []);
-    expect(await service.sweep(NOW)).toEqual({ evaluated: 0, recorded: 0 });
+    expect(await service.sweep(NOW)).toMatchObject({ evaluated: 0, recorded: 0 });
     expect(createMany).not.toHaveBeenCalled();
   });
 

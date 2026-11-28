@@ -8,9 +8,10 @@
     "backend"
   ],
   "engines": {
-    "node": ">=20.9.0"
+    "node": ">=20.9.0 <23"
   },
   "scripts": {
+    "storage:migrate-to-db": "npm run storage:migrate-to-db --workspace @kenzo-erp/api --",
     "api:dev": "npm run start:dev --workspace @kenzo-erp/api",
     "api:build": "npm run build --workspace @kenzo-erp/api",
     "api:test": "npm run test --workspace @kenzo-erp/api",

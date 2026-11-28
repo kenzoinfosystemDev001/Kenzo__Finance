@@ -157,36 +157,26 @@ async function seedRoles(): Promise<void> {
     where: { code: ROLE_CODES.SUPER_ADMIN },
   });
 
-  for (const permission of allPermissions) {
-    await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: superAdmin.id,
-          permissionId: permission.id,
-        },
-      },
-      create: { roleId: superAdmin.id, permissionId: permission.id },
-      update: {},
-    });
-  }
+  const grants: Array<{ roleId: string; permissionId: string }> = allPermissions.map((permission) => ({
+    roleId: superAdmin.id,
+    permissionId: permission.id,
+  }));
 
-  for (const [roleCode, permissionCodes] of Object.entries(
-    DEFAULT_ROLE_PERMISSIONS,
-  )) {
-    const role = await prisma.role.findUnique({ where: { code: roleCode } });
-    if (!role) continue;
-
-    for (const code of permissionCodes) {
+  const roles = await prisma.role.findMany({
+    where: { code: { in: Object.keys(DEFAULT_ROLE_PERMISSIONS) } },
+    select: { id: true, code: true },
+  });
+  for (const role of roles) {
+    for (const code of DEFAULT_ROLE_PERMISSIONS[role.code] ?? []) {
       const permissionId = permissionIdByCode.get(code);
-      if (!permissionId) continue;
-
-      await prisma.rolePermission.upsert({
-        where: { roleId_permissionId: { roleId: role.id, permissionId } },
-        create: { roleId: role.id, permissionId },
-        update: {},
-      });
+      if (permissionId) grants.push({ roleId: role.id, permissionId });
     }
   }
+
+  // Insert-if-missing in one statement (the unique [roleId, permissionId]
+  // key skips existing grants). One round trip instead of one per grant,
+  // so a slow or remote database link cannot drop mid-seed.
+  await prisma.rolePermission.createMany({ data: grants, skipDuplicates: true });
 
   console.log(`  roles: ${ROLE_DEFINITIONS.length} (with default permission grants)`);
 }

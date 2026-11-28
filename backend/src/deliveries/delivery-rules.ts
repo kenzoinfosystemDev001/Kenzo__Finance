@@ -14,6 +14,9 @@ import { DeliveryStatus, TransportMode } from '@prisma/client';
  * - Quantities on DRAFT..DELIVERED deliveries are reserved against the
  *   invoice (no double allocation). CANCELLED and RETURNED deliveries release
  *   them, so the goods can be delivered again (a redelivery links back).
+ * - A PARTIALLY_DELIVERED delivery keeps only its confirmed delivered
+ *   quantity; the shortfall is released so it can go on a new delivery and
+ *   the invoice can still become fully delivered.
  * - Once dispatched, a delivery can no longer be cancelled: it is either
  *   delivered, failed or returned (goods physically left).
  */
@@ -32,6 +35,17 @@ export const TRANSITIONS: Record<DeliveryStatus, DeliveryStatus[]> = {
 
 /** Statuses whose quantities do NOT count against the invoice. */
 export const RELEASED: DeliveryStatus[] = [DeliveryStatus.CANCELLED, DeliveryStatus.RETURNED];
+/**
+ * Quantity a delivery line holds against its invoice line. Released
+ * deliveries hold nothing; a partial delivery holds only what was confirmed
+ * received, so its shortfall can be dispatched again.
+ */
+export function reservedQuantity(status: DeliveryStatus, quantity: number, deliveredQuantity: number | null): number {
+  if (RELEASED.includes(status)) return 0;
+  if (status === DeliveryStatus.PARTIALLY_DELIVERED) return Math.min(deliveredQuantity ?? 0, quantity);
+  return quantity;
+}
+
 /** Goods have left the premises. */
 export const DISPATCHED_STATES: DeliveryStatus[] = [DeliveryStatus.DISPATCHED, DeliveryStatus.IN_TRANSIT, DeliveryStatus.PARTIALLY_DELIVERED, DeliveryStatus.DELIVERED, DeliveryStatus.DELIVERY_FAILED];
 /** Confirmed received by the customer (with proof of delivery). */

@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth-actions';
+import { getLoginBranding, loginBackgroundUrl } from '@/lib/branding';
 import { ApiUnavailable } from '@/components/api-unavailable';
+import { BackgroundImage } from '@/components/background-image';
 import { BrandLogo } from '@/components/brand-logo';
 import { LoginForm } from './login-form';
 
@@ -35,6 +37,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (session.status === 'api-unavailable') return <ApiUnavailable detail={session.detail} />;
   if (session.status === 'authenticated') redirect('/dashboard');
 
+  const branding = await getLoginBranding();
+  // Admin-chosen image (Admin -> Appearance, stored durably). Without one, the solid panel shows.
+  const background = branding.backgroundId ? loginBackgroundUrl(branding.backgroundId) : null;
   const year = new Date().getFullYear();
 
   return (
@@ -44,6 +49,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         aria-label="Kenzo Infosystems"
         className="relative hidden overflow-hidden bg-sidebar text-sidebar-ink lg:flex lg:w-[52%] lg:flex-col lg:justify-between lg:px-12 lg:py-12 xl:px-16"
       >
+        <BackgroundImage src={background} overlayClassName="bg-sidebar/85" className="absolute inset-0" />
+
         <div className="relative flex items-center gap-4">
           <BrandLogo className="h-16 w-16 shrink-0" priority />
           <div>
@@ -85,6 +92,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           {reason === 'session-expired' && (
             <div role="status" className="mt-6 rounded-lg border border-warning/30 bg-warning-subtle px-3 py-2 text-sm text-warning">
               Your session expired. Please sign in again.
+            </div>
+          )}
+          {reason === 'password-reset' && (
+            <div role="status" className="mt-6 rounded-lg border border-success/30 bg-success-subtle px-3 py-2 text-sm text-success">
+              Your password was reset and every session was signed out. Sign in with your new password.
             </div>
           )}
           {reason === 'password-changed' && (
