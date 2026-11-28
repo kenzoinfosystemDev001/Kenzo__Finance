@@ -1,4 +1,6 @@
 import 'server-only';
+import { headers as requestHeaders } from 'next/headers';
+import { forwardingHeadersFrom } from './client-forwarding';
 import { canWriteCookies, getAccessToken, getRefreshToken, setSessionCookies } from './session';
 
 const API_URL =
@@ -32,6 +34,19 @@ const GATEWAY_STATUSES = new Set([502, 503, 504]);
 function truncate(value: string, max: number): string {
   const text = value.trim();
   return text.length > max ? `${text.slice(0, max)}...` : text;
+}
+
+/**
+ * Headers telling the API which browser this call is made for (see
+ * client-forwarding.ts). Empty when INTERNAL_PROXY_TOKEN is unset, or when
+ * called outside a request (build time, background work).
+ */
+export async function forwardingHeaders(): Promise<Record<string, string>> {
+  try {
+    return forwardingHeadersFrom(await requestHeaders());
+  } catch {
+    return {};
+  }
 }
 
 /** True when the API server is down/unreachable, rather than returning an error. */
@@ -115,7 +130,7 @@ export async function apiFetch<T>(
 async function rawFetch(path: string, options: RequestOptions): Promise<Response> {
   const token = await getAccessToken();
 
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...(await forwardingHeaders()) };
   if (token) headers.Authorization = `Bearer ${token}`;
 
   let body: BodyInit | undefined;
@@ -209,7 +224,7 @@ async function tryRefresh(): Promise<boolean> {
   try {
     const response = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await forwardingHeaders()) },
       body: JSON.stringify({ refreshToken }),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       cache: 'no-store',

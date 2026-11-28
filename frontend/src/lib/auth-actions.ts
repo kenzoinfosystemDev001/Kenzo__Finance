@@ -2,7 +2,7 @@
 
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
-import { apiFetch, ApiError, isApiUnavailable } from './api';
+import { apiFetch, ApiError, forwardingHeaders, isApiUnavailable } from './api';
 import {
   clearSessionCookies,
   getRefreshToken,
@@ -40,7 +40,7 @@ export async function loginAction(
   try {
     const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await forwardingHeaders()) },
       body: JSON.stringify({ email, password }),
       // Longer than a page render: a backend waking from idle should still be
       // able to complete a deliberate sign-in rather than fail instantly.
@@ -85,7 +85,7 @@ export async function logoutAction(): Promise<void> {
     // not stop the local session from being cleared.
     await fetch(`${API_URL}/auth/logout`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await forwardingHeaders()) },
       body: JSON.stringify({ refreshToken }),
       // Signing out must never hang on an unreachable API; the cookies are
       // cleared locally either way.

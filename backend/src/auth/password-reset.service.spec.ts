@@ -104,6 +104,7 @@ describe('PasswordResetService', () => {
     it('invalidates earlier unused tokens before issuing a new one', async () => {
       prisma.user.findFirst.mockResolvedValue(activeUser);
       await service.requestReset('a@b.c', context);
+      await flush();
       expect(prisma.passwordResetToken.updateMany).toHaveBeenCalledWith({
         where: { userId: 'u1', usedAt: null },
         data: { usedAt: expect.any(Date) },
