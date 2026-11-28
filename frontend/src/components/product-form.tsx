@@ -60,7 +60,7 @@ export function SpecsEditor({ value, onChange }: { value: Specification[]; onCha
           <IconPlus size={14} /> Add specification
         </button>
         {SPEC_SUGGESTIONS.filter((name) => !used.has(name.toLowerCase())).slice(0, 5).map((name) => (
-          <button key={name} type="button" className="rounded-full border border-dashed border-border-strong px-2.5 py-0.5 text-xs text-ink-muted hover:border-accent hover:text-accent" onClick={() => onChange([...value, { name, value: '' }])}>
+          <button key={name} type="button" className="link-pill-create rounded-full text-xs" onClick={() => onChange([...value, { name, value: '' }])}>
             + {name}
           </button>
         ))}
@@ -298,7 +298,7 @@ export function ProductForm({
               <fieldset key={model.key} className="rounded-xl border border-border p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <legend className="text-sm font-semibold text-ink">Model {index + 1}</legend>
-                  <button type="button" className="inline-flex items-center gap-1 text-sm text-danger hover:underline" onClick={() => setModels((rows) => rows.filter((row) => row.key !== model.key))}>
+                  <button type="button" className="link-pill-danger text-sm" onClick={() => setModels((rows) => rows.filter((row) => row.key !== model.key))}>
                     <IconTrash size={14} /> Remove
                   </button>
                 </div>

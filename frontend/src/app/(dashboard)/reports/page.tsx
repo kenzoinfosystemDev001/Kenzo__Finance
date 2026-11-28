@@ -25,7 +25,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
             {available.map((r, i) => (
               <span key={r}>
                 {i > 0 && ', '}
-                <Link href={`/reports/${r}${search}`} className="text-accent hover:underline">{REPORT_TITLES[r]}</Link>
+                <Link href={`/reports/${r}${search}`} className="link-pill">{REPORT_TITLES[r]}</Link>
               </span>
             ))}
           </p>

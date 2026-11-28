@@ -52,7 +52,7 @@ export default async function EditProformaPage({ params }: { params: Promise<{ i
 
   return (
     <div className="space-y-5">
-      <Link href={`/proforma-invoices/${pi.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent"><IconChevronLeft size={16} /> Back to {pi.piNumber}</Link>
+      <Link href={`/proforma-invoices/${pi.id}`} className="link-pill-neutral text-sm"><IconChevronLeft size={16} /> Back to {pi.piNumber}</Link>
       <div>
         <h1 className="text-2xl font-bold text-ink">Edit {pi.piNumber}</h1>
         <p className="text-base text-ink-muted">Draft proforma invoice for {pi.customer.name}.</p>

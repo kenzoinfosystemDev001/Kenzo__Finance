@@ -170,7 +170,7 @@ export default async function StockLedgerPage({
                       <td>
                         <Link
                           href={`/products/${movement.product.id}`}
-                          className="font-medium text-accent hover:underline"
+                          className="link-pill font-medium"
                         >
                           {movement.product.name}
                         </Link>

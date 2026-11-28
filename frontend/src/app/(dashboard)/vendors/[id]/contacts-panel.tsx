@@ -80,7 +80,7 @@ export function ContactsPanel({
                   <td>{CONTACT_TYPE_LABELS[contact.contactType]}</td>
                   <td className="whitespace-nowrap">
                     {contact.phone ? (
-                      <a href={`tel:${contact.phone}`} className="inline-flex items-center gap-1.5 hover:text-accent">
+                      <a href={`tel:${contact.phone}`} className="link-pill">
                         <IconPhone size={14} /> {formatPhone(contact.phone)}
                       </a>
                     ) : (
@@ -90,7 +90,7 @@ export function ContactsPanel({
                   </td>
                   <td>
                     {contact.email ? (
-                      <a href={`mailto:${contact.email}`} className="inline-flex items-center gap-1.5 hover:text-accent">
+                      <a href={`mailto:${contact.email}`} className="link-pill">
                         <IconMail size={14} /> {contact.email}
                       </a>
                     ) : (

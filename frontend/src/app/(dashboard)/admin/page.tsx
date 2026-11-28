@@ -40,6 +40,10 @@ interface CustomerRankingsResponse {
  * only. Nothing here copies data: the lists come from the same APIs, and the
  * actions are the modules' own.
  */
+/** Create actions read as "add"; everything else is navigation. */
+const moduleLinkClass = (label: string) =>
+  /^(Add|New|Record|Import|Create)/.test(label) ? 'link-pill-create' : 'link-pill';
+
 export default async function AdminConsolePage({
   searchParams,
 }: {
@@ -70,15 +74,13 @@ export default async function AdminConsolePage({
         title="Admin Console"
       />
 
-      <nav aria-label="Admin sections" className="inline-flex max-w-full flex-wrap gap-1 rounded-xl border border-border bg-surface p-1 shadow-card">
+      <nav aria-label="Admin sections" className="flex max-w-full flex-wrap gap-2">
         {SECTIONS.map((s) => (
           <Link
             key={s.key}
             href={s.key === 'modules' ? '/admin' : `/admin?s=${s.key}`}
             aria-current={section === s.key ? 'page' : undefined}
-            className={`rounded-lg px-4 py-2 text-base font-semibold transition-colors ${
-              section === s.key ? 'bg-sidebar text-white shadow-card' : 'text-ink-muted hover:bg-surface-muted hover:text-ink'
-            }`}
+            className="tab-link font-semibold"
           >
             {s.label}
           </Link>
@@ -94,15 +96,15 @@ export default async function AdminConsolePage({
             .filter((module) => module.links.length > 0)
             .map((module) => (
             <SectionCard key={module.title} title={module.title}>
-              <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {module.links.map((link) => (
                   <li key={link.href + link.label}>
                     <Link
                       href={link.href}
-                      className="group flex items-center justify-between rounded-lg px-3 py-2 text-base font-medium text-accent transition-colors hover:bg-surface-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                      className={`${moduleLinkClass(link.label)} group flex w-full justify-between px-3 py-2 text-base`}
                     >
-                      <span>{link.label}</span>
-                      <span aria-hidden className="text-ink-subtle opacity-0 transition-opacity group-hover:opacity-100">&rarr;</span>
+                      <span className="min-w-0 truncate">{link.label}</span>
+                      <span aria-hidden className="opacity-40 transition-opacity group-hover:opacity-100">&rarr;</span>
                     </Link>
                   </li>
                 ))}
@@ -167,7 +169,7 @@ async function CustomersSection({ page, pageSize, q, permissions }: { page: numb
                 {data.items.map((row) => (
                   <tr key={`${row.customer.id}-${row.currency ?? 'none'}`}>
                     <td>
-                      <Link href={`/customers/${row.customer.id}`} className="font-medium text-accent hover:underline">{row.customer.name}</Link>
+                      <Link href={`/customers/${row.customer.id}`} className="link-pill font-medium">{row.customer.name}</Link>
                       <span className="ml-2 font-mono text-xs text-ink-subtle">{row.customer.customerCode}</span>
                       {row.favourite && <FavouriteBadge />}
                       {row.customer.status !== 'ACTIVE' && <span className="ml-2"><Badge>Inactive</Badge></span>}
@@ -176,7 +178,7 @@ async function CustomersSection({ page, pageSize, q, permissions }: { page: numb
                     <td className="text-right tabular-nums">{row.currency ? formatMoney(row.invoicedAmount, row.currency) : '—'}</td>
                     <td className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Link href={`/customers/${row.customer.id}/edit`} className="text-sm text-accent hover:underline">Edit</Link>
+                        <Link href={`/customers/${row.customer.id}/edit`} className="link-pill-neutral text-sm">Edit</Link>
                         <CustomerRowActions
                           customer={{ id: row.customer.id, name: row.customer.name, status: row.customer.status as CustomerListItem['status'] }}
                           permissions={permissions}
@@ -249,13 +251,13 @@ async function VendorsSection({ page, pageSize, q, permissions }: { page: number
                   <tr key={vendor.id}>
                     <td className="font-mono text-sm text-ink-muted">{vendor.vendorCode}</td>
                     <td>
-                      <Link href={`/vendors/${vendor.id}`} className="font-medium text-accent hover:underline">{vendor.businessName}</Link>
+                      <Link href={`/vendors/${vendor.id}`} className="link-pill font-medium">{vendor.businessName}</Link>
                     </td>
                     <td>{[vendor.city, vendor.state].filter(Boolean).join(', ') || '—'}</td>
                     <td>{vendor.status === 'ACTIVE' ? <Badge tone="success">Active</Badge> : <Badge>Inactive</Badge>}</td>
                     <td className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Link href={`/vendors/${vendor.id}/edit`} className="text-sm text-accent hover:underline">Edit</Link>
+                        <Link href={`/vendors/${vendor.id}/edit`} className="link-pill-neutral text-sm">Edit</Link>
                         <VendorRowActions vendor={vendor} permissions={permissions} />
                       </div>
                     </td>

@@ -246,11 +246,11 @@ export default async function SalesHistoryPage({
                             {item.modelName ? <span className="block text-xs text-ink-subtle">{String(item.modelName)}</span> : null}
                           </td>
                           <td>
-                            <Link href={`/customers/${customer.id}`} className="text-accent hover:underline">{customer.name}</Link>
+                            <Link href={`/customers/${customer.id}`} className="link-pill">{customer.name}</Link>
                           </td>
                           <td className="font-mono text-sm">
                             {item.finalInvoiceId ? (
-                              <Link href={`/final-invoices/${String(item.finalInvoiceId)}`} className="text-accent hover:underline">{String(item.invoiceNumber ?? '—')}</Link>
+                              <Link href={`/final-invoices/${String(item.finalInvoiceId)}`} className="link-pill">{String(item.invoiceNumber ?? '—')}</Link>
                             ) : (
                               String(item.invoiceNumber ?? '—')
                             )}
@@ -261,8 +261,8 @@ export default async function SalesHistoryPage({
                           <td className="whitespace-nowrap text-right">
                             {item.finalInvoiceId ? (
                               <span className="inline-flex items-center gap-3 text-sm">
-                                <Link href={`/final-invoices/${String(item.finalInvoiceId)}`} className="text-accent hover:underline">View</Link>
-                                <a href={`/final-invoices/${String(item.finalInvoiceId)}/pdf`} className="text-accent hover:underline">Download PDF</a>
+                                <Link href={`/final-invoices/${String(item.finalInvoiceId)}`} className="link-pill">View</Link>
+                                <a href={`/final-invoices/${String(item.finalInvoiceId)}/pdf`} className="link-pill">Download PDF</a>
                               </span>
                             ) : (
                               <span className="text-ink-subtle">—</span>
@@ -289,7 +289,7 @@ export default async function SalesHistoryPage({
                     return (
                       <tr key={`${item.id}-${String(item.currency)}`}>
                         <td>
-                          <Link href={`/customers/${String(item.id)}`} className="font-medium text-accent hover:underline">{String(item.name)}</Link>
+                          <Link href={`/customers/${String(item.id)}`} className="link-pill font-medium">{String(item.name)}</Link>
                         </td>
                         <td className="font-mono text-sm">{String(item.code)}</td>
                         <td className="text-right tabular-nums">{Number(item.quantity)}</td>
@@ -389,7 +389,7 @@ export default async function SalesHistoryPage({
         title="Monthly sales summary"
         description="The last twelve months, by month and currency."
         padded={false}
-        actions={<a href={exportLink('xlsx', 'monthly')} className="text-sm text-accent hover:underline">Export</a>}
+        actions={<a href={exportLink('xlsx', 'monthly')} className="link-pill text-sm">Export</a>}
       >
         {!monthly || monthly.rows.length === 0 ? (
           <p className="p-4 text-sm text-ink-muted">No sales in the last twelve months.</p>

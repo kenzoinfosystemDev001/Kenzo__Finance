@@ -243,7 +243,7 @@ export default async function AuditLogsPage({ searchParams }: { searchParams: Pr
                       </td>
                       <td className="max-w-md">{item.summary ?? <span className="text-ink-subtle">—</span>}</td>
                       <td className="text-right">
-                        <Link href={entryHref(item.id)} scroll={false} className="text-sm text-accent hover:underline">
+                        <Link href={entryHref(item.id)} scroll={false} className="link-pill text-sm">
                           View
                         </Link>
                       </td>

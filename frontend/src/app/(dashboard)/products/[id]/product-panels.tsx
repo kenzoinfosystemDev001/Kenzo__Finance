@@ -497,7 +497,7 @@ export function VendorsPanel({
                   <tr key={mapping.id}>
                     <td className="min-w-[180px]">
                       {canViewVendors ? (
-                        <a href={`/vendors/${mapping.vendor.id}`} className="font-semibold text-ink hover:text-accent hover:underline">{mapping.vendor.businessName}</a>
+                        <a href={`/vendors/${mapping.vendor.id}`} className="link-pill font-semibold">{mapping.vendor.businessName}</a>
                       ) : (
                         <span className="font-semibold">{mapping.vendor.businessName}</span>
                       )}

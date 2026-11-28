@@ -53,7 +53,7 @@ export default async function PaymentProfile({ params }: { params: Promise<{ id:
 
   return (
     <div className="space-y-5">
-      <Link href="/payments" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent"><IconChevronLeft size={16} /> All payments</Link>
+      <Link href="/payments" className="link-pill-neutral text-sm"><IconChevronLeft size={16} /> All payments</Link>
       <section className="card p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -68,8 +68,8 @@ export default async function PaymentProfile({ params }: { params: Promise<{ id:
       <div className="grid gap-5 lg:grid-cols-2">
         <SectionCard title="Payment overview">
           <DefinitionList items={[
-            { label: 'Customer', value: can('customer.read') ? <Link className="hover:text-accent hover:underline" href={`/customers/${payment.customer.id}`}>{payment.customer.name}</Link> : payment.customer.name },
-            { label: 'Invoice', value: invoice && can('invoice.read') ? <Link className="font-mono hover:text-accent hover:underline" href={`/final-invoices/${invoice.id}`}>{invoice.invoiceNumber}</Link> : invoice?.invoiceNumber },
+            { label: 'Customer', value: can('customer.read') ? <Link className="link-pill" href={`/customers/${payment.customer.id}`}>{payment.customer.name}</Link> : payment.customer.name },
+            { label: 'Invoice', value: invoice && can('invoice.read') ? <Link className="link-pill font-mono" href={`/final-invoices/${invoice.id}`}>{invoice.invoiceNumber}</Link> : invoice?.invoiceNumber },
             { label: 'Payment date', value: formatDate(payment.paymentDate) },
             { label: 'Method', value: payment.methodLabel },
             { label: 'Transaction reference', value: payment.transactionReference },

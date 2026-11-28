@@ -187,7 +187,7 @@ function HeaderFields({
                 <button
                   key={`${c.name}-${i}`}
                   type="button"
-                  className="text-xs font-medium text-accent hover:underline"
+                  className="link-pill text-xs font-medium"
                   onClick={() => {
                     set('contactPerson', c.name);
                     if (c.phone) set('contactNumber', c.phone);
@@ -352,7 +352,7 @@ export function CreateDeliveryForm({
     <div className="space-y-5">
       {redelivery && (
         <p role="status" className="rounded-lg border border-accent/30 bg-accent-subtle px-4 py-2.5 text-sm text-accent">
-          Redelivery of returned delivery <Link href={`/deliveries/${redelivery.id}`} className="font-mono font-semibold underline">{redelivery.deliveryNumber}</Link>. Its quantities and address are prefilled; change them as needed.
+          Redelivery of returned delivery <Link href={`/deliveries/${redelivery.id}`} className="link-pill-on-tint font-mono font-semibold">{redelivery.deliveryNumber}</Link>. Its quantities and address are prefilled; change them as needed.
         </p>
       )}
       <section className="card">
@@ -451,7 +451,7 @@ export function CreateDeliveryForm({
               <div className="flex justify-end border-t border-border px-5 py-3">
                 <button
                   type="button"
-                  className="text-sm font-medium text-accent hover:underline"
+                  className="link-pill text-sm font-medium"
                   onClick={() => setLines(Object.fromEntries(items.map((i) => [i.invoiceItemId, { quantity: i.remainingQuantity > 0 ? String(i.remainingQuantity) : '', packageCount: lines[i.invoiceItemId]?.packageCount ?? '', remarks: lines[i.invoiceItemId]?.remarks ?? '' }])))}
                 >
                   Deliver everything available

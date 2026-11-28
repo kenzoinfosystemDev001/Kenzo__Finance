@@ -57,14 +57,14 @@ export default async function ProformaProfilePage({
 
   return (
     <div className="space-y-5">
-      <Link href="/proforma-invoices" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent"><IconChevronLeft size={16} /> All proforma invoices</Link>
+      <Link href="/proforma-invoices" className="link-pill-neutral text-sm"><IconChevronLeft size={16} /> All proforma invoices</Link>
       {query.created && <p role="status" className="rounded-lg border border-success/30 bg-success-subtle px-4 py-2.5 text-sm text-success">Proforma invoice {pi.piNumber} created as a draft.</p>}
       {query.saved && <p role="status" className="rounded-lg border border-success/30 bg-success-subtle px-4 py-2.5 text-sm text-success">Draft saved.</p>}
       {query.existing && <p role="status" className="rounded-lg border border-warning/30 bg-warning-subtle px-4 py-2.5 text-sm text-warning">This quotation already has proforma invoice {pi.piNumber}; a duplicate was not created.</p>}
       {pi.status === 'CANCELLED' && (
         <p role="status" className="rounded-lg border border-danger/30 bg-danger-subtle px-4 py-2.5 text-sm text-danger">
           Cancelled {pi.cancelledAt ? formatDateTime(pi.cancelledAt) : ''}{pi.cancellationReason ? ` — ${pi.cancellationReason}` : ''}.
-          {pi.replacedBy && <> Replaced by <Link href={`/proforma-invoices/${pi.replacedBy.id}`} className="font-semibold underline">{pi.replacedBy.piNumber}</Link>.</>}
+          {pi.replacedBy && <> Replaced by <Link href={`/proforma-invoices/${pi.replacedBy.id}`} className="link-pill-on-tint font-semibold">{pi.replacedBy.piNumber}</Link>.</>}
         </p>
       )}
 
@@ -78,18 +78,18 @@ export default async function ProformaProfilePage({
                 <ProformaStatusBadge status={pi.status} />
               </div>
               <p className="mt-1 text-base text-ink">
-                {can('customer.read') ? <Link href={`/customers/${pi.customer.id}`} className="font-semibold hover:text-accent hover:underline">{pi.customer.name}</Link> : <span className="font-semibold">{pi.customer.name}</span>}
+                {can('customer.read') ? <Link href={`/customers/${pi.customer.id}`} className="link-pill font-semibold">{pi.customer.name}</Link> : <span className="font-semibold">{pi.customer.name}</span>}
                 <span className="text-ink-muted"> &middot; <span className="font-mono">{pi.customer.customerCode}</span> &middot; {formatDate(pi.piDate)}</span>
               </p>
               <p className="mt-1 text-sm text-ink-muted">
                 From quotation{' '}
-                {can('quotation.read') ? <Link href={`/quotations/${pi.quotation.id}`} className="font-mono text-ink hover:text-accent hover:underline">{pi.quotation.quotationNumber}</Link> : <span className="font-mono text-ink">{pi.quotation.quotationNumber}</span>}
+                {can('quotation.read') ? <Link href={`/quotations/${pi.quotation.id}`} className="link-pill font-mono">{pi.quotation.quotationNumber}</Link> : <span className="font-mono text-ink">{pi.quotation.quotationNumber}</span>}
                 {' '}revision {pi.quotationRevision.revisionNumber} &middot; Assigned to <span className="text-ink">{pi.assignedTo?.fullName ?? 'nobody'}</span>
                 {pi.dueDate && <> &middot; Payment due <span className="text-ink">{formatDate(pi.dueDate)}</span></>}
               </p>
               <p className="mt-2 text-2xl font-bold tabular-nums text-ink">{money(pi.grandTotal)}</p>
               {pi.replaces && (
-                <p className="mt-1 text-sm text-ink-muted">Replaces cancelled <Link href={`/proforma-invoices/${pi.replaces.id}`} className="font-mono text-ink hover:text-accent hover:underline">{pi.replaces.piNumber}</Link></p>
+                <p className="mt-1 text-sm text-ink-muted">Replaces cancelled <Link href={`/proforma-invoices/${pi.replaces.id}`} className="link-pill font-mono">{pi.replaces.piNumber}</Link></p>
               )}
             </div>
           </div>
@@ -117,7 +117,7 @@ export default async function ProformaProfilePage({
                 <li key={fi.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
                   <div className="flex flex-wrap items-center gap-2">
                     {can('invoice.read') ? (
-                      <Link href={`/final-invoices/${fi.id}`} className="font-mono text-sm font-semibold text-ink hover:text-accent hover:underline">{fi.invoiceNumber ?? 'Draft invoice'}</Link>
+                      <Link href={`/final-invoices/${fi.id}`} className="link-pill font-mono text-sm font-semibold">{fi.invoiceNumber ?? 'Draft invoice'}</Link>
                     ) : (
                       <span className="font-mono text-sm font-semibold text-ink">{fi.invoiceNumber ?? 'Draft invoice'}</span>
                     )}
@@ -244,7 +244,7 @@ export default async function ProformaProfilePage({
               { label: 'Quotation date', value: formatDate(pi.quotationRevision.quotationDate) },
               { label: 'Accepted on', value: pi.quotation.acceptedAt ? formatDateTime(pi.quotation.acceptedAt) : null },
               { label: 'Accepted amount', value: money(pi.quotationRevision.grandTotal) },
-              { label: 'Enquiry', value: pi.quotation.enquiry ? (can('enquiry.read') ? <Link href={`/enquiries/${pi.quotation.enquiry.id}`} className="font-mono hover:text-accent hover:underline">{pi.quotation.enquiry.enquiryNumber}</Link> : pi.quotation.enquiry.enquiryNumber) : 'Manual quotation' },
+              { label: 'Enquiry', value: pi.quotation.enquiry ? (can('enquiry.read') ? <Link href={`/enquiries/${pi.quotation.enquiry.id}`} className="link-pill font-mono">{pi.quotation.enquiry.enquiryNumber}</Link> : pi.quotation.enquiry.enquiryNumber) : 'Manual quotation' },
             ]}
           />
           {pi.quotationRevision.grandTotal !== pi.grandTotal && (

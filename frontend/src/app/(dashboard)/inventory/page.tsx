@@ -272,7 +272,7 @@ export default async function InventoryPage({
                       <td>
                         <Link
                           href={`/products/${row.id}`}
-                          className="font-medium text-accent hover:underline"
+                          className="link-pill font-medium"
                         >
                           {row.name}
                         </Link>

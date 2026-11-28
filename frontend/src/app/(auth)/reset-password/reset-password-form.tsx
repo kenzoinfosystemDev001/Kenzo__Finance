@@ -66,10 +66,10 @@ export function ResetPasswordForm({ token }: { token: string }) {
       <SubmitButton label="Reset password" pendingLabel="Resetting..." />
 
       <div className="flex justify-between text-sm">
-        <Link href="/forgot-password" className="font-semibold text-accent hover:text-accent-hover hover:underline">
+        <Link href="/forgot-password" className="link-pill font-semibold">
           Request a new link
         </Link>
-        <Link href="/login" className="font-semibold text-accent hover:text-accent-hover hover:underline">
+        <Link href="/login" className="link-pill font-semibold">
           Back to sign in
         </Link>
       </div>

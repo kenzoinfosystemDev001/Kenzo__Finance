@@ -50,12 +50,25 @@
   --chart-secondary: var(--orchid);
   --chart-highlight: var(--coral);
 
-  --sidebar: var(--plum-indigo);
-  --sidebar-hover: var(--plum-hover);
-  --sidebar-active: var(--plum-active);
-  --sidebar-indicator: var(--sky-blue);
+  /* Navigation palette (sidebar and sign-in brand panel). */
+  --navy-deep: 23 26 69;         /* #171A45 sidebar base */
+  --navy-indigo: 32 36 81;       /* #202451 sidebar lower gradient stop */
+  --navy-surface: 37 41 82;      /* #252952 profile and footer cards */
+  --navy-secondary: 48 54 101;   /* #303665 hover, expanded parent */
+  --active-blue: 40 104 240;     /* #2868F0 active item */
+  --bright-blue: 22 139 255;     /* #168BFF indicator, accents */
+  --navy-text: 184 194 226;      /* #B8C2E2 secondary text */
+  --navy-border: 55 61 114;      /* #373D72 subtle borders */
+
+  --sidebar: var(--navy-deep);
+  --sidebar-deep: var(--navy-indigo);
+  --sidebar-surface: var(--navy-surface);
+  --sidebar-hover: var(--navy-secondary);
+  --sidebar-active: var(--active-blue);
+  --sidebar-indicator: var(--bright-blue);
+  --sidebar-border: var(--navy-border);
   --sidebar-ink: var(--crisp-white);
-  --sidebar-muted: var(--frosted);
+  --sidebar-muted: var(--navy-text);
 
   /* Status colours are not part of the brand palette. */
   --danger: 180 35 24;
@@ -154,13 +167,63 @@ body {
     @apply bg-surface-muted;
   }
 
+  /* ---------------------------------------------------------------------
+     Clickable text. Every link or text action uses one of these, so it is
+     recognisable as clickable everywhere and looks the same in every module.
+     Colour carries intent; never apply these to static text.
+       .link-pill          navigation / view (Pale Lavender)
+       .link-pill-create   add, new, record, import (Soft Sky Blue)
+       .link-pill-neutral  edit, back, secondary (Dusty Blue-Gray tint)
+       .link-pill-danger   delete, remove, discard (Warm Pastel Peach)
+       .link-pill-on-tint  inside a coloured status message
+     --------------------------------------------------------------------- */
+  .link-pill {
+    @apply inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-md bg-accent-subtle px-2 py-0.5
+           font-medium text-accent transition-colors duration-150 hover:bg-lavender-hover
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-1
+           active:bg-lavender-hover/80 disabled:cursor-not-allowed disabled:opacity-50
+           aria-[current=page]:bg-accent aria-[current=page]:text-white;
+  }
+
+  .link-pill-create {
+    @apply link-pill bg-sky-blue/45 text-ink hover:bg-sky-blue/75 active:bg-sky-blue/90;
+  }
+
+  .link-pill-neutral {
+    @apply link-pill bg-border-strong/15 text-ink hover:bg-border-strong/25 active:bg-border-strong/35;
+  }
+
+  .link-pill-danger {
+    @apply link-pill bg-info-subtle text-danger hover:bg-danger-subtle active:bg-danger-subtle/80
+           focus-visible:ring-danger/40;
+  }
+
+  .link-pill-on-tint {
+    @apply link-pill border border-black/10 bg-white text-current shadow-sm
+           hover:border-black/25 hover:bg-white active:bg-white/90;
+  }
+
+  /* Sortable column headings, on the dark table header. */
+  .sort-link {
+    @apply -mx-1.5 inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-md bg-white/10 px-1.5 py-0.5
+           transition-colors duration-150 hover:bg-white/20
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70;
+  }
+
+  .sort-link-active {
+    @apply bg-white/25 text-white;
+  }
+
+  /* Tabs: white with a border; the selected tab is Deep Plum-Indigo. */
   .tab-link {
-    @apply -mb-px inline-flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent
-           px-1 pb-3 pt-1 text-base font-medium text-ink-muted transition-colors hover:text-ink;
+    @apply inline-flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-surface
+           px-3.5 py-2 text-base font-medium text-ink-muted transition-colors duration-150
+           hover:border-border-strong/60 hover:bg-surface-muted hover:text-ink
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40;
   }
 
   .tab-link[aria-current='page'] {
-    @apply border-accent text-accent;
+    @apply border-accent bg-accent text-white shadow-card hover:bg-accent-hover hover:text-white;
   }
 
   .badge {
@@ -187,4 +250,20 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .anim-menu-in, .anim-menu-out, .anim-dialog-in { animation: none; }
+}
+
+/* Sidebar navigation: a thin, quiet scrollbar in the navigation palette. */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--sidebar-border)) transparent;
+}
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: rgb(var(--sidebar-border));
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }

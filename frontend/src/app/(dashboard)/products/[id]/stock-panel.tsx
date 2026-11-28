@@ -264,7 +264,7 @@ export function StockPanel({
           </p>
           <Link
             href={`/inventory/ledger?productId=${productId}`}
-            className="text-sm text-accent hover:underline"
+            className="link-pill text-sm"
           >
             Full ledger
           </Link>

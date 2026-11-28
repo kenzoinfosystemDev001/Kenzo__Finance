@@ -210,7 +210,7 @@ export function ProformaForm(props: ProformaFormProps) {
       <ResultAlert result={result} />
       {result.existingId && (
         <p className="text-sm">
-          <Link href={`/proforma-invoices/${result.existingId}`} className="font-medium text-accent hover:underline">Open the existing proforma invoice</Link>
+          <Link href={`/proforma-invoices/${result.existingId}`} className="link-pill font-medium">Open the existing proforma invoice</Link>
         </p>
       )}
 

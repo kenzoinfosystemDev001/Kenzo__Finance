@@ -55,7 +55,7 @@ export default async function EnquiryProfilePage({
 
   return (
     <div className="space-y-5">
-      <Link href="/enquiries" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent"><IconChevronLeft size={16} /> All enquiries</Link>
+      <Link href="/enquiries" className="link-pill-neutral text-sm"><IconChevronLeft size={16} /> All enquiries</Link>
       {query.created && <p role="status" className="rounded-lg border border-success/30 bg-success-subtle px-4 py-2.5 text-sm text-success">Enquiry {enquiry.enquiryNumber} created. Record follow-ups and attachments below.</p>}
       {failedUploads > 0 && (
         <p role="alert" className="rounded-lg border border-warning/30 bg-warning-subtle px-4 py-2.5 text-sm text-warning">
@@ -75,7 +75,7 @@ export default async function EnquiryProfilePage({
                 <EnquiryPriorityBadge priority={enquiry.priority} />
               </div>
               <p className="mt-1 text-base text-ink">
-                {can('customer.read') ? <Link href={`/customers/${enquiry.customer.id}`} className="font-semibold hover:text-accent hover:underline">{enquiry.customer.name}</Link> : <span className="font-semibold">{enquiry.customer.name}</span>}
+                {can('customer.read') ? <Link href={`/customers/${enquiry.customer.id}`} className="link-pill font-semibold">{enquiry.customer.name}</Link> : <span className="font-semibold">{enquiry.customer.name}</span>}
                 <span className="text-ink-muted"> &middot; <span className="font-mono">{enquiry.customer.customerCode}</span> &middot; {formatDate(enquiry.enquiryDate)}</span>
               </p>
               <p className="mt-1 text-sm text-ink-muted">
@@ -345,7 +345,7 @@ async function QuotationHistoryTab({ enquiry, canReadQuotations }: { enquiry: En
               {quotations.items.map((q) => (
                 <tr key={q.id}>
                   <td className="whitespace-nowrap">
-                    <Link href={`/quotations/${q.id}`} className="font-mono text-sm font-semibold text-ink hover:text-accent hover:underline">{q.quotationNumber}</Link>
+                    <Link href={`/quotations/${q.id}`} className="link-pill font-mono text-sm font-semibold">{q.quotationNumber}</Link>
                   </td>
                   <td className="whitespace-nowrap">{q.quotationDate ? formatDate(q.quotationDate) : '—'}</td>
                   <td className="text-right tabular-nums">R{q.currentRevisionNumber}</td>

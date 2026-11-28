@@ -126,7 +126,7 @@ export function DeliveryFilters({ customer }: { customer: SearchOption | null })
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <button type="button" className="text-sm font-medium text-accent hover:underline" onClick={() => setMore((m) => !m)}>
+        <button type="button" className="link-pill text-sm font-medium" onClick={() => setMore((m) => !m)}>
           {more ? 'Fewer filters' : 'More filters (dates, transporter, location, sorting)'}
         </button>
         <div className="flex gap-2">

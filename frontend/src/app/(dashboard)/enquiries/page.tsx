@@ -91,7 +91,7 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
     const active = sortBy === field;
     return (
       <th scope="col" aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-        <Link href={sortHref(field)} scroll={false} className={clsx('inline-flex items-center gap-1 whitespace-nowrap hover:text-ink', active && 'text-accent')}>
+        <Link href={sortHref(field)} scroll={false} className={clsx('sort-link', active && 'sort-link-active')}>
           {label}
           {active ? (sortDir === 'asc' ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />) : <IconSort size={12} className="opacity-40" />}
         </Link>
@@ -168,7 +168,7 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
                       <tr key={enquiry.id}>
                         <td className="tabular-nums text-ink-subtle">{firstRow + index + 1}</td>
                         <td className="whitespace-nowrap">
-                          <Link href={`/enquiries/${enquiry.id}`} className="font-mono text-sm font-semibold text-ink hover:text-accent hover:underline">{enquiry.enquiryNumber}</Link>
+                          <Link href={`/enquiries/${enquiry.id}`} className="link-pill font-mono text-sm font-semibold">{enquiry.enquiryNumber}</Link>
                         </td>
                         <td className="whitespace-nowrap">{formatDate(enquiry.enquiryDate)}</td>
                         <td className="min-w-[180px]">

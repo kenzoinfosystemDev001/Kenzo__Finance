@@ -73,7 +73,7 @@ export default async function QuotationProfilePage({
 
   return (
     <div className="space-y-5">
-      <Link href="/quotations" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent"><IconChevronLeft size={16} /> All quotations</Link>
+      <Link href="/quotations" className="link-pill-neutral text-sm"><IconChevronLeft size={16} /> All quotations</Link>
       {query.created && <p role="status" className="rounded-lg border border-success/30 bg-success-subtle px-4 py-2.5 text-sm text-success">Quotation {quotation.quotationNumber} created as a draft.</p>}
       {query.updated && <p role="status" className="rounded-lg border border-success/30 bg-success-subtle px-4 py-2.5 text-sm text-success">Draft saved.</p>}
 
@@ -89,12 +89,12 @@ export default async function QuotationProfilePage({
                 {validityPassed && <PastValidityBadge />}
               </div>
               <p className="mt-1 text-base text-ink">
-                {can('customer.read') ? <Link href={`/customers/${quotation.customer.id}`} className="font-semibold hover:text-accent hover:underline">{quotation.customer.name}</Link> : <span className="font-semibold">{quotation.customer.name}</span>}
+                {can('customer.read') ? <Link href={`/customers/${quotation.customer.id}`} className="link-pill font-semibold">{quotation.customer.name}</Link> : <span className="font-semibold">{quotation.customer.name}</span>}
                 <span className="text-ink-muted"> &middot; <span className="font-mono">{quotation.customer.customerCode}</span>{current && <> &middot; {formatDate(current.quotationDate)}</>}</span>
               </p>
               <p className="mt-1 text-sm text-ink-muted">
                 {quotation.enquiry ? (
-                  <>From enquiry {can('enquiry.read') ? <Link href={`/enquiries/${quotation.enquiry.id}`} className="font-mono text-ink hover:text-accent hover:underline">{quotation.enquiry.enquiryNumber}</Link> : <span className="font-mono text-ink">{quotation.enquiry.enquiryNumber}</span>}</>
+                  <>From enquiry {can('enquiry.read') ? <Link href={`/enquiries/${quotation.enquiry.id}`} className="link-pill font-mono">{quotation.enquiry.enquiryNumber}</Link> : <span className="font-mono text-ink">{quotation.enquiry.enquiryNumber}</span>}</>
                 ) : (
                   'Manual quotation'
                 )}
@@ -132,7 +132,7 @@ export default async function QuotationProfilePage({
                 {quotation.proformaInvoices.map((p) => (
                   <li key={p.id}>
                     {can('proforma.read') ? (
-                      <Link href={`/proforma-invoices/${p.id}`} className="font-mono font-semibold text-ink hover:text-accent hover:underline">{p.piNumber}</Link>
+                      <Link href={`/proforma-invoices/${p.id}`} className="link-pill font-mono font-semibold">{p.piNumber}</Link>
                     ) : (
                       <span className="font-mono font-semibold text-ink">{p.piNumber}</span>
                     )}

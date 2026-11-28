@@ -85,7 +85,7 @@ export default async function UserProfilePage({
 
   return (
     <div className="space-y-5">
-      <Link href="/users" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent">
+      <Link href="/users" className="link-pill-neutral text-sm">
         <IconChevronLeft size={16} /> All users
       </Link>
 
@@ -97,7 +97,7 @@ export default async function UserProfilePage({
       {isSelf && (
         <p className="rounded-lg border border-border bg-surface-muted px-4 py-2.5 text-sm text-ink-muted">
           This is your own account. Change your password from{' '}
-          <Link href="/account" className="font-medium text-accent hover:underline">
+          <Link href="/account" className="link-pill font-medium">
             My account
           </Link>
           . Your roles and status can only be changed by another administrator.

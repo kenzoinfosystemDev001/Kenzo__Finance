@@ -100,7 +100,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
     const active = sortBy === field;
     return (
       <th scope="col" className={clsx(align === 'right' && 'text-right')} aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-        <Link href={sortHref(field)} scroll={false} className={clsx('inline-flex items-center gap-1 hover:text-ink', active && 'text-accent')}>
+        <Link href={sortHref(field)} scroll={false} className={clsx('sort-link', active && 'sort-link-active')}>
           {label}
           {active ? (sortDir === 'asc' ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />) : <IconSort size={12} className="opacity-40" />}
         </Link>
@@ -136,7 +136,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         {data.items.length === 0 ? (
           <EmptyState
             title={hasFilters ? 'No products match these filters' : 'No products yet'}
-            description={hasFilters ? 'Try another name, brand, model or vendor, or clear the filters.' : 'Add your first catalogue product, then its models and vendors.'}
+            description={hasFilters ? 'Try another name, brand, model or vendor, or clear the filters.' : undefined}
             action={
               hasFilters ? (
                 <Link href="/products" className="btn-secondary">Clear filters</Link>
@@ -174,7 +174,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         {product.sku && <p className="text-xs text-ink-subtle">SKU {product.sku}</p>}
                       </td>
                       <td className="min-w-[180px]">
-                        <Link href={`/products/${product.id}`} className="font-semibold text-ink hover:text-accent hover:underline">{product.name}</Link>
+                        <Link href={`/products/${product.id}`} className="link-pill font-semibold">{product.name}</Link>
                       </td>
                       <td className="whitespace-nowrap">{product.company.name}</td>
                       <td>{product.category ? <span className="chip">{product.category.name}</span> : <span className="text-ink-subtle">&mdash;</span>}</td>

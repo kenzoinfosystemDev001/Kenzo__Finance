@@ -100,7 +100,7 @@ export default async function QuotationsPage({ searchParams }: { searchParams: P
     const active = sortBy === field;
     return (
       <th scope="col" className={right ? 'text-right' : undefined} aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-        <Link href={sortHref(field)} scroll={false} className={clsx('inline-flex items-center gap-1 whitespace-nowrap hover:text-ink', active && 'text-accent')}>
+        <Link href={sortHref(field)} scroll={false} className={clsx('sort-link', active && 'sort-link-active')}>
           {label}
           {active ? (sortDir === 'asc' ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />) : <IconSort size={12} className="opacity-40" />}
         </Link>
@@ -192,7 +192,7 @@ export default async function QuotationsPage({ searchParams }: { searchParams: P
                     <tr key={q.id}>
                       <td className="tabular-nums text-ink-subtle">{firstRow + index + 1}</td>
                       <td className="whitespace-nowrap">
-                        <Link href={`/quotations/${q.id}`} className="font-mono text-sm font-semibold text-ink hover:text-accent hover:underline">{q.quotationNumber}</Link>
+                        <Link href={`/quotations/${q.id}`} className="link-pill font-mono text-sm font-semibold">{q.quotationNumber}</Link>
                       </td>
                       <td className="whitespace-nowrap">{q.quotationDate ? formatDate(q.quotationDate) : dash}</td>
                       <td className="min-w-[180px]">
@@ -201,7 +201,7 @@ export default async function QuotationsPage({ searchParams }: { searchParams: P
                       </td>
                       <td className="whitespace-nowrap">
                         {q.enquiry ? (
-                          can('enquiry.read') ? <Link href={`/enquiries/${q.enquiry.id}`} className="font-mono text-sm hover:text-accent hover:underline">{q.enquiry.enquiryNumber}</Link> : <span className="font-mono text-sm">{q.enquiry.enquiryNumber}</span>
+                          can('enquiry.read') ? <Link href={`/enquiries/${q.enquiry.id}`} className="link-pill font-mono text-sm">{q.enquiry.enquiryNumber}</Link> : <span className="font-mono text-sm">{q.enquiry.enquiryNumber}</span>
                         ) : (
                           <span className="text-ink-subtle">Manual</span>
                         )}

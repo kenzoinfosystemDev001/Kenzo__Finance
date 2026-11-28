@@ -173,14 +173,19 @@ export function Tabs({
   active: string;
 }) {
   return (
-    <nav aria-label="Sections" className="-mx-1 overflow-x-auto border-b border-border px-1">
-      <ul className="flex gap-6">
+    <nav aria-label="Sections" className="-mx-1 overflow-x-auto px-1 py-1">
+      <ul className="flex gap-2">
         {tabs.map((tab) => (
           <li key={tab.key}>
             <Link href={tab.href} scroll={false} className="tab-link" aria-current={tab.key === active ? 'page' : undefined}>
               {tab.label}
               {tab.count !== undefined && (
-                <span className="rounded-full bg-surface-muted px-1.5 py-0.5 text-xs font-semibold tabular-nums text-ink-muted">
+                <span
+                  className={clsx(
+                    'rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums',
+                    tab.key === active ? 'bg-white/20 text-white' : 'bg-surface-muted text-ink-muted',
+                  )}
+                >
                   {tab.count}
                 </span>
               )}

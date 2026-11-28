@@ -60,7 +60,7 @@ export default async function QuotationReportsPage({ searchParams }: { searchPar
 
   return (
     <div className="space-y-5">
-      <Link href="/quotations" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent"><IconChevronLeft size={16} /> All quotations</Link>
+      <Link href="/quotations" className="link-pill-neutral text-sm"><IconChevronLeft size={16} /> All quotations</Link>
       <PageHeader title="Quotation Reports" description={`${period}. Totals add each quotation's current grand total, shown separately per currency.`} />
 
       <form method="get" className="card flex flex-wrap items-end gap-3 p-3">
@@ -118,7 +118,7 @@ export default async function QuotationReportsPage({ searchParams }: { searchPar
               <tbody>
                 {[...report.byStatus].sort((a, b) => b.count - a.count).map((r) => (
                   <tr key={r.status}>
-                    <td><Link href={`/quotations?status=${r.status}`} className="hover:underline" aria-label={`${QUOTATION_STATUS_LABELS[r.status]} quotations`}><QuotationStatusBadge status={r.status} /></Link></td>
+                    <td><Link href={`/quotations?status=${r.status}`} className="link-pill" aria-label={`${QUOTATION_STATUS_LABELS[r.status]} quotations`}><QuotationStatusBadge status={r.status} /></Link></td>
                     <td className="text-right tabular-nums">{r.count}</td>
                     <td><Bar value={r.count} max={maxStatus} /></td>
                     <td className="whitespace-nowrap text-right tabular-nums">{formatTotals(r.totals)}</td>
@@ -151,7 +151,7 @@ export default async function QuotationReportsPage({ searchParams }: { searchPar
                     <tr key={r.customer?.id ?? `unknown-${index}`}>
                       <td className="min-w-[160px]">
                         {r.customer ? (
-                          <Link href={`/quotations?customerId=${r.customer.id}`} className="font-semibold hover:text-accent hover:underline">{r.customer.name}</Link>
+                          <Link href={`/quotations?customerId=${r.customer.id}`} className="link-pill font-semibold">{r.customer.name}</Link>
                         ) : (
                           <span className="text-ink-subtle">Unknown customer</span>
                         )}
@@ -188,7 +188,7 @@ export default async function QuotationReportsPage({ searchParams }: { searchPar
                     <tr key={r.employee?.id ?? `unassigned-${index}`}>
                       <td>
                         {r.employee ? (
-                          <Link href={`/quotations?assignedToId=${r.employee.id}`} className="hover:text-accent hover:underline">{r.employee.fullName}</Link>
+                          <Link href={`/quotations?assignedToId=${r.employee.id}`} className="link-pill">{r.employee.fullName}</Link>
                         ) : (
                           <span className="text-ink-subtle">Unassigned</span>
                         )}

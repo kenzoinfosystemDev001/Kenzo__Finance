@@ -69,7 +69,6 @@ export function ProductToolbar({
             onBlur={() => {
               if ((params.get('search') ?? '') !== search.trim()) apply({ search: search.trim() || null });
             }}
-            placeholder="Product, code, brand, model or vendor"
             className="field-input h-10 pl-10"
           />
         </form>

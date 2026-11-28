@@ -100,8 +100,8 @@ export async function ReportShell({
       />
 
       {tabs.length > 0 && (
-        <nav aria-label="Reports" className="-mx-1 overflow-x-auto border-b border-border px-1">
-          <ul className="flex gap-5">
+        <nav aria-label="Reports" className="-mx-1 overflow-x-auto px-1 py-1">
+          <ul className="flex gap-2">
             {tabs.map((tab) => (
               <li key={tab.key}>
                 <Link href={tab.href} className="tab-link whitespace-nowrap" aria-current={tab.key === active ? 'page' : undefined}>
@@ -259,7 +259,7 @@ export function Notice({ children }: { children: React.ReactNode }) {
 /** Link to a record page only when the user can open that module. */
 export function RecordLink({ href, permission, permissions, children }: { href: string; permission: string; permissions: string[]; children: React.ReactNode }) {
   return permissions.includes(permission) ? (
-    <Link href={href} className="font-semibold text-ink hover:text-accent hover:underline">
+    <Link href={href} className="link-pill font-semibold">
       {children}
     </Link>
   ) : (
