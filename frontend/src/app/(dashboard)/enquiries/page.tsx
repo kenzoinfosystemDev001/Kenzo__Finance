@@ -130,7 +130,7 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
         {data.items.length === 0 ? (
           <EmptyState
             title={hasFilters ? 'No enquiries match these filters' : 'No enquiries yet'}
-            description={hasFilters ? 'Try another enquiry ID, customer, product or phone number, or clear the filters.' : 'Record the first customer enquiry with its product requirements.'}
+            description={hasFilters ? 'Try another enquiry ID, customer, product or phone number, or clear the filters.' : undefined}
             action={
               hasFilters ? (
                 <Link href="/enquiries" className="btn-secondary">Clear filters</Link>

@@ -101,7 +101,6 @@ export function ProformaToolbar({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onBlur={commitSearch}
-            placeholder="PI no., quotation no., customer, product, model or employee"
             className="field-input h-10 pl-10"
           />
         </form>

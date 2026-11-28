@@ -118,7 +118,7 @@ function OverviewBody({ data, link }: { data: OverviewReport; link: (r: SectionR
         <Tile label="Deliveries" value={count(c.deliveries)} note={`${count(c.completedDeliveries)} completed`} href={link('deliveries')} />
       </div>
 
-      <Section title="Business performance" description="Each figure describes a different stage of the business and is never added to another.">
+      <Section title="Business performance">
         {f === null ? (
           <p className="text-sm text-ink-muted">
             Money and delivery-quantity figures are <Restricted inline />: they need the analytics.financial permission.

@@ -82,7 +82,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
       )}
 
       <form className="card grid gap-3 p-4 md:grid-cols-6">
-        <label className="md:col-span-2 text-sm">Search<input name="search" defaultValue={params.search} className="form-input mt-1 w-full" placeholder="Receipt, invoice or customer" /></label>
+        <label className="md:col-span-2 text-sm">Search<input name="search" defaultValue={params.search} className="form-input mt-1 w-full" /></label>
         <label className="text-sm">Status<select name="status" defaultValue={params.status ?? ''} className="form-input mt-1 w-full"><option value="">All</option>{STATUSES.map((status) => <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>)}</select></label>
         <label className="text-sm">From<input name="dateFrom" type="date" defaultValue={params.dateFrom} className="form-input mt-1 w-full" /></label>
         <label className="text-sm">To<input name="dateTo" type="date" defaultValue={params.dateTo} className="form-input mt-1 w-full" /></label>

@@ -39,7 +39,6 @@ export default async function CompaniesPage({
     <>
       <PageHeader
         title="Brands"
-        description="The shared brand master. Vendors are mapped to brands, and every product belongs to one."
         actions={<Link href="/products" className="btn-secondary">Product Management</Link>}
       />
 

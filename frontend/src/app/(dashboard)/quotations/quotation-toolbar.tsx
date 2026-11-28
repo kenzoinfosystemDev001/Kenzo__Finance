@@ -110,7 +110,6 @@ export function QuotationToolbar({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onBlur={commitSearch}
-            placeholder="Quotation no., enquiry no., customer, product, model or employee"
             className="field-input h-10 pl-10"
           />
         </form>

@@ -56,7 +56,7 @@ export function DeliveryFilters({ customer }: { customer: SearchOption | null })
           <label htmlFor="d-search" className="field-label">Search</label>
           <div className="relative">
             <IconSearch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle" />
-            <input id="d-search" value={values.search} onChange={(e) => set('search', e.target.value)} maxLength={200} className="field-input pl-9" placeholder="Delivery, invoice, customer, tracking / LR no., transporter" />
+            <input id="d-search" value={values.search} onChange={(e) => set('search', e.target.value)} maxLength={200} className="field-input pl-9" />
           </div>
         </div>
         <div>

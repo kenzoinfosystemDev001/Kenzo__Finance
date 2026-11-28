@@ -326,7 +326,7 @@ export default async function SalesHistoryPage({
       </SectionCard>
 
       {/* Top sellers this month */}
-      <SectionCard title={`Top-selling products · ${topSellers?.period.label ?? 'this month'}`} description="Ranked three ways. Each product appears once per currency.">
+      <SectionCard title={`Top-selling products · ${topSellers?.period.label ?? 'this month'}`}>
         {!topSellers ? (
           <p className="p-4 text-sm text-ink-muted">Top-selling products could not be loaded.</p>
         ) : (
@@ -341,7 +341,7 @@ export default async function SalesHistoryPage({
       {/* Product-wise comparison */}
       <SectionCard
         title="Product sales compared"
-        description={comparison?.previousPeriodLabel ? `${comparison.period.label} against ${comparison.previousPeriodLabel}.` : 'Choose a period with a previous period to compare.'}
+        description={comparison?.previousPeriodLabel ? undefined : 'Choose a period with a previous period to compare.'}
         padded={false}
       >
         {!comparison || comparison.rows.length === 0 ? (

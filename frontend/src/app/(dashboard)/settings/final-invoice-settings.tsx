@@ -49,11 +49,11 @@ export function FinalInvoiceSettingsPanel({ approvalRequired, settings, canManag
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-md">
           <p className="text-base font-medium text-ink">Require approval before issuing</p>
-          <p className="mt-1 text-sm text-ink-muted">
-            {approvalRequired
-              ? 'On. Draft invoices are submitted for approval; only users with the approve permission can approve them, and only approved invoices can be issued.'
-              : 'Off. A draft invoice can be issued directly by a user with the issue permission.'}
-          </p>
+          {approvalRequired && (
+            <p className="mt-1 text-sm text-ink-muted">
+              On. Draft invoices are submitted for approval; only users with the approve permission can approve them, and only approved invoices can be issued.
+            </p>
+          )}
         </div>
         <div className="shrink-0">
           {canManage ? (
@@ -69,9 +69,6 @@ export function FinalInvoiceSettingsPanel({ approvalRequired, settings, canManag
 
       <div className="border-t border-border pt-5">
         <p className="text-base font-medium text-ink">Invoice numbering</p>
-        <p className="mt-1 text-sm text-ink-muted">
-          A number is allocated only when an invoice is issued, so numbers are consecutive and never reused. Changing the format affects invoices issued from now on.
-        </p>
         {settings === null ? (
           <p className="mt-2 text-sm text-ink-subtle">The current numbering could not be loaded (viewing it needs access to invoices or settings).</p>
         ) : (

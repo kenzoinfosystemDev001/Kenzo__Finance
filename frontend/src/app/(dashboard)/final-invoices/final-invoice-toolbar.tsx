@@ -109,7 +109,6 @@ export function FinalInvoiceToolbar({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onBlur={commitSearch}
-            placeholder="Invoice no., PI no., quotation no., PO no., customer, product or employee"
             className="field-input h-10 pl-10"
           />
         </form>

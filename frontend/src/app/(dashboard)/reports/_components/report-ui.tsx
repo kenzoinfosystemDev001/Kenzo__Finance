@@ -50,7 +50,6 @@ export async function ReportShell({
   active,
   permissions,
   filters,
-  period,
   description,
   children,
 }: {
@@ -82,7 +81,7 @@ export async function ReportShell({
     <div className="space-y-5">
       <PageHeader
         title={active === 'overview' ? 'Reports & Analytics' : `${REPORT_TITLES[active]} Report`}
-        description={[description, period ? `Period: ${period}.` : null].filter(Boolean).join(' ') || undefined}
+        description={description || undefined}
         actions={
           canExport ? (
             <>
