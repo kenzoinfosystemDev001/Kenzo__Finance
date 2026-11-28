@@ -118,7 +118,7 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
                   {['10', '25', '50', '100'].map((size) => (
                     size === pageSize
                       ? <span key={size} className="font-semibold text-ink">{size}</span>
-                      : <Link key={size} className="hover:text-accent hover:underline" href={`/deliveries${queryString({ ...filters, pageSize: size })}`}>{size}</Link>
+                      : <Link key={size} className="link-pill" href={`/deliveries${queryString({ ...filters, pageSize: size })}`}>{size}</Link>
                   ))}
                 </span>
               }

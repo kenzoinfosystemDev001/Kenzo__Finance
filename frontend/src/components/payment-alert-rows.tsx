@@ -11,7 +11,7 @@ export function PaymentAlertRow({ alert }: { alert: PaymentAlertItem }) {
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-ink">{alert.customerName}</p>
         <p className="text-xs text-ink-muted">
-          <Link href={`/final-invoices/${alert.finalInvoiceId}`} className="font-mono text-accent hover:underline">
+          <Link href={`/final-invoices/${alert.finalInvoiceId}`} className="link-pill font-mono">
             {alert.invoiceNumber ?? 'Invoice'}
           </Link>
           {' · due '}
@@ -51,7 +51,7 @@ export function PaymentAlertTable({ alerts }: { alerts: PaymentAlertItem[] }) {
               <tr key={alert.finalInvoiceId}>
                 <td className="font-medium">{alert.customerName}</td>
                 <td>
-                  <Link href={`/final-invoices/${alert.finalInvoiceId}`} className="font-mono text-sm text-accent hover:underline">
+                  <Link href={`/final-invoices/${alert.finalInvoiceId}`} className="link-pill font-mono text-sm">
                     {alert.invoiceNumber ?? 'Invoice'}
                   </Link>
                 </td>

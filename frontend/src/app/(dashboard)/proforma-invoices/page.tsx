@@ -79,7 +79,7 @@ export default async function ProformaInvoicesPage({ searchParams }: { searchPar
     const active = sortBy === field;
     return (
       <th scope="col" className={right ? 'text-right' : undefined} aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-        <Link href={sortHref(field)} scroll={false} className={clsx('inline-flex items-center gap-1 whitespace-nowrap hover:text-ink', active && 'text-accent')}>
+        <Link href={sortHref(field)} scroll={false} className={clsx('sort-link', active && 'sort-link-active')}>
           {label}
           {active ? (sortDir === 'asc' ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />) : <IconSort size={12} className="opacity-40" />}
         </Link>
@@ -156,7 +156,7 @@ export default async function ProformaInvoicesPage({ searchParams }: { searchPar
                     <tr key={pi.id}>
                       <td className="tabular-nums text-ink-subtle">{firstRow + index + 1}</td>
                       <td className="whitespace-nowrap">
-                        <Link href={`/proforma-invoices/${pi.id}`} className="font-mono text-sm font-semibold text-ink hover:text-accent hover:underline">{pi.piNumber}</Link>
+                        <Link href={`/proforma-invoices/${pi.id}`} className="link-pill font-mono text-sm font-semibold">{pi.piNumber}</Link>
                       </td>
                       <td className="whitespace-nowrap">{formatDate(pi.piDate)}</td>
                       <td className="min-w-[180px]">
@@ -165,7 +165,7 @@ export default async function ProformaInvoicesPage({ searchParams }: { searchPar
                       </td>
                       <td className="whitespace-nowrap">
                         {can('quotation.read') ? (
-                          <Link href={`/quotations/${pi.quotation.id}`} className="font-mono text-sm hover:text-accent hover:underline">{pi.quotation.quotationNumber}</Link>
+                          <Link href={`/quotations/${pi.quotation.id}`} className="link-pill font-mono text-sm">{pi.quotation.quotationNumber}</Link>
                         ) : (
                           <span className="font-mono text-sm">{pi.quotation.quotationNumber}</span>
                         )}

@@ -98,10 +98,10 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
               <thead><tr><th>Receipt</th><th>Date</th><th>Customer</th><th>Invoice</th><th className="text-right">Amount</th><th>Method</th><th>Status</th></tr></thead>
               <tbody>{data.items.map((payment) => (
                 <tr key={payment.id}>
-                  <td><Link href={`/payments/${payment.id}`} className="font-mono font-semibold text-accent hover:underline">{payment.receiptNumber}</Link></td>
+                  <td><Link href={`/payments/${payment.id}`} className="link-pill font-mono font-semibold">{payment.receiptNumber}</Link></td>
                   <td>{formatDate(payment.paymentDate)}</td>
-                  <td>{can('customer.read') ? <Link href={`/customers/${payment.customer.id}`} className="hover:text-accent hover:underline">{payment.customer.name}</Link> : payment.customer.name}</td>
-                  <td>{payment.allocations.map((allocation) => can('invoice.read') ? <Link key={allocation.finalInvoice.id} href={`/final-invoices/${allocation.finalInvoice.id}`} className="font-mono hover:text-accent hover:underline">{allocation.finalInvoice.invoiceNumber}</Link> : allocation.finalInvoice.invoiceNumber).join(', ')}</td>
+                  <td>{can('customer.read') ? <Link href={`/customers/${payment.customer.id}`} className="link-pill">{payment.customer.name}</Link> : payment.customer.name}</td>
+                  <td>{payment.allocations.map((allocation) => can('invoice.read') ? <Link key={allocation.finalInvoice.id} href={`/final-invoices/${allocation.finalInvoice.id}`} className="link-pill font-mono">{allocation.finalInvoice.invoiceNumber}</Link> : allocation.finalInvoice.invoiceNumber).join(', ')}</td>
                   <td className="text-right font-semibold tabular-nums">{formatMoney(payment.amount, payment.currency)}</td>
                   <td>{payment.method.replace(/_/g, ' ')}</td>
                   <td><StatusBadge status={payment.status} /></td>

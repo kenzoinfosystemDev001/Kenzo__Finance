@@ -134,7 +134,7 @@ export async function CustomerDeliveriesPanel({ customerId, permissions }: { cus
             <DeliveryTable deliveries={history.deliveries.slice(0, 50)} canReadCustomers={false} canReadInvoices={can('invoice.read')} />
           </div>
           {history.deliveries.length > 50 && (
-            <p className="border-t border-border px-5 py-3 text-sm"><Link href={`/deliveries?customerId=${customerId}`} className="font-medium text-accent hover:underline">View all {history.total} deliveries in the register</Link></p>
+            <p className="border-t border-border px-5 py-3 text-sm"><Link href={`/deliveries?customerId=${customerId}`} className="link-pill font-medium">View all {history.total} deliveries in the register</Link></p>
           )}
         </>
       ) : (

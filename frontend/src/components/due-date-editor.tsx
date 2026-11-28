@@ -34,7 +34,7 @@ export function DueDateEditor({
     return (
       <span className="inline-flex flex-wrap items-center gap-2">
         <span>{formattedDueDate}</span>
-        <button type="button" className="text-sm font-medium text-accent hover:underline" onClick={() => setEditing(true)}>
+        <button type="button" className="link-pill text-sm font-medium" onClick={() => setEditing(true)}>
           Change
         </button>
       </span>

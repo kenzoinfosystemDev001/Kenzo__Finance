@@ -74,7 +74,7 @@ export default async function NewDeliveryPage({ searchParams }: { searchParams: 
 
   return (
     <div className="space-y-5">
-      <Link href="/deliveries" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent"><IconChevronLeft size={16} /> All deliveries</Link>
+      <Link href="/deliveries" className="link-pill-neutral text-sm"><IconChevronLeft size={16} /> All deliveries</Link>
       <div>
         <h1 className="text-xl font-bold text-ink">{redelivery ? 'Create Redelivery' : 'Create Delivery'}</h1>
         <p className="text-sm text-ink-muted">Choose an issued final invoice and the quantities to send. Nothing here changes the invoice amount or its payments.</p>

@@ -69,7 +69,7 @@ export default async function InvoiceReportsPage({ searchParams }: { searchParam
 
   return (
     <div className="space-y-5">
-      <Link href="/final-invoices" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent"><IconChevronLeft size={16} /> All invoices</Link>
+      <Link href="/final-invoices" className="link-pill-neutral text-sm"><IconChevronLeft size={16} /> All invoices</Link>
       <PageHeader
         title="Invoice Reports"
         description={`${period}${customer ? ` for ${customer.name}` : ''}. Drafts and cancelled invoices are excluded; amounts are shown per currency and never added across currencies.`}
@@ -133,7 +133,7 @@ export default async function InvoiceReportsPage({ searchParams }: { searchParam
                   <tr key={`${r.customer.id}-${r.currency}`}>
                     <td className="min-w-[180px]">
                       {can('customer.read') ? (
-                        <Link href={`/customers/${r.customer.id}`} className="font-semibold text-ink hover:text-accent hover:underline">{r.customer.name}</Link>
+                        <Link href={`/customers/${r.customer.id}`} className="link-pill font-semibold">{r.customer.name}</Link>
                       ) : (
                         <span className="font-semibold text-ink">{r.customer.name}</span>
                       )}
@@ -208,7 +208,7 @@ export default async function InvoiceReportsPage({ searchParams }: { searchParam
                 {report.pastDue.map((inv) => (
                   <tr key={inv.id}>
                     <td className="whitespace-nowrap">
-                      <Link href={`/final-invoices/${inv.id}`} className="font-mono text-sm font-semibold text-ink hover:text-accent hover:underline">{inv.invoiceNumber ?? 'Draft'}</Link>
+                      <Link href={`/final-invoices/${inv.id}`} className="link-pill font-mono text-sm font-semibold">{inv.invoiceNumber ?? 'Draft'}</Link>
                     </td>
                     <td className="whitespace-nowrap">{formatDate(inv.invoiceDate)}</td>
                     <td className="whitespace-nowrap font-semibold text-danger">{inv.dueDate ? formatDate(inv.dueDate) : '—'}</td>

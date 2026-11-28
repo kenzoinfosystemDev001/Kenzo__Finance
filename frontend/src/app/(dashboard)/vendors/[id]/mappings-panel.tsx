@@ -420,7 +420,7 @@ export function ProductsPanel({
                 <tr key={mapping.id}>
                   <td><span className="chip">{mapping.product.company.name}</span></td>
                   <td className="min-w-[180px]">
-                    <Link href={`/products/${mapping.productId}`} className="font-semibold text-ink hover:text-accent hover:underline">
+                    <Link href={`/products/${mapping.productId}`} className="link-pill font-semibold">
                       {mapping.product.name}
                     </Link>
                     <p className="font-mono text-xs text-ink-subtle">
@@ -496,7 +496,7 @@ export function ProductsPanel({
               {canCreateProduct && (
                 <p className="text-sm text-ink-muted">
                   Model not in the catalogue?{' '}
-                  <button type="button" className="font-medium text-accent hover:underline" onClick={() => setRegistering(true)}>
+                  <button type="button" className="link-pill font-medium" onClick={() => setRegistering(true)}>
                     Register it in the shared catalogue
                   </button>
                 </p>

@@ -55,7 +55,7 @@ export default async function EditFinalInvoicePage({ params }: { params: Promise
 
   return (
     <div className="space-y-5">
-      <Link href={`/final-invoices/${inv.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent"><IconChevronLeft size={16} /> Back to {ref}</Link>
+      <Link href={`/final-invoices/${inv.id}`} className="link-pill-neutral text-sm"><IconChevronLeft size={16} /> Back to {ref}</Link>
       <div>
         <h1 className="text-2xl font-bold text-ink">Edit draft invoice</h1>
         <p className="text-base text-ink-muted">Draft invoice for {inv.customer.name}, from proforma invoice {inv.proformaInvoice.piNumber}.</p>

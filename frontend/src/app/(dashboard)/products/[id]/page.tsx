@@ -51,7 +51,7 @@ export default async function ProductProfilePage({
 
   return (
     <div className="space-y-5">
-      <Link href="/products" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent">
+      <Link href="/products" className="link-pill-neutral text-sm">
         <IconChevronLeft size={16} /> All products
       </Link>
 
@@ -109,7 +109,7 @@ export default async function ProductProfilePage({
                 { label: 'Vendors', value: product.vendors.length, tab: 'vendors' as const },
                 { label: 'Documents', value: product.documents.length, tab: 'documents' as const },
               ].map((item) => (
-                <Link key={item.label} href={tabHref(item.tab)} scroll={false} className="rounded-lg px-2 py-1.5 hover:bg-surface-muted">
+                <Link key={item.label} href={tabHref(item.tab)} scroll={false} className="rounded-lg bg-accent-subtle/50 px-2 py-1.5 transition-colors hover:bg-accent-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40">
                   <dt className="text-xs font-medium uppercase tracking-wide text-ink-subtle">{item.label}</dt>
                   <dd className="text-xl font-bold tabular-nums text-ink">{item.value}</dd>
                 </Link>
@@ -172,7 +172,7 @@ export default async function ProductProfilePage({
                   ))}
                 </ul>
               )}
-              <Link href={tabHref('vendors')} scroll={false} className="mt-3 inline-block text-sm font-medium text-accent hover:underline">Manage vendors</Link>
+              <Link href={tabHref('vendors')} scroll={false} className="link-pill mt-3 text-sm font-medium">Manage vendors</Link>
             </section>
           </div>
         </div>

@@ -65,12 +65,12 @@ export default async function FinalInvoiceProfilePage({
     ['Notes', inv.notes],
   ] as Array<[string, string | null]>).filter(([, v]) => v);
   const invoiceLink = (target: { id: string; invoiceNumber: string | null }) => (
-    <Link href={`/final-invoices/${target.id}`} className="font-mono font-semibold underline">{target.invoiceNumber ?? 'draft invoice'}</Link>
+    <Link href={`/final-invoices/${target.id}`} className="link-pill-on-tint font-mono font-semibold">{target.invoiceNumber ?? 'draft invoice'}</Link>
   );
 
   return (
     <div className="space-y-5">
-      <Link href="/final-invoices" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent"><IconChevronLeft size={16} /> All invoices</Link>
+      <Link href="/final-invoices" className="link-pill-neutral text-sm"><IconChevronLeft size={16} /> All invoices</Link>
       {query.created && <p role="status" className="rounded-lg border border-success/30 bg-success-subtle px-4 py-2.5 text-sm text-success">Draft invoice created. The invoice number is allocated when it is issued.</p>}
       {query.saved && <p role="status" className="rounded-lg border border-success/30 bg-success-subtle px-4 py-2.5 text-sm text-success">Draft saved.</p>}
       {query.existing && <p role="status" className="rounded-lg border border-warning/30 bg-warning-subtle px-4 py-2.5 text-sm text-warning">Proforma invoice {inv.proformaInvoice.piNumber} already has this invoice; a duplicate was not created.</p>}
@@ -92,12 +92,12 @@ export default async function FinalInvoiceProfilePage({
                 {inv.pastDue && <PastDueBadge />}
               </div>
               <p className="mt-1 text-base text-ink">
-                {can('customer.read') ? <Link href={`/customers/${inv.customer.id}`} className="font-semibold hover:text-accent hover:underline">{inv.customer.name}</Link> : <span className="font-semibold">{inv.customer.name}</span>}
+                {can('customer.read') ? <Link href={`/customers/${inv.customer.id}`} className="link-pill font-semibold">{inv.customer.name}</Link> : <span className="font-semibold">{inv.customer.name}</span>}
                 <span className="text-ink-muted"> &middot; <span className="font-mono">{inv.customer.customerCode}</span> &middot; {formatDate(inv.invoiceDate)}</span>
               </p>
               <p className="mt-1 text-sm text-ink-muted">
                 From proforma invoice{' '}
-                {can('proforma.read') ? <Link href={`/proforma-invoices/${inv.proformaInvoice.id}`} className="font-mono text-ink hover:text-accent hover:underline">{inv.proformaInvoice.piNumber}</Link> : <span className="font-mono text-ink">{inv.proformaInvoice.piNumber}</span>}
+                {can('proforma.read') ? <Link href={`/proforma-invoices/${inv.proformaInvoice.id}`} className="link-pill font-mono">{inv.proformaInvoice.piNumber}</Link> : <span className="font-mono text-ink">{inv.proformaInvoice.piNumber}</span>}
                 {' '}&middot; Assigned to <span className="text-ink">{inv.assignedTo?.fullName ?? 'nobody'}</span>
                 {inv.dueDate && <> &middot; Due <span className={inv.pastDue ? 'font-semibold text-danger' : 'text-ink'}>{formatDate(inv.dueDate)}</span></>}
               </p>
@@ -257,7 +257,7 @@ export default async function FinalInvoiceProfilePage({
                   label: 'Enquiry',
                   value: inv.quotation.enquiry
                     ? can('enquiry.read')
-                      ? <Link href={`/enquiries/${inv.quotation.enquiry.id}`} className="font-mono hover:text-accent hover:underline">{inv.quotation.enquiry.enquiryNumber}</Link>
+                      ? <Link href={`/enquiries/${inv.quotation.enquiry.id}`} className="link-pill font-mono">{inv.quotation.enquiry.enquiryNumber}</Link>
                       : inv.quotation.enquiry.enquiryNumber
                     : 'Manual quotation',
                 },
@@ -330,7 +330,7 @@ async function InvoicePaymentsTab({ invoiceId, customerId, currency, canReadPaym
           <EmptyStateClient title="No payments yet" description="Payments recorded against this invoice will appear here." />
         ) : (
           <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Receipt</th><th>Payment Date</th><th>Amount</th><th>Method</th><th>Status</th></tr></thead><tbody>{history.payments.map((payment) => (
-            <tr key={payment.id}><td><Link href={`/payments/${payment.id}`} className="font-mono font-semibold text-accent hover:underline">{payment.receiptNumber}</Link></td><td>{formatDate(payment.paymentDate)}</td><td className="font-semibold tabular-nums">{formatMoney(payment.amount, payment.currency)}</td><td>{payment.method.replace(/_/g, ' ')}</td><td>{payment.status.replace(/_/g, ' ')}</td></tr>
+            <tr key={payment.id}><td><Link href={`/payments/${payment.id}`} className="link-pill font-mono font-semibold">{payment.receiptNumber}</Link></td><td>{formatDate(payment.paymentDate)}</td><td className="font-semibold tabular-nums">{formatMoney(payment.amount, payment.currency)}</td><td>{payment.method.replace(/_/g, ' ')}</td><td>{payment.status.replace(/_/g, ' ')}</td></tr>
           ))}</tbody></table></div>
         )}
       </section>

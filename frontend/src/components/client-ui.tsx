@@ -232,8 +232,10 @@ export function ActionMenu({ items, label }: { items: MenuItem[]; label: string 
                 item.onSelect();
               }}
               className={clsx(
-                'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-surface-muted',
-                item.tone === 'danger' ? 'text-danger' : 'text-ink',
+                'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-medium transition-colors focus-visible:outline-none',
+                item.tone === 'danger'
+                  ? 'text-danger hover:bg-danger-subtle focus-visible:bg-danger-subtle'
+                  : 'text-ink hover:bg-accent-subtle focus-visible:bg-accent-subtle',
               )}
             >
               {item.icon}

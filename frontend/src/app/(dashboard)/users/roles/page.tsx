@@ -43,7 +43,7 @@ export default async function RolesPage() {
   return (
     <div className="space-y-5">
       {can('user.read') && (
-        <Link href="/users" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent">
+        <Link href="/users" className="link-pill-neutral text-sm">
           <IconChevronLeft size={16} /> Users
         </Link>
       )}
@@ -79,7 +79,7 @@ export default async function RolesPage() {
                   <td className="min-w-[200px] text-sm text-ink-muted">{role.description ?? <span className="text-ink-subtle">&mdash;</span>}</td>
                   <td className="text-right tabular-nums">
                     {can('user.read') && role.userCount > 0 ? (
-                      <Link href={`/users?roleCode=${encodeURIComponent(role.code)}`} className="text-accent hover:underline">
+                      <Link href={`/users?roleCode=${encodeURIComponent(role.code)}`} className="link-pill">
                         {role.userCount}
                       </Link>
                     ) : (

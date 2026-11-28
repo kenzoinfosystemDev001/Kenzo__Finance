@@ -71,7 +71,7 @@ export default async function CustomerProfilePage({
 
   return (
     <div className="space-y-5">
-      <Link href="/customers" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent"><IconChevronLeft size={16} /> All customers</Link>
+      <Link href="/customers" className="link-pill-neutral text-sm"><IconChevronLeft size={16} /> All customers</Link>
       {query.created && <p role="status" className="rounded-lg border border-success/30 bg-success-subtle px-4 py-2.5 text-sm text-success">Customer created. Add documents, more contacts or products of interest below.</p>}
       {query.updated && <p role="status" className="rounded-lg border border-success/30 bg-success-subtle px-4 py-2.5 text-sm text-success">Changes saved.</p>}
 
@@ -343,7 +343,7 @@ async function TransactionsTab({
                     return (
                       <tr key={e.id}>
                         <td className="whitespace-nowrap">
-                          <Link href={`/enquiries/${e.id}`} className="font-mono text-sm font-semibold text-ink hover:text-accent hover:underline">{e.enquiryNumber}</Link>
+                          <Link href={`/enquiries/${e.id}`} className="link-pill font-mono text-sm font-semibold">{e.enquiryNumber}</Link>
                         </td>
                         <td className="whitespace-nowrap">{formatDate(e.enquiryDate)}</td>
                         <td><EnquiryStatusBadge status={e.status} /></td>
@@ -403,7 +403,7 @@ async function TransactionsTab({
                   {quotations.items.map((q) => (
                     <tr key={q.id}>
                       <td className="whitespace-nowrap">
-                        <Link href={`/quotations/${q.id}`} className="font-mono text-sm font-semibold text-ink hover:text-accent hover:underline">{q.quotationNumber}</Link>
+                        <Link href={`/quotations/${q.id}`} className="link-pill font-mono text-sm font-semibold">{q.quotationNumber}</Link>
                       </td>
                       <td className="whitespace-nowrap">{q.quotationDate ? formatDate(q.quotationDate) : <span className="text-ink-subtle">&mdash;</span>}</td>
                       <td className="whitespace-nowrap font-mono text-sm">{q.enquiry?.enquiryNumber ?? <span className="font-sans text-ink-subtle">Manual</span>}</td>
@@ -459,7 +459,7 @@ async function TransactionsTab({
                   {invoices.items.map((inv) => (
                     <tr key={inv.id}>
                       <td className="whitespace-nowrap">
-                        <Link href={`/final-invoices/${inv.id}`} className="font-mono text-sm font-semibold text-ink hover:text-accent hover:underline">{inv.invoiceNumber ?? <DraftNumberPill />}</Link>
+                        <Link href={`/final-invoices/${inv.id}`} className="link-pill font-mono text-sm font-semibold">{inv.invoiceNumber ?? <DraftNumberPill />}</Link>
                       </td>
                       <td className="whitespace-nowrap">{formatDate(inv.invoiceDate)}</td>
                       <td className="whitespace-nowrap font-mono text-sm">{inv.proformaInvoice.piNumber}</td>
@@ -502,7 +502,7 @@ async function TransactionsTab({
                 <EmptyStateClient title="No payments yet" description="Payments recorded for this customer will appear here." />
               ) : (
                 <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Receipt</th><th>Date</th><th>Amount</th><th>Method</th><th>Status</th></tr></thead><tbody>{payments.payments.slice(0, 50).map((payment) => (
-                  <tr key={payment.id}><td><Link href={`/payments/${payment.id}`} className="font-mono font-semibold text-accent hover:underline">{payment.receiptNumber}</Link></td><td>{formatDate(payment.paymentDate)}</td><td className="text-right font-semibold tabular-nums">{formatMoney(payment.amount, payment.currency)}</td><td>{payment.method.replace(/_/g, ' ')}</td><td>{payment.status.replace(/_/g, ' ')}</td></tr>
+                  <tr key={payment.id}><td><Link href={`/payments/${payment.id}`} className="link-pill font-mono font-semibold">{payment.receiptNumber}</Link></td><td>{formatDate(payment.paymentDate)}</td><td className="text-right font-semibold tabular-nums">{formatMoney(payment.amount, payment.currency)}</td><td>{payment.method.replace(/_/g, ' ')}</td><td>{payment.status.replace(/_/g, ' ')}</td></tr>
                 ))}</tbody></table></div>
               )}
             </div>

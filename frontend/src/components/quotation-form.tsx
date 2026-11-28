@@ -388,7 +388,7 @@ export function QuotationForm({
   const t = preview.totals;
   const copyButton = (label: string, value: string | null | undefined, field: 'paymentTerms' | 'deliveryTerms') =>
     value ? (
-      <button type="button" className="text-xs font-medium text-accent hover:underline" onClick={() => setC(field, content[field] ? `${content[field]}\n${value}` : value)}>
+      <button type="button" className="link-pill text-xs font-medium" onClick={() => setC(field, content[field] ? `${content[field]}\n${value}` : value)}>
         {label}
       </button>
     ) : null;
@@ -466,7 +466,7 @@ export function QuotationForm({
           {loadingCustomer && <p className="text-sm text-ink-subtle">Loading customer details...</p>}
           {customer && !loadingCustomer && <CustomerSummaryCard customer={customer} />}
           {customer && (
-            <Link href={`/customers/${customer.id}`} target="_blank" className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:underline">
+            <Link href={`/customers/${customer.id}`} target="_blank" className="link-pill text-sm font-medium">
               View customer <IconArrowRight size={14} />
             </Link>
           )}
@@ -490,7 +490,7 @@ export function QuotationForm({
                     {!ref && enquiryNumber && <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-ink-muted">Added (not in the enquiry)</span>}
                   </div>
                   {lines.length > 1 && (
-                    <button type="button" className="inline-flex items-center gap-1 text-sm text-danger hover:underline" onClick={() => setLines((list) => list.filter((l) => l.key !== line.key))}>
+                    <button type="button" className="link-pill-danger text-sm" onClick={() => setLines((list) => list.filter((l) => l.key !== line.key))}>
                       <IconTrash size={14} /> Remove
                     </button>
                   )}
@@ -551,7 +551,7 @@ export function QuotationForm({
                 {notQuoted.map((item) => (
                   <li key={item.id} className="flex flex-wrap items-center justify-between gap-2">
                     <span>{item.product.name}{item.productModel ? ` - ${item.productModel.modelName}` : ''} &middot; {item.quantity} {item.unit}</span>
-                    <button type="button" className="text-xs font-medium text-accent hover:underline" onClick={() => setLines((list) => [...list, lineFromEnquiryItem(item)])}>Add back</button>
+                    <button type="button" className="link-pill text-xs font-medium" onClick={() => setLines((list) => [...list, lineFromEnquiryItem(item)])}>Add back</button>
                   </li>
                 ))}
               </ul>
@@ -560,7 +560,7 @@ export function QuotationForm({
           <div className="flex flex-wrap items-center gap-4">
             <button type="button" className="btn-secondary" onClick={() => setLines((list) => [...list, emptyLine()])}><IconPlus size={16} /> Add item</button>
             {canCreateProduct && (
-              <Link href="/products/new" target="_blank" className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:underline">
+              <Link href="/products/new" target="_blank" className="link-pill text-sm font-medium">
                 Product missing? Open Product Management <IconArrowRight size={14} />
               </Link>
             )}

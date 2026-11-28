@@ -44,7 +44,7 @@ export default async function NewUserPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-5">
-      <Link href="/users" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent">
+      <Link href="/users" className="link-pill-neutral text-sm">
         <IconChevronLeft size={16} /> All users
       </Link>
       <PageHeader title="New user" description="Create an account with an initial password and one or more roles." />

@@ -561,12 +561,12 @@ export function EnquiryForm({
           {customer && !loadingCustomer && <CustomerSummaryCard customer={customer} />}
           <div className="flex flex-wrap gap-4 text-sm">
             {customer && (
-              <Link href={`/customers/${customer.id}`} target="_blank" className="inline-flex items-center gap-1 font-medium text-accent hover:underline">
+              <Link href={`/customers/${customer.id}`} target="_blank" className="link-pill font-medium">
                 View customer <IconArrowRight size={14} />
               </Link>
             )}
             {canCreateCustomer && (
-              <Link href="/customers/new" target="_blank" className="inline-flex items-center gap-1 font-medium text-accent hover:underline">
+              <Link href="/customers/new" target="_blank" className="link-pill-create font-medium">
                 <IconPlus size={14} /> Add new customer
               </Link>
             )}
@@ -583,7 +583,7 @@ export function EnquiryForm({
                 <div className="mb-3 flex items-center justify-between">
                   <legend className="text-sm font-semibold text-ink">Product {index + 1}</legend>
                   {rows.length > 1 && (
-                    <button type="button" className="inline-flex items-center gap-1 text-sm text-danger hover:underline" onClick={() => setRows((list) => list.filter((r) => r.key !== row.key))}>
+                    <button type="button" className="link-pill-danger text-sm" onClick={() => setRows((list) => list.filter((r) => r.key !== row.key))}>
                       <IconTrash size={14} /> Remove
                     </button>
                   )}
@@ -594,7 +594,7 @@ export function EnquiryForm({
             <div className="flex flex-wrap items-center gap-4">
               <button type="button" className="btn-secondary" onClick={() => setRows((list) => [...list, emptyRequirement()])}><IconPlus size={16} /> Add product</button>
               {canCreateProduct && (
-                <Link href="/products/new" target="_blank" className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:underline">
+                <Link href="/products/new" target="_blank" className="link-pill text-sm font-medium">
                   Product missing? Open Product Management <IconArrowRight size={14} />
                 </Link>
               )}

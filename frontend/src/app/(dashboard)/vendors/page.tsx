@@ -124,7 +124,7 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
     const active = sortBy === field;
     return (
       <th scope="col" className={clsx(align === 'right' && 'text-right')} aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-        <Link href={sortHref(field)} scroll={false} className={clsx('inline-flex items-center gap-1 hover:text-ink', active && 'text-accent')}>
+        <Link href={sortHref(field)} scroll={false} className={clsx('sort-link', active && 'sort-link-active')}>
           {label}
           {active ? (sortDir === 'asc' ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />) : <IconSort size={12} className="opacity-40" />}
         </Link>
@@ -237,7 +237,7 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
                         <td className="tabular-nums text-ink-subtle">{firstRowNumber + index + 1}</td>
                         <td className="whitespace-nowrap font-mono text-sm text-ink-muted">{vendor.vendorCode}</td>
                         <td className="min-w-[180px]">
-                          <Link href={`/vendors/${vendor.id}`} className="font-semibold text-ink hover:text-accent hover:underline">
+                          <Link href={`/vendors/${vendor.id}`} className="link-pill font-semibold">
                             {vendor.businessName}
                           </Link>
                           {vendor.category && <p className="text-xs text-ink-subtle">{vendor.category.name}</p>}
@@ -248,7 +248,7 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
                         </td>
                         <td className="whitespace-nowrap tabular-nums">
                           {phone ? (
-                            <a href={`tel:${phone}`} className="hover:text-accent hover:underline" aria-label={`Call ${vendor.businessName}`}>
+                            <a href={`tel:${phone}`} className="link-pill" aria-label={`Call ${vendor.businessName}`}>
                               {formatPhone(phone)}
                             </a>
                           ) : (

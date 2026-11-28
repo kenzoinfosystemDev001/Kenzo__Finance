@@ -243,7 +243,7 @@ export function EnquiryItemsPanel({
                   <tr key={item.id}>
                     <td className="tabular-nums text-ink-subtle">{index + 1}</td>
                     <td className="min-w-[160px] font-semibold">
-                      {canViewProducts ? <Link href={`/products/${item.product.id}`} className="hover:text-accent hover:underline">{item.product.name}</Link> : item.product.name}
+                      {canViewProducts ? <Link href={`/products/${item.product.id}`} className="link-pill">{item.product.name}</Link> : item.product.name}
                       {(!item.product.isActive || item.product.archivedAt) && <p className="text-xs font-normal text-warning">Product no longer active</p>}
                     </td>
                     <td className="whitespace-nowrap font-mono text-xs text-ink-muted">{item.product.productCode}</td>
@@ -354,7 +354,7 @@ function ItemModal({
       <div className="space-y-4">
         <RequirementFields row={row} onChange={(change) => { setRow((r) => ({ ...r, ...change })); setErrors({}); }} errors={errors} />
         {canCreateProduct && (
-          <Link href="/products/new" target="_blank" className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:underline">
+          <Link href="/products/new" target="_blank" className="link-pill text-sm font-medium">
             Product missing? Open Product Management <IconArrowRight size={14} />
           </Link>
         )}

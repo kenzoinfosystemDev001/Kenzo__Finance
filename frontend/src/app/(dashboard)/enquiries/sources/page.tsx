@@ -45,7 +45,7 @@ export default async function EnquirySourcesPage() {
                     <td className="font-medium">{s.name}</td>
                     <td className="text-ink-muted">{s.description ?? '-'}</td>
                     <td className="text-right tabular-nums">
-                      {s._count?.enquiries ? <Link href={`/enquiries?sourceId=${s.id}`} className="hover:text-accent hover:underline">{s._count.enquiries}</Link> : 0}
+                      {s._count?.enquiries ? <Link href={`/enquiries?sourceId=${s.id}`} className="link-pill">{s._count.enquiries}</Link> : 0}
                     </td>
                     <td>{s.isActive ? <Badge tone="success">Active</Badge> : <Badge>Inactive</Badge>}</td>
                     {canManage && (

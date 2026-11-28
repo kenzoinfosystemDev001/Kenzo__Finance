@@ -105,7 +105,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     const active = sortBy === field;
     return (
       <th scope="col" aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-        <Link href={sortHref(field)} scroll={false} className={clsx('inline-flex items-center gap-1 hover:text-ink', active && 'text-accent')}>
+        <Link href={sortHref(field)} scroll={false} className={clsx('sort-link', active && 'sort-link-active')}>
           {label}
           {active ? (sortDir === 'asc' ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />) : <IconSort size={12} className="opacity-40" />}
         </Link>
@@ -172,7 +172,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                     <tr key={row.id}>
                       <td className="tabular-nums text-ink-subtle">{firstRowNumber + index + 1}</td>
                       <td className="min-w-[180px]">
-                        <Link href={`/users/${row.id}`} className="font-semibold text-ink hover:text-accent hover:underline">
+                        <Link href={`/users/${row.id}`} className="link-pill font-semibold">
                           {row.fullName}
                         </Link>
                         {row.id === user?.id && <span className="ml-2 text-xs text-ink-subtle">(you)</span>}

@@ -176,7 +176,7 @@ export function PermissionMatrix({
                         {editable && !isFixed(role) && (
                           <button
                             type="button"
-                            className="text-xs font-medium text-accent hover:underline disabled:opacity-50"
+                            className="link-pill text-xs font-medium disabled:opacity-50"
                             disabled={pending}
                             onClick={() => toggleModule(role, moduleCodes, !all)}
                             aria-label={`${all ? 'Clear' : 'Select'} all ${moduleLabel(group.module)} permissions for ${role.name}`}

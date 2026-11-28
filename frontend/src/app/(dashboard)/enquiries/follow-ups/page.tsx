@@ -143,7 +143,7 @@ export default async function FollowUpsPage({ searchParams }: { searchParams: Pr
                       <tr key={f.id}>
                         <td className="whitespace-nowrap">{formatDateTime(f.followUpDate)}</td>
                         <td className="whitespace-nowrap">
-                          <Link href={`/enquiries/${f.enquiry.id}?tab=followups`} className="font-mono text-sm font-semibold text-ink hover:text-accent hover:underline">{f.enquiry.enquiryNumber}</Link>
+                          <Link href={`/enquiries/${f.enquiry.id}?tab=followups`} className="link-pill font-mono text-sm font-semibold">{f.enquiry.enquiryNumber}</Link>
                           <div className="mt-0.5"><EnquiryStatusBadge status={f.enquiry.status} /></div>
                         </td>
                         <td className="min-w-[160px]">{f.enquiry.customer.name}{f.contact && <p className="text-xs text-ink-subtle">with {f.contact.name}</p>}</td>
@@ -182,7 +182,7 @@ export default async function FollowUpsPage({ searchParams }: { searchParams: Pr
                             {overdue && <p className="text-xs font-medium">Overdue</p>}
                           </td>
                           <td className="whitespace-nowrap">
-                            <Link href={`/enquiries/${e.id}`} className="font-mono text-sm font-semibold text-ink hover:text-accent hover:underline">{e.enquiryNumber}</Link>
+                            <Link href={`/enquiries/${e.id}`} className="link-pill font-mono text-sm font-semibold">{e.enquiryNumber}</Link>
                           </td>
                           <td className="min-w-[160px] font-medium">{e.customer.name}</td>
                           <td className="whitespace-nowrap">

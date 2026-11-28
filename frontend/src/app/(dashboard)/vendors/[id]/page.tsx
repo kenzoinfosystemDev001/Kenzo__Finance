@@ -89,7 +89,7 @@ export default async function VendorProfilePage({
 
   return (
     <div className="space-y-5">
-      <Link href="/vendors" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent">
+      <Link href="/vendors" className="link-pill-neutral text-sm">
         <IconChevronLeft size={16} /> All vendors
       </Link>
 
@@ -164,7 +164,7 @@ export default async function VendorProfilePage({
             { label: 'Products', value: vendor.products.length, icon: <IconBox size={16} />, tab: 'products' as const },
             { label: 'Documents', value: vendor.documents.length, icon: <IconFile size={16} />, tab: 'documents' as const },
           ].map((item) => (
-            <Link key={item.label} href={tabHref(item.tab)} scroll={false} className="rounded-lg px-3 py-2 transition-colors hover:bg-surface-muted">
+            <Link key={item.label} href={tabHref(item.tab)} scroll={false} className="rounded-lg bg-accent-subtle/50 px-3 py-2 transition-colors hover:bg-accent-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40">
               <dt className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-ink-subtle">{item.icon}{item.label}</dt>
               <dd className="text-xl font-bold tabular-nums text-ink">{item.value}</dd>
             </Link>
@@ -228,7 +228,7 @@ export default async function VendorProfilePage({
               ) : (
                 <p className="text-sm text-ink-subtle">No contact person recorded.</p>
               )}
-              <Link href={tabHref('contacts')} scroll={false} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-accent hover:underline">
+              <Link href={tabHref('contacts')} scroll={false} className="link-pill mt-3 text-sm font-medium">
                 All contacts <IconArrowRight size={14} />
               </Link>
             </section>
@@ -245,7 +245,7 @@ export default async function VendorProfilePage({
               ) : (
                 <p className="text-sm text-ink-subtle">No address recorded.</p>
               )}
-              <Link href={tabHref('addresses')} scroll={false} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-accent hover:underline">
+              <Link href={tabHref('addresses')} scroll={false} className="link-pill mt-3 text-sm font-medium">
                 All addresses <IconArrowRight size={14} />
               </Link>
             </section>

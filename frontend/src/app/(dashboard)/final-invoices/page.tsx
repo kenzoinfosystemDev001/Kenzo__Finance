@@ -95,7 +95,7 @@ export default async function FinalInvoicesPage({ searchParams }: { searchParams
     const active = sortBy === field;
     return (
       <th scope="col" className={right ? 'text-right' : undefined} aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-        <Link href={sortHref(field)} scroll={false} className={clsx('inline-flex items-center gap-1 whitespace-nowrap hover:text-ink', active && 'text-accent')}>
+        <Link href={sortHref(field)} scroll={false} className={clsx('sort-link', active && 'sort-link-active')}>
           {label}
           {active ? (sortDir === 'asc' ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />) : <IconSort size={12} className="opacity-40" />}
         </Link>
@@ -154,7 +154,6 @@ export default async function FinalInvoicesPage({ searchParams }: { searchParams
         {data.items.length === 0 ? (
           <EmptyState
             title={hasFilters ? 'No invoices match these filters' : 'No invoices yet'}
-            description={hasFilters ? 'Try another invoice number, PI number, customer or product, or clear the filters.' : undefined}
             action={
               hasFilters ? (
                 <Link href="/final-invoices" className="btn-secondary">Clear filters</Link>
@@ -188,7 +187,7 @@ export default async function FinalInvoicesPage({ searchParams }: { searchParams
                       <tr key={inv.id}>
                         <td className="tabular-nums text-ink-subtle">{firstRow + index + 1}</td>
                         <td className="whitespace-nowrap">
-                          <Link href={`/final-invoices/${inv.id}`} className="font-mono text-sm font-semibold text-ink hover:text-accent hover:underline">
+                          <Link href={`/final-invoices/${inv.id}`} className="link-pill font-mono text-sm font-semibold">
                             {inv.invoiceNumber ?? <DraftNumberPill />}
                           </Link>
                         </td>
@@ -199,7 +198,7 @@ export default async function FinalInvoicesPage({ searchParams }: { searchParams
                         </td>
                         <td className="whitespace-nowrap">
                           {can('proforma.read') ? (
-                            <Link href={`/proforma-invoices/${inv.proformaInvoice.id}`} className="font-mono text-sm hover:text-accent hover:underline">{inv.proformaInvoice.piNumber}</Link>
+                            <Link href={`/proforma-invoices/${inv.proformaInvoice.id}`} className="link-pill font-mono text-sm">{inv.proformaInvoice.piNumber}</Link>
                           ) : (
                             <span className="font-mono text-sm">{inv.proformaInvoice.piNumber}</span>
                           )}

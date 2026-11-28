@@ -32,7 +32,7 @@ export default async function EditDeliveryPage({ params }: { params: Promise<{ i
     return <ErrorState title="Could not load delivery" message={error instanceof ApiError ? error.messages[0] : 'The server could not be reached.'} />;
   }
 
-  const back = <Link href={`/deliveries/${d.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent"><IconChevronLeft size={16} /> Back to {d.deliveryNumber}</Link>;
+  const back = <Link href={`/deliveries/${d.id}`} className="link-pill-neutral text-sm"><IconChevronLeft size={16} /> Back to {d.deliveryNumber}</Link>;
   if (!EDITABLE.includes(d.status) || d.challanDocumentId || d.packingDocumentId) {
     return (
       <div className="space-y-5">

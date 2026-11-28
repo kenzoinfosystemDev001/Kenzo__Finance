@@ -259,7 +259,7 @@ export function OcrVendorWizard({
       ) : (
         <div className="card p-5 text-sm text-ink-muted">
           The document could not be read. It has been stored, but an OCR draft that failed cannot be
-          confirmed. <a href="/vendors/new" className="font-medium text-accent hover:underline">Enter the vendor manually</a>{' '}
+          confirmed. <a href="/vendors/new" className="link-pill font-medium">Enter the vendor manually</a>{' '}
           or upload a clearer copy.
         </div>
       )}

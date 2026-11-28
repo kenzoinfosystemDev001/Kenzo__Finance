@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import clsx from 'clsx';
 import { apiFetch, ApiError, queryString } from '@/lib/api';
 import { formatMoney } from '@/lib/quotation-labels';
 import { formatDate } from '@/lib/vendor-labels';
@@ -72,7 +73,7 @@ export async function CustomerRankingsView({
   };
   const nextDir = (field: (typeof SORTS)[number]) => (sortBy === field && sortDir === 'desc' ? 'asc' : 'desc');
   const SortHead = ({ field, label }: { field: (typeof SORTS)[number]; label: string }) => (
-    <Link href={base({ sortBy: field, sortDir: nextDir(field), page: '1' })} className="inline-flex items-center gap-1 hover:text-ink">
+    <Link href={base({ sortBy: field, sortDir: nextDir(field), page: '1' })} className={clsx('sort-link', sortBy === field && 'sort-link-active')}>
       {label}
       {sortBy === field && (sortDir === 'asc' ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />)}
     </Link>
@@ -142,7 +143,7 @@ export async function CustomerRankingsView({
                 {data.items.map((row) => (
                   <tr key={`${row.customer.id}-${row.currency ?? 'none'}`}>
                     <td>
-                      <Link href={`/customers/${row.customer.id}`} className="font-medium text-accent hover:underline">
+                      <Link href={`/customers/${row.customer.id}`} className="link-pill font-medium">
                         {row.customer.name}
                       </Link>
                       <span className="ml-2 font-mono text-xs text-ink-subtle">{row.customer.customerCode}</span>

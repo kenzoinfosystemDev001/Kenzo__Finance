@@ -22,7 +22,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
           <div role="alert" className="rounded-xl border border-danger/30 bg-danger-subtle px-3 py-2.5 text-sm text-danger">
             This password reset link is invalid or incomplete. Request a new one.
           </div>
-          <Link href="/forgot-password" className="block text-center text-sm font-semibold text-accent hover:text-accent-hover hover:underline">
+          <Link href="/forgot-password" className="link-pill block text-center text-sm font-semibold">
             Request a new link
           </Link>
         </div>

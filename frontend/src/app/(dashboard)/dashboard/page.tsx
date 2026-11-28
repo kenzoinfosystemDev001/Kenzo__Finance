@@ -91,7 +91,7 @@ function SectionEmpty({ children }: { children: React.ReactNode }) {
 
 function ViewAll({ href, label = 'View all' }: { href: string; label?: string }) {
   return (
-    <Link href={href} className="text-sm text-accent hover:underline">
+    <Link href={href} className="link-pill text-sm">
       {label}
     </Link>
   );
@@ -115,7 +115,7 @@ function RankingTable({ rows, numbered }: { rows: CustomerRankingRow[]; numbered
             <tr key={`${row.customer.id}-${row.currency ?? 'none'}`}>
               {numbered && <td className="tabular-nums text-ink-subtle">{index + 1}</td>}
               <td>
-                <Link href={`/customers/${row.customer.id}`} className="font-medium text-accent hover:underline">
+                <Link href={`/customers/${row.customer.id}`} className="link-pill font-medium">
                   {row.customer.name}
                 </Link>{' '}
                 <span className="font-mono text-xs text-ink-subtle">{row.customer.customerCode}</span>
@@ -277,7 +277,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               title="Recently added vendors"
               padded={false}
               actions={
-                <Link href="/vendors" className="text-sm text-accent hover:underline">
+                <Link href="/vendors" className="link-pill text-sm">
                   View all
                 </Link>
               }
@@ -310,7 +310,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         <tr key={vendor.id}>
                           <td className="whitespace-nowrap font-mono text-sm text-ink-muted">{vendor.vendorCode}</td>
                           <td>
-                            <Link href={`/vendors/${vendor.id}`} className="font-medium text-accent hover:underline">
+                            <Link href={`/vendors/${vendor.id}`} className="link-pill font-medium">
                               {vendor.businessName}
                             </Link>
                           </td>
@@ -378,7 +378,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         return (
                           <tr key={customer.id}>
                             <td>
-                              <Link href={`/customers/${customer.id}`} className="font-medium text-accent hover:underline">
+                              <Link href={`/customers/${customer.id}`} className="link-pill font-medium">
                                 {customer.name}
                               </Link>{' '}
                               <span className="font-mono text-xs text-ink-subtle">{customer.customerCode}</span>
@@ -440,7 +440,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             description="Current position, not limited to the selected range."
             padded={false}
             actions={
-              <Link href="/final-invoices?pastDueOnly=true" className="text-sm text-accent hover:underline">
+              <Link href="/final-invoices?pastDueOnly=true" className="link-pill text-sm">
                 View overdue
               </Link>
             }
@@ -476,10 +476,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div className="mt-4">
           <SectionCard
             title="Top-selling products"
-            description={topSellers ? `${topSellers.period.label} · from final invoices` : rangeLabel}
             padded={false}
             actions={
-              <Link href="/sales-history" className="text-sm text-accent hover:underline">
+              <Link href="/sales-history" className="link-pill text-sm">
                 View details
               </Link>
             }

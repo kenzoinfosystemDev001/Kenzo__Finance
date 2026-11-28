@@ -66,7 +66,7 @@ export default async function DeliveryProfilePage({
 
   return (
     <div className="space-y-5">
-      <Link href="/deliveries" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent"><IconChevronLeft size={16} /> All deliveries</Link>
+      <Link href="/deliveries" className="link-pill-neutral text-sm"><IconChevronLeft size={16} /> All deliveries</Link>
       {query.created && <p role="status" className="rounded-lg border border-success/30 bg-success-subtle px-4 py-2.5 text-sm text-success">Draft delivery created. Its quantities are now reserved against the invoice. Schedule it when the date is known.</p>}
       {query.saved && <p role="status" className="rounded-lg border border-success/30 bg-success-subtle px-4 py-2.5 text-sm text-success">Delivery saved.</p>}
       {d.status === 'CANCELLED' && (
@@ -97,12 +97,12 @@ export default async function DeliveryProfilePage({
                 {d.delayed && <DelayedBadge />}
               </div>
               <p className="mt-1 text-base text-ink">
-                {can('customer.read') ? <Link href={`/customers/${d.customer.id}`} className="font-semibold hover:text-accent hover:underline">{d.customer.name}</Link> : <span className="font-semibold">{d.customer.name}</span>}
+                {can('customer.read') ? <Link href={`/customers/${d.customer.id}`} className="link-pill font-semibold">{d.customer.name}</Link> : <span className="font-semibold">{d.customer.name}</span>}
                 <span className="text-ink-muted"> &middot; <span className="font-mono">{d.customer.customerCode}</span></span>
               </p>
               <p className="mt-1 text-sm text-ink-muted">
                 Invoice{' '}
-                {can('invoice.read') ? <Link href={`/final-invoices/${d.finalInvoice.id}`} className="font-mono text-ink hover:text-accent hover:underline">{d.finalInvoice.invoiceNumber ?? 'draft'}</Link> : <span className="font-mono text-ink">{d.finalInvoice.invoiceNumber ?? 'draft'}</span>}
+                {can('invoice.read') ? <Link href={`/final-invoices/${d.finalInvoice.id}`} className="link-pill font-mono">{d.finalInvoice.invoiceNumber ?? 'draft'}</Link> : <span className="font-mono text-ink">{d.finalInvoice.invoiceNumber ?? 'draft'}</span>}
                 {' '}&middot; Delivery date {formatDate(d.deliveryDate)}
                 {d.expectedDate && <> &middot; Expected <span className={d.delayed ? 'font-semibold text-danger' : 'text-ink'}>{formatDate(d.expectedDate)}</span></>}
                 {d.actualDeliveryDate && <> &middot; Received {formatDate(d.actualDeliveryDate)}</>}
@@ -111,12 +111,12 @@ export default async function DeliveryProfilePage({
                 {d.totalQuantity} unit{d.totalQuantity === 1 ? '' : 's'} on this delivery
                 {totalDelivered !== null && <> &middot; <span className="text-ink">{totalDelivered} confirmed received</span></>}
               </p>
-              {d.redeliveryOf && <p className="mt-1 text-sm text-ink-muted">Redelivery of <Link href={`/deliveries/${d.redeliveryOf.id}`} className="font-mono underline">{d.redeliveryOf.deliveryNumber}</Link> ({DELIVERY_STATUS_LABELS[d.redeliveryOf.status]})</p>}
+              {d.redeliveryOf && <p className="mt-1 text-sm text-ink-muted">Redelivery of <Link href={`/deliveries/${d.redeliveryOf.id}`} className="link-pill-on-tint font-mono">{d.redeliveryOf.deliveryNumber}</Link> ({DELIVERY_STATUS_LABELS[d.redeliveryOf.status]})</p>}
               {d.redeliveries.length > 0 && (
                 <p className="mt-1 text-sm text-ink-muted">
                   Redelivered as{' '}
                   {d.redeliveries.map((r, i) => (
-                    <span key={r.id}>{i > 0 && ', '}<Link href={`/deliveries/${r.id}`} className="font-mono underline">{r.deliveryNumber}</Link> ({DELIVERY_STATUS_LABELS[r.status]})</span>
+                    <span key={r.id}>{i > 0 && ', '}<Link href={`/deliveries/${r.id}`} className="link-pill-on-tint font-mono">{r.deliveryNumber}</Link> ({DELIVERY_STATUS_LABELS[r.status]})</span>
                   ))}
                 </p>
               )}
@@ -214,7 +214,7 @@ export default async function DeliveryProfilePage({
           <SectionCard title="Invoice">
             <DefinitionList
               items={[
-                { label: 'Invoice', value: can('invoice.read') ? <Link href={`/final-invoices/${d.finalInvoice.id}`} className="font-mono hover:text-accent hover:underline">{d.finalInvoice.invoiceNumber ?? 'draft'}</Link> : <span className="font-mono">{d.finalInvoice.invoiceNumber}</span> },
+                { label: 'Invoice', value: can('invoice.read') ? <Link href={`/final-invoices/${d.finalInvoice.id}`} className="link-pill font-mono">{d.finalInvoice.invoiceNumber ?? 'draft'}</Link> : <span className="font-mono">{d.finalInvoice.invoiceNumber}</span> },
                 { label: 'Invoice date', value: formatDate(d.finalInvoice.invoiceDate) },
                 { label: 'Invoice status', value: <FinalInvoiceStatusBadge status={d.finalInvoice.status} /> },
               ]}

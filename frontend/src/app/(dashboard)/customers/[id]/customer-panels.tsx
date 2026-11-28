@@ -80,9 +80,9 @@ export function CustomerContactsPanel({ customer, canManage }: { customer: Custo
                   <td className="font-semibold">{c.name}</td>
                   <td>{c.designation ?? '—'}</td>
                   <td>{c.department ?? '—'}</td>
-                  <td>{c.email ? <a href={`mailto:${c.email}`} className="inline-flex items-center gap-1.5 hover:text-accent"><IconMail size={14} />{c.email}</a> : '—'}</td>
+                  <td>{c.email ? <a href={`mailto:${c.email}`} className="link-pill"><IconMail size={14} />{c.email}</a> : '—'}</td>
                   <td className="whitespace-nowrap">
-                    {c.phone ? <a href={`tel:${c.phone}`} className="inline-flex items-center gap-1.5 hover:text-accent"><IconPhone size={14} />{formatPhone(c.phone)}</a> : '—'}
+                    {c.phone ? <a href={`tel:${c.phone}`} className="link-pill"><IconPhone size={14} />{formatPhone(c.phone)}</a> : '—'}
                     {c.alternatePhone && <p className="text-xs text-ink-subtle">Alt: {formatPhone(c.alternatePhone)}</p>}
                   </td>
                   <td>{c.isPrimary ? <span className="chip">Primary</span> : <span className="text-ink-subtle">No</span>}</td>
@@ -381,7 +381,7 @@ export function CustomerProductsPanel({ customer, canManage, canViewProducts }: 
               {customer.interests.map((i) => (
                 <tr key={i.id}>
                   <td className="min-w-[160px] font-semibold">
-                    {canViewProducts ? <Link href={`/products/${i.product.id}`} className="hover:text-accent hover:underline">{i.product.name}</Link> : i.product.name}
+                    {canViewProducts ? <Link href={`/products/${i.product.id}`} className="link-pill">{i.product.name}</Link> : i.product.name}
                     {(!i.product.isActive || i.product.archivedAt) && <p className="text-xs font-normal text-warning">Product no longer active</p>}
                   </td>
                   <td className="whitespace-nowrap font-mono text-xs text-ink-muted">{i.product.productCode}</td>

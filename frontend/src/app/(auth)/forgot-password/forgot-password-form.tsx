@@ -22,7 +22,7 @@ export function ForgotPasswordForm() {
         <p className="text-sm text-ink-subtle">
           Didn&apos;t get it? Check your spam folder, or contact your administrator if the problem continues.
         </p>
-        <Link href="/login" className="block text-center text-sm font-semibold text-accent hover:text-accent-hover hover:underline">
+        <Link href="/login" className="link-pill block text-center text-sm font-semibold">
           Back to sign in
         </Link>
       </div>
@@ -54,7 +54,7 @@ export function ForgotPasswordForm() {
 
       <SubmitButton label="Send reset link" pendingLabel="Sending..." />
 
-      <Link href="/login" className="block text-center text-sm font-semibold text-accent hover:text-accent-hover hover:underline">
+      <Link href="/login" className="link-pill block text-center text-sm font-semibold">
         Back to sign in
       </Link>
     </form>

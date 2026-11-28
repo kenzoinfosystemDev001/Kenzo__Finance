@@ -79,7 +79,7 @@ export function PaymentAlertBell({ data }: { data: PaymentAlertsResponse }) {
                 ))}
               </ul>
               <div className="border-t border-border px-4 py-2.5 text-right">
-                <Link href="/final-invoices" className="text-sm font-medium text-accent hover:underline" onClick={() => setOpen(false)}>
+                <Link href="/final-invoices" className="link-pill text-sm font-medium" onClick={() => setOpen(false)}>
                   {total > PANEL_LIMIT ? `Open invoices (${total} alerts)` : 'Open invoices'}
                 </Link>
               </div>

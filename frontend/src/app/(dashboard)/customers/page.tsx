@@ -72,7 +72,7 @@ async function AllCustomersPage({ searchParams }: { searchParams: Promise<Partia
     const active = sortBy === field;
     return (
       <th scope="col" aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-        <Link href={sortHref(field)} scroll={false} className={clsx('inline-flex items-center gap-1 hover:text-ink', active && 'text-accent')}>
+        <Link href={sortHref(field)} scroll={false} className={clsx('sort-link', active && 'sort-link-active')}>
           {label}
           {active ? (sortDir === 'asc' ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />) : <IconSort size={12} className="opacity-40" />}
         </Link>
@@ -141,14 +141,14 @@ async function AllCustomersPage({ searchParams }: { searchParams: Promise<Partia
                         <td className="tabular-nums text-ink-subtle">{firstRow + index + 1}</td>
                         <td className="whitespace-nowrap font-mono text-sm text-ink-muted">{customer.customerCode}</td>
                         <td className="min-w-[180px]">
-                          <Link href={`/customers/${customer.id}`} className="font-semibold text-ink hover:text-accent hover:underline">{customer.name}</Link>
+                          <Link href={`/customers/${customer.id}`} className="link-pill font-semibold">{customer.name}</Link>
                           {customer.category && <p className="text-xs text-ink-subtle">{customer.category.name}</p>}
                         </td>
                         <td>{CUSTOMER_TYPE_LABELS[customer.customerType]}</td>
                         <td className="whitespace-nowrap">{contact?.name ?? dash}</td>
                         <td className="whitespace-nowrap tabular-nums">
                           {contact?.phone ? (
-                            <a href={`tel:${contact.phone}`} className="hover:text-accent hover:underline" aria-label={`Call ${customer.name}`}>
+                            <a href={`tel:${contact.phone}`} className="link-pill" aria-label={`Call ${customer.name}`}>
                               {formatPhone(contact.phone)}
                             </a>
                           ) : (

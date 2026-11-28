@@ -60,7 +60,7 @@ function PaymentFields({
           hint={available !== undefined ? `At most ${formatMoney(available, currency)} (outstanding less payments awaiting verification).` : 'Up to 2 decimals. The API checks it against the invoice balance.'}
         />
         {available !== undefined && Number(available) > 0 && (
-          <button type="button" className="mt-1 text-sm font-medium text-accent hover:underline" onClick={() => setValue('amount', available)}>
+          <button type="button" className="link-pill mt-1 text-sm font-medium" onClick={() => setValue('amount', available)}>
             Use the full available amount
           </button>
         )}
@@ -115,7 +115,7 @@ function DuplicateWarning({ result, onConfirm, pending }: { result: PaymentActio
         <ul className="space-y-1">
           {result.duplicates.map((d) => (
             <li key={d.id} className="flex flex-wrap items-center gap-2 text-ink">
-              <Link href={`/payments/${d.id}`} target="_blank" className="font-mono font-semibold text-accent hover:underline">{d.receiptNumber}</Link>
+              <Link href={`/payments/${d.id}`} target="_blank" className="link-pill font-mono font-semibold">{d.receiptNumber}</Link>
               <span>{d.customer}</span>
               <span className="tabular-nums">{d.amount}</span>
               <PaymentStatusBadge status={d.status} />

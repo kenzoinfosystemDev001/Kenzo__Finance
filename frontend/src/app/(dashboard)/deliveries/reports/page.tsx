@@ -58,7 +58,7 @@ export default async function DeliveryReportsPage({ searchParams }: { searchPara
 
   return (
     <div className="space-y-5">
-      <Link href="/deliveries" className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-accent"><IconChevronLeft size={16} /> Delivery register</Link>
+      <Link href="/deliveries" className="link-pill-neutral text-sm"><IconChevronLeft size={16} /> Delivery register</Link>
       <div>
         <h1 className="text-xl font-bold text-ink">Delivery Reports</h1>
         <p className="text-sm text-ink-muted">
@@ -74,7 +74,7 @@ export default async function DeliveryReportsPage({ searchParams }: { searchPara
           title="By customer"
           description="Most deliveries first (top 200)."
           headers={['Customer', 'Deliveries', 'Fully delivered']}
-          rows={report.byCustomer.map((r) => [can('customer.read') ? <Link key={r.customer.id} href={`/customers/${r.customer.id}`} className="hover:text-accent hover:underline">{r.customer.name}</Link> : r.customer.name, r.deliveries, r.delivered])}
+          rows={report.byCustomer.map((r) => [can('customer.read') ? <Link key={r.customer.id} href={`/customers/${r.customer.id}`} className="link-pill">{r.customer.name}</Link> : r.customer.name, r.deliveries, r.delivered])}
           numeric={[1, 2]}
         />
         <ReportTable
@@ -90,7 +90,7 @@ export default async function DeliveryReportsPage({ searchParams }: { searchPara
         description="Dispatched quantity counts goods that left; delivered counts confirmed receipts only."
         headers={['Invoice', 'Deliveries', 'Dispatched qty', 'Delivered qty']}
         rows={report.byInvoice.map((r) => [
-          can('invoice.read') ? <Link key={r.invoice.id} href={`/final-invoices/${r.invoice.id}`} className="font-mono hover:text-accent hover:underline">{r.invoice.invoiceNumber ?? 'draft'}</Link> : <span className="font-mono">{r.invoice.invoiceNumber}</span>,
+          can('invoice.read') ? <Link key={r.invoice.id} href={`/final-invoices/${r.invoice.id}`} className="link-pill font-mono">{r.invoice.invoiceNumber ?? 'draft'}</Link> : <span className="font-mono">{r.invoice.invoiceNumber}</span>,
           r.deliveries,
           r.dispatchedQuantity,
           r.deliveredQuantity,

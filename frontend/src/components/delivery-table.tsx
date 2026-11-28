@@ -30,14 +30,14 @@ export function DeliveryTable({ deliveries, canReadCustomers, canReadInvoices }:
             return (
               <tr key={d.id}>
                 <td>
-                  <Link className="font-semibold text-accent hover:underline" href={`/deliveries/${d.id}`}>
+                  <Link className="link-pill font-semibold" href={`/deliveries/${d.id}`}>
                     {d.deliveryNumber}
                   </Link>
                 </td>
                 <td>
                   {d.finalInvoice.invoiceNumber ? (
                     canReadInvoices ? (
-                      <Link className="text-accent hover:underline" href={`/final-invoices/${d.finalInvoice.id}`}>
+                      <Link className="link-pill" href={`/final-invoices/${d.finalInvoice.id}`}>
                         {d.finalInvoice.invoiceNumber}
                       </Link>
                     ) : (
@@ -49,7 +49,7 @@ export function DeliveryTable({ deliveries, canReadCustomers, canReadInvoices }:
                 </td>
                 <td>
                   {canReadCustomers ? (
-                    <Link className="text-accent hover:underline" href={`/customers/${d.customer.id}`}>
+                    <Link className="link-pill" href={`/customers/${d.customer.id}`}>
                       {d.customer.name}
                     </Link>
                   ) : (

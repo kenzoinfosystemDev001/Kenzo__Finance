@@ -164,6 +164,27 @@ export const IconShield = (p: IconProps) => (
 export const IconAlert = (p: IconProps) => (
   <Icon {...p}><path d="M12 3 2 20h20Z" /><path d="M12 10v4M12 17h.01" /></Icon>
 );
+export const IconHelpBubble = (p: IconProps) => (
+  <Icon {...p}><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v9a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4h0A1.5 1.5 0 0 1 4 15.5Z" /><path d="M9.8 8.2a2.3 2.3 0 0 1 4.4.8c0 1.5-2.2 1.9-2.2 3" /><path d="M12 14.2h.01" /></Icon>
+);
+export const IconDocument = (p: IconProps) => (
+  <Icon {...p}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5" /><path d="M9 13h6M9 17h6M9 9h1" /></Icon>
+);
+export const IconCard = (p: IconProps) => (
+  <Icon {...p}><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M3 10h18" /><path d="M7 15h3" /><path d="M15.5 15.5a1.5 1.5 0 1 0 2.5-1" /></Icon>
+);
+export const IconBarChart = (p: IconProps) => (
+  <Icon {...p}><path d="M4 20h16" /><path d="M6.5 20v-6M10.5 20V9M14.5 20V5M18.5 20v-9" /></Icon>
+);
+export const IconPalette = (p: IconProps) => (
+  <Icon {...p}><path d="M12 3a9 9 0 0 0 0 18c1.2 0 1.8-.9 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H16a5 5 0 0 0 5-5C21 6.4 17 3 12 3Z" /><circle cx="7.5" cy="11" r="1" /><circle cx="10" cy="7" r="1" /><circle cx="14.5" cy="7" r="1" /><circle cx="17" cy="10.5" r="1" /></Icon>
+);
+export const IconCube = (p: IconProps) => (
+  <Icon {...p}><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9Z" /><path d="m4 7.5 8 4.5 8-4.5" /><path d="M12 12v9" /><path d="m8 5.3 8 4.5" /></Icon>
+);
+export const IconInfo = (p: IconProps) => (
+  <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><path d="M12 8h.01" /></Icon>
+);
 export const IconMenu = (p: IconProps) => (
   <Icon {...p}><path d="M4 6h16M4 12h16M4 18h16" /></Icon>
 );

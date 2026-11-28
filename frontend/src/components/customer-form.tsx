@@ -208,7 +208,7 @@ export function CustomerForm({
           <p className="flex items-center gap-2 font-semibold"><IconAlert size={16} /> This GSTIN is already registered</p>
           <ul className="mt-1 space-y-0.5">
             {blocking.map((d) => (
-              <li key={d.customerId}><Link href={`/customers/${d.customerId}`} target="_blank" className="underline">{d.name} ({d.customerCode})</Link></li>
+              <li key={d.customerId}><Link href={`/customers/${d.customerId}`} target="_blank" className="link-pill-on-tint">{d.name} ({d.customerCode})</Link></li>
             ))}
           </ul>
           <p className="mt-1">Update the existing customer instead of creating a second record.</p>
@@ -220,7 +220,7 @@ export function CustomerForm({
           <ul className="mt-1 space-y-0.5">
             {warnings.map((d) => (
               <li key={d.customerId}>
-                <Link href={`/customers/${d.customerId}`} target="_blank" className="underline">{d.name} ({d.customerCode})</Link> &mdash; same {d.matchedOn}
+                <Link href={`/customers/${d.customerId}`} target="_blank" className="link-pill-on-tint">{d.name} ({d.customerCode})</Link> &mdash; same {d.matchedOn}
                 {d.status === 'INACTIVE' && ' (inactive)'}
               </li>
             ))}
@@ -280,7 +280,7 @@ export function CustomerForm({
               <div className="mb-3 flex items-center justify-between">
                 <legend className="text-sm font-semibold text-ink">Contact {i + 1} {c.isPrimary && <span className="chip ml-1">Primary</span>}</legend>
                 {contacts.length > 1 && (
-                  <button type="button" className="inline-flex items-center gap-1 text-sm text-danger hover:underline" onClick={() => setContacts((rows) => {
+                  <button type="button" className="link-pill-danger text-sm" onClick={() => setContacts((rows) => {
                     const rest = rows.filter((r) => r.key !== c.key);
                     if (c.isPrimary && rest[0]) rest[0] = { ...rest[0], isPrimary: true };
                     return rest;
@@ -308,7 +308,7 @@ export function CustomerForm({
             <fieldset key={a.key} className="rounded-xl border border-border p-4">
               <div className="mb-3 flex items-center justify-between">
                 <legend className="text-sm font-semibold text-ink">Address {i + 1} {a.isDefault && <span className="chip ml-1">Default {CUSTOMER_ADDRESS_TYPE_LABELS[a.addressType].replace(' Address', '').toLowerCase()}</span>}</legend>
-                <button type="button" className="inline-flex items-center gap-1 text-sm text-danger hover:underline" onClick={() => setAddresses((rows) => rows.filter((r) => r.key !== a.key))}><IconTrash size={14} /> Remove</button>
+                <button type="button" className="link-pill-danger text-sm" onClick={() => setAddresses((rows) => rows.filter((r) => r.key !== a.key))}><IconTrash size={14} /> Remove</button>
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <SelectField label="Address Type" value={a.addressType} onChange={(v) => setAddress(a.key, { addressType: v as CustomerAddressType, isDefault: !addresses.some((r) => r.key !== a.key && r.addressType === v && r.isDefault) })} options={ADDRESS_TYPES} />
@@ -351,7 +351,7 @@ export function CustomerForm({
       )}
 
       <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-3 rounded-xl border border-border bg-surface/95 px-4 py-3 shadow-popover backdrop-blur">
-        {creating && <button type="button" className="mr-auto text-sm font-medium text-accent hover:underline" onClick={checkDuplicates}>Check for existing customers</button>}
+        {creating && <button type="button" className="link-pill mr-auto text-sm font-medium" onClick={checkDuplicates}>Check for existing customers</button>}
         <Link href={customerId ? `/customers/${customerId}` : '/customers'} className="btn-secondary">Cancel</Link>
         <button type="submit" className={clsx('btn-primary px-5')} disabled={pending || blocking.length > 0 || (creating && warnings.length > 0 && !acknowledged)}>
           {pending ? 'Saving...' : mode === 'edit' ? 'Save Changes' : 'Save Customer'}

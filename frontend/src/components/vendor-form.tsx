@@ -369,7 +369,7 @@ export function VendorForm({
           <ul className="mt-1.5 space-y-1 text-sm text-danger/90">
             {blocking.map((match) => (
               <li key={match.vendorId}>
-                <Link href={`/vendors/${match.vendorId}`} className="underline underline-offset-2" target="_blank">
+                <Link href={`/vendors/${match.vendorId}`} className="link-pill-on-tint" target="_blank">
                   {match.businessName} ({match.vendorCode})
                 </Link>
                 {match.archived && ' — archived'}
@@ -390,7 +390,7 @@ export function VendorForm({
           <ul className="mt-1.5 space-y-1 text-sm text-warning">
             {warnings.map((match) => (
               <li key={match.vendorId}>
-                <Link href={`/vendors/${match.vendorId}`} className="underline underline-offset-2" target="_blank">
+                <Link href={`/vendors/${match.vendorId}`} className="link-pill-on-tint" target="_blank">
                   {match.businessName} ({match.vendorCode})
                 </Link>{' '}
                 &mdash; same {match.matchedOn}
@@ -521,7 +521,7 @@ export function VendorForm({
         </div>
         {creating && (
           <div className="mt-3 flex justify-end">
-            <button type="button" className="text-sm font-medium text-accent hover:underline" onClick={refreshDuplicates}>
+            <button type="button" className="link-pill text-sm font-medium" onClick={refreshDuplicates}>
               Check for existing vendors
             </button>
           </div>
@@ -544,7 +544,7 @@ export function VendorForm({
                     </p>
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 text-sm text-danger hover:underline"
+                      className="link-pill-danger text-sm"
                       onClick={() => setContacts((rows) => rows.filter((row) => row.key !== contact.key))}
                     >
                       <IconTrash size={14} /> Remove
@@ -593,7 +593,7 @@ export function VendorForm({
                     </p>
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 text-sm text-danger hover:underline"
+                      className="link-pill-danger text-sm"
                       onClick={() =>
                         setAddresses((rows) => {
                           const remaining = rows.filter((row) => row.key !== address.key);
@@ -679,7 +679,7 @@ export function VendorForm({
                 {can('product.create') && (
                   <>
                     {' '}Model not in the catalogue?{' '}
-                    <button type="button" className="font-medium text-accent hover:underline" onClick={() => setProductModal(true)}>
+                    <button type="button" className="link-pill font-medium" onClick={() => setProductModal(true)}>
                       Register it in the shared catalogue
                     </button>
                     .
@@ -692,7 +692,7 @@ export function VendorForm({
       ) : (
         <div className="rounded-xl border border-border bg-surface-muted px-4 py-3 text-sm text-ink-muted">
           Contacts, addresses, brands, products and documents are managed on the{' '}
-          <Link href={`/vendors/${vendorId}`} className="font-medium text-accent hover:underline">
+          <Link href={`/vendors/${vendorId}`} className="link-pill font-medium">
             vendor profile
           </Link>
           , where each change is saved and recorded individually.
