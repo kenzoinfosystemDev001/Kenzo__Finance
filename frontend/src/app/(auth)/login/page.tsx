@@ -41,9 +41,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
         <div className="relative max-w-xl">
           <h1 className="text-4xl font-semibold leading-tight tracking-tight xl:text-5xl">Business Management Software</h1>
-          <p className="mt-5 text-lg leading-relaxed text-sidebar-muted">
-            Vendors, products, customers, quotations, invoices, payments and deliveries in one system.
-          </p>
         </div>
 
         <p className="relative text-sm text-sidebar-muted">&copy; {year} Kenzo Infosystems. All rights reserved.</p>
