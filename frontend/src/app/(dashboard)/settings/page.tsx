@@ -53,7 +53,6 @@ export default async function SettingsPage() {
     <div className="mx-auto max-w-4xl space-y-4">
       <PageHeader
         title="Settings"
-        description="Business switches that take effect immediately. Every change is recorded in the audit log."
       />
 
       <SectionCard
@@ -125,7 +124,6 @@ export default async function SettingsPage() {
       {(canManage || canReadProformas) && (
         <SectionCard
           title="Proforma Invoices"
-          description="Approval before issuing, and the bank account and payment instructions printed on proforma invoices."
         >
           <ProformaSettingsPanel approvalRequired={proformaApproval} settings={proformaSettings} canManage={canManage} />
         </SectionCard>
@@ -134,7 +132,6 @@ export default async function SettingsPage() {
       {(canManage || canReadInvoices) && (
         <SectionCard
           title="Final Invoices"
-          description="Approval before issuing, and the invoice number format allocated when an invoice is issued."
         >
           <FinalInvoiceSettingsPanel approvalRequired={invoiceApproval} settings={invoiceSettings} canManage={canManage} />
         </SectionCard>
@@ -143,7 +140,6 @@ export default async function SettingsPage() {
       {(canManage || canReadPayments) && (
         <SectionCard
           title="Payments"
-          description="Accepted payment methods and whether any are verified automatically when recorded."
         >
           <PaymentSettingsPanel settings={paymentSettings} canManage={canManage} />
         </SectionCard>

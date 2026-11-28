@@ -53,9 +53,6 @@ export function PaymentSettingsPanel({ settings, canManage }: { settings: Paymen
           These are the built-in default methods and have not been confirmed yet. Review them and save to confirm.
         </p>
       )}
-      <p className="text-sm text-ink-muted">
-        Auto-verify marks a payment as verified when it is recorded by a user who is allowed to verify payments. Leave it off for every method to keep a second check on all payments.
-      </p>
       <div className="overflow-x-auto">
         <table className="data-table">
           <thead>

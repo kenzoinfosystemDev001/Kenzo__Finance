@@ -74,9 +74,6 @@ export function ProformaSettingsPanel({ approvalRequired, settings, canManage }:
 
       <div className="border-t border-border pt-5">
         <p className="text-base font-medium text-ink">Bank account printed on proforma invoices</p>
-        <p className="mt-1 text-sm text-ink-muted">
-          Copied into each new PI (editable on a draft). Issued PIs keep the details they were issued with. Leave empty to print no bank details.
-        </p>
         {settings === null ? (
           <p className="mt-2 text-sm text-ink-subtle">The current details could not be loaded (viewing them needs access to proforma invoices).</p>
         ) : canManage ? (

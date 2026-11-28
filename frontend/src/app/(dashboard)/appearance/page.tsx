@@ -43,7 +43,6 @@ export default async function AppearancePage() {
           <AppearanceImageCard
             kind="login"
             title="Login page background"
-            description="Shown behind the brand panel of the sign-in page, before anyone signs in."
             defaultDescription="The solid sidebar colour is shown."
             defaultSwatchClass="bg-sidebar"
             defaultLabelClass="text-sidebar-ink"
@@ -56,7 +55,6 @@ export default async function AppearancePage() {
         <AppearanceImageCard
           kind="sidebar"
           title="Sidebar background"
-          description="Shown behind the navigation for every signed-in user."
           defaultDescription="The solid sidebar colour is used."
           defaultSwatchClass="bg-sidebar"
           defaultLabelClass="text-sidebar-ink"
@@ -68,7 +66,6 @@ export default async function AppearancePage() {
         <AppearanceImageCard
           kind="workspace"
           title="Main workspace background"
-          description="Shown behind the content of every module. Cards and forms stay solid white."
           defaultDescription="The solid workspace colour is used."
           defaultSwatchClass="bg-canvas"
           defaultLabelClass="text-ink-muted"

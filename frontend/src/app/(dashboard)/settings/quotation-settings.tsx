@@ -121,7 +121,6 @@ export function QuotationSettingsPanel({
 
       <div className="border-t border-border pt-5">
         <p className="text-base font-medium text-ink">Company details on quotation PDFs</p>
-        <p className="mt-1 text-sm text-ink-muted">Printed in the header of every quotation PDF. PDFs already issued keep the details they were generated with.</p>
         {companyProfile === null ? (
           <p className="mt-2 text-sm text-ink-subtle">The company details could not be loaded (viewing them needs access to quotations).</p>
         ) : canManage ? (
